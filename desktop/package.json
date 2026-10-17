@@ -1,0 +1,6 @@
+{
+  "name": "commonplace-companion",
+  "main": "main.mjs",
+  "private": true,
+  "type": "module"
+}
