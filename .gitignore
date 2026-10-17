@@ -60,3 +60,5 @@ next-env.d.ts
 *.tsbuildinfo
 
 !/build/media-preview-plugin.mjs
+
+!/build/local-files.mjs

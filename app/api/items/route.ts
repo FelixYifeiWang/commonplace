@@ -9,6 +9,8 @@ import {
   HttpError,
   hash,
 } from "@/lib/server";
+import preview from "virtual:commonplace-preview";
+import { classifyMedia } from "@/lib/media.mjs";
 import { normalizeItem, itemIdentity } from "@/lib/protocol.mjs";
 export async function POST(request: Request) {
   try {
@@ -26,11 +28,19 @@ export async function POST(request: Request) {
         ),
       );
     if (!collection) throw new HttpError(404, "Choose a collection.");
+    const file = body.fileKey ? await preview.fileInfo(body.fileKey) : null;
+    if (file && file.ownerId !== user.userId)
+      throw new HttpError(403, "File unavailable.");
     let item;
     try {
       item = normalizeItem({
         ...body,
-        sourceText: body.body || body.url || body.title,
+        ...(file
+          ? { kind: "note", title: file.name, url: null, body: "" }
+          : body.url
+            ? { kind: classifyMedia(body.url) }
+            : {}),
+        sourceText: file?.name || body.body || body.url || body.title,
         sourceRole: "user",
       });
     } catch (e) {
@@ -39,6 +49,12 @@ export async function POST(request: Request) {
         e instanceof Error ? e.message : "Invalid item.",
       );
     }
+    const detectedFileKind = file
+      ? classifyMedia(
+          `https://upload.invalid/${encodeURIComponent(file.name)}`,
+          file.mimeType,
+        )
+      : null;
     const now = new Date().toISOString(),
       row = {
         id: crypto.randomUUID(),
@@ -46,7 +62,14 @@ export async function POST(request: Request) {
         sessionId: null,
         collectionId: collection.id,
         identity: await hash(itemIdentity(item)),
-        kind: item.kind,
+        kind: file
+          ? detectedFileKind === "link"
+            ? "file"
+            : detectedFileKind!
+          : item.kind,
+        fileKey: file?.key || null,
+        mimeType: file?.mimeType || null,
+        previewStatus: file || !item.url ? "ready" : "pending",
         title: item.title,
         body: item.body,
         url: item.url,

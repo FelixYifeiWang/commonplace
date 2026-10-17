@@ -51,6 +51,8 @@ export const items = sqliteTable(
     body: text("body").notNull().default(""),
     url: text("url"),
     imageUrl: text("image_url"),
+    groupName: text("group_name").notNull().default(""),
+    fileKey: text("file_key"),
     previewStatus: text("preview_status").notNull().default("pending"),
     mimeType: text("mime_type"),
     embedUrl: text("embed_url"),

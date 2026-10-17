@@ -1,14 +1,14 @@
 // Run against the local preview only: node tests/local-api.integration.mjs
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
-import { readdirSync } from "node:fs";
+import { readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 const root = ".wrangler/state/v3/d1/miniflare-D1DatabaseObject";
 const dbFile = readdirSync(root).find(
   (f) => f.endsWith(".sqlite") && f !== "metadata.sqlite",
 );
 const origin = "http://127.0.0.1:3100",
-  created = { sessions: [], devices: [], collections: [] };
+  created = { sessions: [], devices: [], collections: [], files: [] };
 async function call(path, method = "GET", body, token) {
   const r = await fetch(origin + path, {
     method,
@@ -106,8 +106,73 @@ try {
     body: JSON.stringify({ ids: [link.id] }),
   });
   assert.equal(unauth.status, 401);
+  assert.equal(
+    (
+      await call("/api/groups", "PATCH", {
+        ids: fixtureItems.map((i) => i.id),
+        name: "Test research",
+      })
+    ).status,
+    200,
+  );
+  space = (await call("/api/workspace")).data;
+  assert.equal(
+    space.items.filter((i) => i.groupName === "Test research").length,
+    3,
+  );
+  assert.equal(
+    (
+      await call("/api/groups", "PATCH", {
+        ids: [crypto.randomUUID()],
+        name: "Unavailable",
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await call("/api/groups", "PATCH", {
+        ids: fixtureItems.map((i) => i.id),
+        name: "",
+      })
+    ).status,
+    200,
+  );
+  const ticket = await call("/api/uploads", "POST");
+  assert.equal(ticket.status, 200);
+  const upload = await fetch(origin + ticket.data.url, {
+    method: "PUT",
+    headers: { "Content-Type": "text/plain", "X-File-Name": "test-note.txt" },
+    body: "Local file fixture",
+  });
+  assert.equal(upload.status, 200);
+  const file = await upload.json();
+  created.files.push(file.key);
+  const added = await call("/api/items", "POST", {
+    fileKey: file.key,
+    collectionId: created.collections[0],
+  });
+  assert.equal(added.status, 201);
+  assert.equal(added.data.kind, "file");
+  const download = await fetch(origin + "/api/files/" + added.data.id, {
+    headers: { Cookie: "__sites_local_auth=1" },
+  });
+  assert.equal(download.status, 200);
+  assert.equal(await download.text(), "Local file fixture");
+  assert.equal(
+    (await fetch(origin + "/api/files/" + added.data.id)).status,
+    401,
+  );
+  assert.equal(
+    (await fetch(origin + "/api/screenshots/" + link.id)).status,
+    401,
+  );
+  assert.equal(
+    (await fetch(origin + "/api/uploads", { method: "POST" })).status,
+    401,
+  );
   console.log(
-    "Verified: separate session collections, repeat-drop reuse, All items union, capture deduplication, media classification, real website metadata, authenticated previews.",
+    "Verified: separate session collections, repeat-drop reuse, All items union, capture deduplication, media classification, real website metadata, authenticated previews, saved groups, local file upload and download, media authentication.",
   );
 } finally {
   const db = new DatabaseSync(join(root, dbFile));
@@ -117,8 +182,14 @@ try {
     db.prepare("DELETE FROM items WHERE session_id=?").run(id);
     db.prepare("DELETE FROM sessions WHERE id=?").run(id);
   }
-  for (const id of created.collections.filter(Boolean))
+  for (const id of created.collections.filter(Boolean)) {
+    db.prepare("DELETE FROM items WHERE collection_id=?").run(id);
     db.prepare("DELETE FROM collections WHERE id=?").run(id);
+  }
+  for (const key of created.files) {
+    rmSync(join(".sites-runtime/files", key), { force: true });
+    rmSync(join(".sites-runtime/files", key + ".json"), { force: true });
+  }
   for (const id of created.devices.filter(Boolean))
     db.prepare("DELETE FROM devices WHERE id=?").run(id);
   db.exec("COMMIT");

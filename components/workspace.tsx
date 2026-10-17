@@ -9,7 +9,6 @@ import {
   ChevronDown,
   Copy,
   ExternalLink,
-  Link2,
   Loader2,
   Pause,
   Play,
@@ -27,7 +26,9 @@ import type {
 } from "@/lib/types";
 import { SAMPLE } from "@/lib/sample";
 import { sessionLabel } from "./buddy";
-import { MediaCard, MediaDetail } from "./media-card";
+import { MediaDetail } from "./media-card";
+import { Gallery } from "./gallery";
+import { AddBlock } from "./add-block";
 import { Modal } from "./modal";
 
 const EMPTY: WorkspaceData = {
@@ -103,6 +104,8 @@ export default function Workspace({
     [copyText, setCopyText] = useState(""),
     [copied, setCopied] = useState(false),
     [modalError, setModalError] = useState("");
+  const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
+  const [droppedText, setDroppedText] = useState("");
   const previewBusy = useRef(false);
   const refresh = useCallback(async () => {
     try {
@@ -175,6 +178,8 @@ export default function Workspace({
     b.createdAt.localeCompare(a.createdAt),
   );
   function openModal(value: typeof modal) {
+    setDroppedFiles([]);
+    setDroppedText("");
     setModalError("");
     setCopied(false);
     setModal(value);
@@ -289,49 +294,41 @@ export default function Workspace({
       setBusy(false);
     }
   }
-  async function saveItem(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    setBusy(true);
-    setModalError("");
-    try {
-      const payload = {
-        title: String(form.get("title")),
-        body: String(form.get("body")),
-        url: String(form.get("url")) || null,
-        kind: String(form.get("kind")),
-        collectionId: String(form.get("collectionId")),
-      };
-      if (demo) {
-        setData((d) => ({
-          ...d,
-          items: [
-            {
-              ...payload,
-              id: crypto.randomUUID(),
-              sessionId: null,
-              kind: payload.kind as ItemKind,
-              imageUrl: payload.kind === "image" ? payload.url : null,
-              sourceText: payload.body || payload.url || payload.title,
-              sourceRole: "user",
-              sourceTurn: "",
-              inferred: false,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-            ...d.items,
-          ],
-        }));
-      } else {
-        await api("/api/items", "POST", payload);
-        await refresh();
-      }
-      setModal(null);
-      setToast("Saved to your collection.");
-    } catch (e) {
-      setModalError(e instanceof Error ? e.message : "Could not save.");
-    } finally {
-      setBusy(false);
+  async function saveBlock(payload: Record<string, unknown>) {
+    if (demo) {
+      if (payload.fileKey)
+        throw new Error("Use your local space to upload files.");
+      const now = new Date().toISOString();
+      const item = {
+        ...payload,
+        id: crypto.randomUUID(),
+        sessionId: null,
+        kind: payload.kind as ItemKind,
+        imageUrl: null,
+        sourceText: String(payload.body || payload.url || payload.title),
+        sourceRole: "user",
+        sourceTurn: "",
+        inferred: false,
+        createdAt: now,
+        updatedAt: now,
+      } as Item;
+      setData((d) => ({ ...d, items: [item, ...d.items] }));
+    } else {
+      await api("/api/items", "POST", payload);
+      await refresh();
+    }
+  }
+  async function groupBlocks(ids: string[], name: string) {
+    if (demo)
+      setData((d) => ({
+        ...d,
+        items: d.items.map((i) =>
+          ids.includes(i.id) ? { ...i, groupName: name } : i,
+        ),
+      }));
+    else {
+      await api("/api/groups", "PATCH", { ids, name });
+      await refresh();
     }
   }
   function renderSession(session: Session, compact = false) {
@@ -390,7 +387,24 @@ export default function Workspace({
   }
 
   return (
-    <div className="app-shell">
+    <div
+      className="app-shell"
+      onDragOver={(e) => {
+        if (!modal) e.preventDefault();
+      }}
+      onDrop={(e) => {
+        if (modal || !collections.length) return;
+        e.preventDefault();
+        setDroppedFiles(Array.from(e.dataTransfer.files));
+        setDroppedText(
+          e.dataTransfer.files.length
+            ? ""
+            : e.dataTransfer.getData("text/uri-list") ||
+                e.dataTransfer.getData("text/plain"),
+        );
+        setModal("item");
+      }}
+    >
       <div className="workspace">
         <header className="minimal-header">
           <button
@@ -467,39 +481,17 @@ export default function Workspace({
                 </div>
               )}
               {screen === "collection" && (
-                <>
-                  {visibleItems.length === 0 ? (
-                    <div className="empty-onboarding">
-                      <button
-                        className="button primary large"
-                        onClick={() => openModal("connect")}
-                      >
-                        <Link2 size={16} />
-                        Connect a session
-                        <ArrowRight size={15} />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      {visibleItems.length ? (
-                        <div className="items-grid">
-                          {visibleItems.map((item) => (
-                            <button
-                              className="idea-card"
-                              key={item.id}
-                              onClick={() => setDetail(item)}
-                              aria-label={item.title}
-                            >
-                              <MediaCard item={item} />
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div />
-                      )}
-                    </>
-                  )}
-                </>
+                <Gallery
+                  key={selected}
+                  items={visibleItems}
+                  onOpen={setDetail}
+                  onGroup={groupBlocks}
+                  onAdd={() =>
+                    collections.length
+                      ? openModal("item")
+                      : openModal("collection")
+                  }
+                />
               )}
               {screen === "sessions" && (
                 <>
@@ -752,71 +744,18 @@ export default function Workspace({
         </Modal>
       )}
       {modal === "item" && (
-        <Modal title="Add item" onClose={() => setModal(null)}>
-          <form onSubmit={saveItem} className="form">
-            <div className="form-columns">
-              <label>
-                Kind
-                <select name="kind">
-                  <option value="note">Note</option>
-                  <option value="idea">Idea</option>
-                  <option value="link">Link</option>
-                  <option value="image">Image link</option>
-                  <option value="video">Video</option>
-                  <option value="audio">Audio</option>
-                  <option value="document">Document</option>
-                  <option value="file">File</option>
-                  <option value="quote">Quote</option>
-                </select>
-              </label>
-              <label>
-                Collection
-                <select
-                  name="collectionId"
-                  defaultValue={
-                    selected === "all" ? collections[0]?.id : selected
-                  }
-                >
-                  {collections.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <label>
-              Title
-              <input
-                name="title"
-                placeholder="Title"
-                required
-                maxLength={240}
-                autoFocus
-              />
-            </label>
-            <label>
-              Source link <span>for links and media</span>
-              <input name="url" type="url" placeholder="https://" />
-            </label>
-            <label>
-              Text
-              <textarea name="body" placeholder="Text" maxLength={12000} />
-            </label>
-            {modalError && (
-              <p className="form-error" role="alert">
-                {modalError}
-              </p>
-            )}
-            <button className="button primary full" disabled={busy}>
-              {busy ? "Saving..." : "Save"}
-              <Plus size={14} />
-            </button>
-          </form>
-        </Modal>
+        <AddBlock
+          allowFiles={!demo}
+          collections={collections}
+          collectionId={selected === "all" ? collections[0]?.id : selected}
+          initialFiles={droppedFiles}
+          initialText={droppedText}
+          onSave={saveBlock}
+          onClose={() => setModal(null)}
+        />
       )}
       {detail && (
-        <Modal title={detail.title} onClose={() => setDetail(null)}>
+        <Modal title={detail.title} onClose={() => setDetail(null)} wide>
           <MediaDetail
             item={data.items.find((item) => item.id === detail.id) || detail}
           />

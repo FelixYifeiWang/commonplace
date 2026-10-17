@@ -1,8 +1,18 @@
 declare module "virtual:commonplace-preview" {
   const bridge: {
-    preview(
-      url: string,
+    screenshot(url: string): Promise<Response>;
+    ticket(ownerId: string): Promise<{ url: string }>;
+    fileInfo(
+      key: string,
     ): Promise<{
+      key: string;
+      name: string;
+      mimeType: string;
+      ownerId: string;
+      size: number;
+    }>;
+    file(key: string, range?: string): Promise<Response>;
+    preview(url: string): Promise<{
       title?: string;
       body?: string;
       imageUrl?: string | null;

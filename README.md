@@ -17,7 +17,7 @@ Both routes use the same device/subscription APIs. A device token is scoped to w
 
 ## What this draft does
 
-Collections, manual blocks, source passages, account sign-in, revocable connections, session controls, duplicate-resistant imports, JSONL parsing, and a floating Electron companion. Each connected session gets a collection named after it, and All items combines every collection. Captured URLs become reference blocks with locally fetched covers and media viewers. Transcript turns are stored for later AI processing.
+Collections, manual blocks, source passages, account sign-in, revocable connections, session controls, duplicate-resistant imports, JSONL parsing, and a floating Electron companion. Each connected session gets a collection named after it, and All items combines every collection. Captured URLs become reference blocks with locally rendered page screenshots, cover fallbacks and media viewers. The default grid stacks pages by website; click a stack to expand. Search and type/source filters work inside stacks. Select blocks to make a named group across websites. Manual add accepts links, text and local files. Transcript turns are stored for later AI processing.
 
 ## Unfinished
 
@@ -58,6 +58,6 @@ Verification: protocol, collector, drop lifecycle, and media-preview tests; loca
 
 The local helper reads window geometry and the owning process, never screen pixels or window titles. Codex navigation logs identify the open conversation; its ID resolves to a transcript in the local session index. Drops on unsupported apps or the desktop simply reposition the visible buddy. Ambiguous windows, sidebar drops, and missing navigation records do not upload anything. This uses undocumented local formats and may require updates after Codex upgrades. A browser alone cannot access this local state; the preview still runs a local Electron companion.
 
-A successful drop shows a screen-wide ripple, then connection/import status. The green Connected result appears after the initial transcript capture succeeds. The overlay ignores pointer input. Public website covers are extracted while the local collection page is open; a source may still appear as a text card if it blocks previews or supplies no cover. See `ARENA_REFERENCE.md` for media behavior and limits.
+A successful drop shows a screen-wide ripple, then connection/import status. The green Connected result appears after the initial transcript capture succeeds. The overlay ignores pointer input. Public webpage screenshots and covers are captured while the local collection page is open; a source may still appear as a text card if it blocks previews or supplies no cover. The buddy has compact pause/resume controls, cursor-aware eyes and reduced-motion support. See `ARENA_REFERENCE.md` for media behavior and limits.
 
-The `drizzle/0002_yellow_freak.sql` migration separates existing sessions into named collections and preserves their blocks. Run `node tests/local-api.integration.mjs` against the local preview for collection/metadata checks; it removes its own temporary fixtures.
+The `drizzle/0002_yellow_freak.sql` migration separates existing sessions into named collections and preserves their blocks. The `drizzle/0003_tough_gladiator.sql` migration adds named groups and local file references without changing existing blocks. Apply only migrations not already present on an existing database. Run `node tests/local-api.integration.mjs` against the local preview for collection, grouping and media checks; it removes its own temporary fixtures.

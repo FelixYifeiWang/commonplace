@@ -8,6 +8,7 @@ export default function DropFeedback() {
     state: SessionState;
     targetTitle: string;
     error: string;
+    feedbackActive?: boolean;
     feedbackPoint?: { x: number; y: number };
   }>({ state: "connecting", targetTitle: "", error: "" });
   useEffect(() => {
@@ -43,6 +44,7 @@ export default function DropFeedback() {
       : value.state === "collecting"
         ? "Collecting"
         : "Connecting";
+  if (!value.feedbackActive) return null;
   return (
     <div
       className={`drop-feedback ${success ? "success" : error ? "failed" : "processing"}`}

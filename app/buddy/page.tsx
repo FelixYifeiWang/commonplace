@@ -1,12 +1,21 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowUpRight, X } from "lucide-react";
+import { ArrowUpRight, Pause, Play, X } from "lucide-react";
 import { Buddy } from "@/components/buddy";
 import type { SessionState } from "@/lib/types";
 type Snapshot = {
+  gaze?: { x: number; y: number };
+  subscriptions: {
+    id: string;
+    title: string;
+    paused: boolean;
+    done: boolean;
+    error?: string;
+  }[];
   connected: boolean;
   expanded: boolean;
   targetTitle: string;
+  feedbackActive?: boolean;
   feedbackPoint?: { x: number; y: number };
   state: SessionState;
   error: string;
@@ -17,6 +26,7 @@ type Bridge = {
   dragEnd: () => Promise<{ click: boolean; connected?: boolean }>;
   dragCancel: () => Promise<void>;
   toggle: () => Promise<void>;
+  pause: (id: string) => Promise<void>;
   openSpace: () => void;
   hide: () => void;
 };
@@ -60,7 +70,15 @@ export default function Companion() {
   const expanded = snapshot?.expanded || !snapshot;
   const message = error || snapshot?.error;
   return (
-    <div className={`native-buddy ${expanded ? "expanded" : ""}`}>
+    <div
+      className={`native-buddy ${expanded ? "expanded" : ""}`}
+      style={
+        {
+          "--gaze-x": `${snapshot?.gaze?.x || 0}px`,
+          "--gaze-y": `${snapshot?.gaze?.y || 0}px`,
+        } as React.CSSProperties
+      }
+    >
       <button
         className={`native-buddy-grab ${dragging ? "dragging" : ""}`}
         aria-label="Drag buddy over an open Codex conversation. Click for controls."
@@ -99,7 +117,7 @@ export default function Companion() {
           }
         }}
       >
-        <Buddy state={dragging ? "connecting" : snapshot?.state || "waiting"} />
+        <Buddy state={snapshot?.state || "waiting"} />
         {snapshot?.state === "following" && (
           <span className="native-status-dot" aria-label="Following" />
         )}
@@ -123,11 +141,51 @@ export default function Companion() {
             <p>Open the desktop buddy to drag onto other apps.</p>
           ) : (
             <>
-              <p>
-                {snapshot.targetTitle && !message
-                  ? snapshot.targetTitle
-                  : "Drop over an open Codex conversation."}
-              </p>
+              <div className="native-controls-heading">
+                {snapshot.subscriptions?.filter((s) => !s.paused && !s.done)
+                  .length || 0}{" "}
+                following
+              </div>
+              <div className="native-session-list">
+                {snapshot.subscriptions
+                  ?.filter((s) => !s.done)
+                  .map((source) => (
+                    <div className="native-session" key={source.id}>
+                      <i
+                        className={
+                          source.error ? "error" : source.paused ? "paused" : ""
+                        }
+                      />
+                      <span title={source.title}>{source.title}</span>
+                      <button
+                        aria-label={`${source.paused ? "Resume" : "Pause"} ${source.title}`}
+                        onClick={async () => {
+                          try {
+                            await window.commonplaceDesktop?.pause(source.id);
+                            const next =
+                              await window.commonplaceDesktop?.snapshot();
+                            if (next) setSnapshot(next);
+                          } catch (e) {
+                            setError(
+                              e instanceof Error
+                                ? e.message
+                                : "Could not update session.",
+                            );
+                          }
+                        }}
+                      >
+                        {source.paused ? (
+                          <Play size={12} />
+                        ) : (
+                          <Pause size={12} />
+                        )}
+                      </button>
+                    </div>
+                  ))}
+              </div>
+              {!snapshot.subscriptions?.length && (
+                <p>Drop onto a Codex session.</p>
+              )}
               {message && (
                 <p className="native-error" role="alert">
                   {message}

@@ -1,4 +1,5 @@
 "use client";
+import { useId } from "react";
 import type { SessionState } from "@/lib/types";
 export function Buddy({
   state = "following",
@@ -7,16 +8,33 @@ export function Buddy({
   state?: SessionState;
   small?: boolean;
 }) {
+  const shade = useId();
   return (
     <span
       className={`buddy-creature ${small ? "small" : ""} state-${state}`}
       aria-hidden="true"
     >
       <svg className="nosy-face" viewBox="0 0 80 80" fill="none">
+        <defs>
+          <radialGradient id={shade} cx="32%" cy="23%" r="86%">
+            <stop offset="0" stopColor="#fff" />
+            <stop offset=".72" stopColor="#fffefa" />
+            <stop offset="1" stopColor="#e8e6e1" />
+          </radialGradient>
+        </defs>
+        <circle
+          className="nosy-orbit"
+          cx="40"
+          cy="40"
+          r="36"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeDasharray="22 204"
+        />
         <path
           className="nosy-outline"
           d="M71 40C71 58 58 71 40 71C22 71 9 58 9 40C9 22 22 9 40 9C58 9 71 22 71 40Z"
-          fill="white"
+          fill={`url(#${shade})`}
           stroke="currentColor"
           strokeWidth="1.8"
         />
@@ -29,11 +47,14 @@ export function Buddy({
         >
           <path className="nosy-brow left" d="M20 29C23 25 28 24 32 26" />
           <path className="nosy-brow right" d="M47 25C51 22 57 23 60 27" />
-          <g className="nosy-eyes" fill="currentColor" stroke="none">
-            <ellipse cx="27" cy="36" rx="2.3" ry="3" />
-            <ellipse cx="53" cy="34" rx="2.3" ry="3" />
+          <g className="nosy-gaze">
+            <g className="nosy-eyes" fill="currentColor" stroke="none">
+              <ellipse cx="27" cy="36" rx="2.3" ry="3" />
+              <ellipse cx="53" cy="34" rx="2.3" ry="3" />
+            </g>
           </g>
           <path className="nosy-nose" d="M39 30L34 49L45 49" />
+          <path className="nosy-smile" d="M34 57Q40 61 47 56" strokeWidth="2" />
         </g>
       </svg>
     </span>

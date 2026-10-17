@@ -45,6 +45,8 @@ export type Item = {
   body: string;
   url: string | null;
   imageUrl: string | null;
+  groupName?: string;
+  fileKey?: string | null;
   previewStatus?: "pending" | "ready" | "unavailable";
   mimeType?: string | null;
   embedUrl?: string | null;

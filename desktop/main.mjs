@@ -85,7 +85,6 @@ async function tick() {
       (s) => !s.paused && !s.done,
     )) {
       if (dragController?.isDragging()) break;
-      status = "reading";
       try {
         const result = await collector.syncTranscript({
           connection,
@@ -120,7 +119,7 @@ function setExpanded(value) {
   const bounds = win.getBounds();
   const area = screen.getDisplayMatching(bounds).workArea;
   const width = value ? 320 : 104,
-    height = value ? 330 : 112;
+    height = value ? 390 : 112;
   win.setBounds(
     {
       x: Math.max(area.x, Math.min(bounds.x, area.x + area.width - width)),
@@ -300,25 +299,35 @@ if (!lock) {
           void shell.openExternal(url);
         }
       });
-      register("companion:snapshot", () => ({
-        connected: !!connection,
-        expanded,
-        targetTitle,
-        feedbackPoint,
-        subscriptions: subscriptions.map((s) => ({
-          id: s.id,
-          title: s.title,
-          provider: s.provider,
-          mode: s.mode,
-          paused: s.paused,
-          done: s.done,
-          turns: s.turns,
-          error: s.error,
-        })),
-        state: status,
-        error: lastError,
-        origin: ORIGIN,
-      }));
+      register("companion:snapshot", () => {
+        const cursor = screen.getCursorScreenPoint(),
+          bounds = win.getBounds();
+        const gaze = {
+          x: Math.max(-2, Math.min(2, (cursor.x - bounds.x - 52) / 180)),
+          y: Math.max(-1.5, Math.min(1.5, (cursor.y - bounds.y - 54) / 180)),
+        };
+        return {
+          gaze,
+          connected: !!connection,
+          expanded,
+          targetTitle,
+          feedbackPoint,
+          feedbackActive: !!feedbackWindow?.isVisible(),
+          subscriptions: subscriptions.map((s) => ({
+            id: s.id,
+            title: s.title,
+            provider: s.provider,
+            mode: s.mode,
+            paused: s.paused,
+            done: s.done,
+            turns: s.turns,
+            error: s.error,
+          })),
+          state: status,
+          error: lastError,
+          origin: ORIGIN,
+        };
+      });
       register("companion:pair", pair);
       dragController = createDragController({
         window: win,
