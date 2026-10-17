@@ -1,5 +1,6 @@
-import { env } from "cloudflare:workers";
-import { enabled } from "virtual:commonplace-story";
+import { storyResponse } from "@/lib/story-response";
+import { env } from "@/lib/runtime-env";
+import { enabled, scheduleStoryWork } from "@/lib/runtime-story";
 import { createStoryStore } from "@/lib/story-store.mjs";
 import {
   userRequired,
@@ -15,6 +16,7 @@ export async function GET(request: Request) {
     if (!id) throw new HttpError(400, "Choose a channel.");
     const story = await createStoryStore(env.DB).get(id, user.userId);
     if (!story) throw new HttpError(404, "Channel not found.");
+    if (story.pending && story.status !== "error") scheduleStoryWork();
     return Response.json(
       { ...story, enabled },
       { headers: { "Cache-Control": "no-store" } },
@@ -34,7 +36,7 @@ export async function POST(request: Request) {
     if (!(await store.get(body.collectionId, user.userId)))
       throw new HttpError(404, "Channel not found.");
     await store.retry(body.collectionId, user.userId);
-    return Response.json({ ok: true });
+    return storyResponse({ ok: true });
   } catch (error) {
     return fail(error);
   }

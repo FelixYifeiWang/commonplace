@@ -1,3 +1,4 @@
+import { storyResponse } from "@/lib/story-response";
 import { getDb } from "@/db";
 import { sessions, collections, devices } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
             .where(eq(sessions.id, existing.id)),
         ]);
       }
-      return Response.json({
+      return storyResponse({
         subscriptionId: existing.id,
         collectionId: existing.collectionId,
         state: body.mode === "follow" ? "reading" : existing.state,
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
         .set({ lastSeen: now })
         .where(eq(devices.id, device.id)),
     ]);
-    return Response.json(
+    return storyResponse(
       { subscriptionId: id, collectionId, state: "reading" },
       { status: 201 },
     );

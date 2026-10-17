@@ -21,9 +21,9 @@ Collections, manual blocks, source passages, account sign-in, revocable connecti
 
 ## Unfinished
 
-Story generation currently runs through the local server; a hosted background worker is not configured. The example collection is sample content, not a live extraction. Direct connection currently supports Codex only. Inactive sidebar rows must be opened first. Claude Code and Cursor feasibility findings are in `COMPATIBILITY.md`; they are not yet connected to the connection handler. There is no signed desktop installer or freely editable mind map yet.
+The example collection is sample content, not a live extraction. Direct connection currently supports Codex only. Inactive sidebar rows must be opened first. Claude Code and Cursor feasibility findings are in `COMPATIBILITY.md`; they are not yet connected to the connection handler. There is no signed desktop installer or freely editable mind map yet.
 
-The private hosted preview has an additional Sites authentication boundary. A device API token alone does not bypass it. Desktop hosted sign-in and unattended hosted syncing need further validation; local companion syncing is the tested development path.
+The older Sites preview has an additional Sites authentication boundary. The Vercel deployment uses its own private access code. Desktop hosted sign-in and unattended hosted syncing still need an end-to-end companion check; local companion syncing is the tested development path.
 
 ## Development
 
@@ -71,3 +71,24 @@ Set `OPENAI_API_KEY` in the ignored `.env.local` file. The local worker reads it
 Migration `0005_lucky_frightful_four.sql` adds durable story checkpoints, append-only moments and queue triggers. Changes coalesce briefly before generation. Earlier moments remain unchanged; updates received during generation stay queued. Deleted media disappears from diagrams without altering earlier prose. Deleted channels stop processing. A failed generation preserves its checkpoint and can be retried from Story.
 
 Run `node tests/story.integration.mjs` against the local server with a valid key to test real generation, continuation and deletion. It makes paid API requests for its own temporary collection, verifies earlier moments are unchanged, then removes its fixtures.
+
+## Vercel deployment
+
+The hosted app uses Next.js, Turso SQLite and private Vercel Blob. Local Vinext/D1 and the desktop companion remain available without migrating or uploading existing laptop data. The hosted space starts empty.
+
+Production configuration (server-side): `COMMONPLACE_HOSTED=1`, `OPENAI_API_KEY`, `COMMONPLACE_ACCESS_CODE`, `COMMONPLACE_SESSION_SECRET`, `CRON_SECRET`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BLOB_STORE_ID` and `BLOB_WEBHOOK_PUBLIC_KEY`. Generate strong random access/session/cron secrets and keep them outside Git. The current private prototype has one shared owner space protected by an access code; it is not a multi-user account system.
+
+```sh
+# With hosted database credentials loaded securely into the environment:
+npm run db:migrate:hosted
+COMMONPLACE_HOSTED=1 npm run build:vercel
+vercel deploy --prod
+```
+
+The migration runner records applied SQL files and batches each migration atomically. Hosted uploads use scoped presigned URLs and OIDC, then authenticated file delivery. The OpenAI key is only used by server functions. Source changes schedule background Story work after the response; durable leases and checkpoints prevent duplicate continuations. Each invocation is bounded; pending work resumes on subsequent updates, Story visits, or the daily recovery cron. Very long imports may need more than one invocation.
+
+Hosted website cards use metadata covers. The native browser screenshot renderer remains local. No Electron or session-history reader runs on Vercel. To connect the desktop companion to the hosted space, launch it with `COMMONPLACE_ORIGIN` set to the deployment URL and sign in there; this explicitly selects a different destination for future subscriptions.
+
+Vercel Hobby and Turso Starter were selected for the prototype; OpenAI requests consume paid API credits. No paid infrastructure plan is required for this deployment. Monitor each provider's free quotas before scaling.
+
+`tests/hosted.integration.mjs` is an explicit live check using `COMMONPLACE_TEST_URL`, the access code, and hosted database credentials from the environment. It verifies authentication, automatic GPT-6 Luna continuation, direct private uploads, downloads, byte ranges and deletion, then removes only its database fixtures. It makes paid model calls; remove its reported Blob fixture with the Vercel CLI afterward.

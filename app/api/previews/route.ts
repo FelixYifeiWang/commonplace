@@ -8,7 +8,7 @@ import {
   checkOrigin,
   HttpError,
 } from "@/lib/server";
-import preview from "virtual:commonplace-preview";
+import preview from "@/lib/runtime-preview";
 import { publicUrl } from "@/lib/media.mjs";
 export async function POST(request: Request) {
   try {

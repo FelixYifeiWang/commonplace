@@ -538,7 +538,10 @@ export default function Workspace({
                 href="/signin-with-chatgpt?return_to=%2F"
                 target="_top"
               >
-                Continue with ChatGPT <ArrowRight size={15} />
+                {process.env.NEXT_PUBLIC_HOSTED === "1"
+                  ? "Open space"
+                  : "Continue with ChatGPT"}{" "}
+                <ArrowRight size={15} />
               </a>
               <Link className="text-link" href="/?demo=1">
                 Take a look around <ArrowUpRight size={13} />

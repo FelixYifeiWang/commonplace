@@ -1,3 +1,4 @@
+import { storyResponse } from "@/lib/story-response";
 import { getDb } from "@/db";
 import { and, eq } from "drizzle-orm";
 import { collections, sessions } from "@/db/schema";
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
     };
     await getDb().insert(collections).values(collection);
-    return Response.json(collection, { status: 201 });
+    return storyResponse(collection, { status: 201 });
   } catch (e) {
     return fail(e);
   }
@@ -67,7 +68,7 @@ export async function DELETE(request: Request) {
           ),
         ),
     ]);
-    return Response.json({ ok: true });
+    return storyResponse({ ok: true });
   } catch (e) {
     return fail(e);
   }
@@ -84,7 +85,7 @@ export async function PATCH(request: Request) {
       .where(
         and(eq(collections.id, body.id), eq(collections.ownerId, user.userId)),
       );
-    return Response.json({ ok: true });
+    return storyResponse({ ok: true });
   } catch (e) {
     return fail(e);
   }

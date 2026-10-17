@@ -44,17 +44,37 @@ export function AddBlock({
           throw new Error(`${file.name} exceeds 250 MB.`);
         const auth = await fetch("/api/uploads", { method: "POST" });
         if (!auth.ok) throw new Error("Could not prepare upload.");
-        const ticket = (await auth.json()) as { url: string };
-        const uploaded = await fetch(ticket.url, {
-          method: "PUT",
-          headers: {
-            "Content-Type": file.type || "application/octet-stream",
-            "X-File-Name": encodeURIComponent(file.name),
-          },
-          body: file,
-        });
-        if (!uploaded.ok) throw new Error(`Could not upload ${file.name}.`);
-        const data = (await uploaded.json()) as { key: string };
+        const ticket = (await auth.json()) as {
+          url: string;
+          mode?: string;
+          prefix?: string;
+        };
+        let data: { key: string };
+        if (ticket.mode === "blob" && ticket.prefix) {
+          const { uploadPresigned } = await import("@vercel/blob/client");
+          const blob = await uploadPresigned(
+            ticket.prefix + encodeURIComponent(file.name),
+            file,
+            {
+              access: "private",
+              handleUploadUrl: ticket.url,
+              multipart: file.size > 5 * 1024 * 1024,
+              contentType: file.type || "application/octet-stream",
+            },
+          );
+          data = { key: blob.pathname };
+        } else {
+          const uploaded = await fetch(ticket.url, {
+            method: "PUT",
+            headers: {
+              "Content-Type": file.type || "application/octet-stream",
+              "X-File-Name": encodeURIComponent(file.name),
+            },
+            body: file,
+          });
+          if (!uploaded.ok) throw new Error(`Could not upload ${file.name}.`);
+          data = (await uploaded.json()) as { key: string };
+        }
         await onSave({
           fileKey: data.key,
           title: file.name,

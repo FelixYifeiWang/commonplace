@@ -1,5 +1,5 @@
 import { userRequired, checkOrigin, fail } from "@/lib/server";
-import preview from "virtual:commonplace-preview";
+import preview from "@/lib/runtime-preview";
 export async function POST(request: Request) {
   try {
     checkOrigin(request);

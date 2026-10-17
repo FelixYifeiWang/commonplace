@@ -1,3 +1,4 @@
+import { storyResponse } from "@/lib/story-response";
 import { isReferenceUrl } from "@/lib/source-policy.mjs";
 import { getDb } from "@/db";
 import { sessions, items } from "@/db/schema";
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
         ...(typeof statements)[number][],
       ],
     );
-    return Response.json(
+    return storyResponse(
       { ok: true, accepted: body.items.length, state },
       { headers: { "Cache-Control": "no-store" } },
     );

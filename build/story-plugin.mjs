@@ -89,8 +89,8 @@ export function storyWorker() {
       if (this.environment?.name === "client")
         throw new Error("Story worker is server-only.");
       return dev
-        ? `export const enabled=true; export function authorized(request){return request.headers.get('X-Commonplace-Story')===${JSON.stringify(token)}};`
-        : `export const enabled=false; export function authorized(){return false;}`;
+        ? `export function scheduleStoryWork(){}; export const enabled=true; export function authorized(request){return request.headers.get('X-Commonplace-Story')===${JSON.stringify(token)}};`
+        : `export function scheduleStoryWork(){}; export const enabled=false; export function authorized(){return false;}`;
     },
     configureServer(server) {
       server.httpServer?.once("listening", () => {

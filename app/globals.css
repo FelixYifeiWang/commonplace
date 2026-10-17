@@ -5211,3 +5211,41 @@ body.desktop-feedback-page {
     transform: none;
   }
 }
+
+.hosted-signin {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+}
+.hosted-signin form {
+  width: min(100%, 300px);
+  display: grid;
+  gap: 16px;
+}
+.hosted-signin h1 {
+  font-family: var(--serif);
+  font-size: 30px;
+  font-weight: 400;
+  margin-bottom: 20px;
+}
+.hosted-signin label {
+  font-size: 12px;
+  color: #777;
+}
+.hosted-signin input {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 12px;
+  width: 100%;
+}
+.hosted-signin button {
+  background: #282825;
+  color: #fff;
+  padding: 12px;
+  border-radius: 4px;
+}
+.hosted-signin p {
+  font-size: 12px;
+  color: #9b5555;
+}

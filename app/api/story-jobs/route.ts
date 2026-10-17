@@ -1,5 +1,5 @@
-import { env } from "cloudflare:workers";
-import { authorized } from "virtual:commonplace-story";
+import { env } from "@/lib/runtime-env";
+import { authorized } from "@/lib/runtime-story";
 import { createStoryStore } from "@/lib/story-store.mjs";
 import { jsonBody, fail, HttpError } from "@/lib/server";
 export async function POST(request: Request) {

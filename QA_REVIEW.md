@@ -32,3 +32,15 @@ Hover GIF/direct-video/YouTube/Vimeo playback and reduced-motion behavior were i
 - 93 unit tests, typecheck, lint, production build and both local API integration suites passed. Wrangler SQL splitting was tested against the migration. The configured key is ignored by Git and absent from source files and built browser assets.
 
 Automatic generation requires the local server to stay running. The production build intentionally does not contain a hosted story worker. Graph relationships use supplied transcript/media metadata; this version does not perform image vision or provide a freely editable graph canvas.
+
+## Vercel deployment — 17 October 2026
+
+- Production: https://commonplace-pearl.vercel.app. Private access-code sign-in; anonymous requests and forged Sites identity headers are rejected. The configured OpenAI key stays server-side.
+- Turso Starter migrations applied; live adapter checks verified atomic rollback and ordered result columns. Local D1 data was not uploaded.
+- Real GPT-6 Luna generation ran after gallery changes without visiting Story. A second update appended new moments while preserving earlier records exactly.
+- OIDC-backed presigned Blob upload, authenticated file delivery, byte ranges and channel/block deletion passed on production. Temporary database and Blob fixtures were removed.
+- Reviewed the deployed minimal entry page and access-code form in the browser. Hosted authenticated data flows were verified through HTTP integration tests.
+- 95 unit tests, ESLint, typecheck, local Vinext build, Vercel Next production build and live local API regression checks passed. The local server was restarted successfully after the runtime split.
+- No configured secret values were found in publishable source files or the deployed page's browser scripts. Environment files, local databases and companion binaries are excluded from CLI uploads and Git.
+
+Hosted cards currently use metadata covers; full-page screenshot capture remains a local feature. The companion was not switched to the hosted destination, so existing subscriptions continue writing locally. Hosted Story work is bounded per invocation with durable checkpoints and daily recovery; very long imports may continue on a subsequent update or Story visit.

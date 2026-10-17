@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "@/lib/runtime-env";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./schema";
 

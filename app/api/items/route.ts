@@ -1,3 +1,4 @@
+import { storyResponse } from "@/lib/story-response";
 import { isReferenceUrl } from "@/lib/source-policy.mjs";
 import { getDb } from "@/db";
 import { items, collections } from "@/db/schema";
@@ -10,7 +11,7 @@ import {
   HttpError,
   hash,
 } from "@/lib/server";
-import preview from "virtual:commonplace-preview";
+import preview from "@/lib/runtime-preview";
 import { classifyMedia } from "@/lib/media.mjs";
 import { normalizeItem, itemIdentity } from "@/lib/protocol.mjs";
 export async function POST(request: Request) {
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
         updatedAt: now,
       };
     await db.insert(items).values(row);
-    return Response.json(row, { status: 201 });
+    return storyResponse(row, { status: 201 });
   } catch (e) {
     return fail(e);
   }
@@ -112,7 +113,7 @@ export async function PATCH(request: Request) {
               inArray(items.id, ids.slice(i, i + 80)),
             ),
           );
-      return Response.json({ ok: true });
+      return storyResponse({ ok: true });
     }
     const [item] = await db
       .select()
@@ -129,7 +130,7 @@ export async function PATCH(request: Request) {
       .update(items)
       .set({ title: body.title.trim(), updatedAt: new Date().toISOString() })
       .where(eq(items.id, item.id));
-    return Response.json({ ok: true });
+    return storyResponse({ ok: true });
   } catch (e) {
     return fail(e);
   }
@@ -162,7 +163,7 @@ export async function DELETE(request: Request) {
             inArray(items.id, ids.slice(i, i + 80)),
           ),
         );
-    return Response.json({ ok: true });
+    return storyResponse({ ok: true });
   } catch (e) {
     return fail(e);
   }

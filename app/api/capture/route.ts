@@ -1,3 +1,4 @@
+import { storyResponse } from "@/lib/story-response";
 import { getDb } from "@/db";
 import { sessions, items, turns, devices } from "@/db/schema";
 import { and, eq, notInArray } from "drizzle-orm";
@@ -118,7 +119,7 @@ export async function POST(request: Request) {
         batch as [(typeof batch)[number], ...(typeof batch)[number][]],
       );
     }
-    return Response.json(
+    return storyResponse(
       {
         ok: true,
         received: body.turns.length,

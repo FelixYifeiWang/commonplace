@@ -1,5 +1,6 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { verifySession, SESSION_COOKIE } from "@/lib/hosted-auth.mjs";
 
 export type ChatGPTUser = {
   userId: string;
@@ -19,6 +20,13 @@ const SIGN_OUT_PATH = "/signout-with-chatgpt";
 const CALLBACK_PATH = "/callback";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
+  if (process.env.COMMONPLACE_HOSTED === "1" || process.env.VERCEL === "1") {
+    const token = (await cookies()).get(SESSION_COOKIE)?.value;
+    const userId = verifySession(token, process.env.COMMONPLACE_SESSION_SECRET);
+    return userId
+      ? { userId, displayName: "Your space", email: "", fullName: null }
+      : null;
+  }
   const requestHeaders = await headers();
   const userId = requestHeaders.get(USER_ID_HEADER);
   const email = requestHeaders.get(USER_EMAIL_HEADER);

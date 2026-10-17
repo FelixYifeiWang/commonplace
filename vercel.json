@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "npm run build:vercel",
+  "installCommand": "ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci",
+  "regions": ["iad1"],
+  "functions": { "app/api/**/*.ts": { "maxDuration": 300 } },
+  "crons": [{ "path": "/api/story-run", "schedule": "0 5 * * *" }]
+}
