@@ -9,7 +9,6 @@ export function createDragController({
   subscribe,
   capture = async () => {},
   report,
-  sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
   every = setInterval,
   stop = clearInterval,
 }) {
@@ -58,9 +57,8 @@ export function createDragController({
     );
     finishing = true;
     let repositionOnly = false;
-    window.hide();
     try {
-      await sleep(90); // Let macOS remove our overlay before hit-testing the same screen point.
+      // Native hit-testing excludes our own windows; the buddy stays visible.
       const target = await inspect(point);
       if (
         target.error === "no-target" ||
@@ -90,7 +88,6 @@ export function createDragController({
       return { click: false, connected: false };
     } finally {
       if (!repositionOnly) window.setBounds(active.bounds, false);
-      window.showInactive();
       finishing = false;
     }
   }

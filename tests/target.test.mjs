@@ -141,7 +141,6 @@ function dragFixture() {
     args: {
       window,
       cursor: () => point,
-      sleep: async () => {},
       every: () => 1,
       stop: () => {},
       inspect: async () => {
@@ -154,14 +153,13 @@ function dragFixture() {
     },
   };
 }
-test("the overlay is hidden before inspecting and subscribing to the dropped session", async () => {
+test("the buddy stays visible while inspecting and connecting to the dropped session", async () => {
   const f = dragFixture(),
     d = createDragController(f.args);
   d.start();
   f.move();
   await d.end();
   assert.deepEqual(f.events, [
-    "hide",
     "inspect",
     "reading",
     "connecting",
@@ -169,7 +167,6 @@ test("the overlay is hidden before inspecting and subscribing to the dropped ses
     "collecting",
     "following",
     "restore",
-    "show",
   ]);
 });
 test("an unresolved drop never calls subscribe", async () => {
@@ -231,7 +228,7 @@ for (const [name, dropTarget] of [
     f.move();
     const result = await d.end();
     assert.deepEqual(result, { click: false, moved: true });
-    assert.deepEqual(f.events, ["hide", "show"]);
+    assert.deepEqual(f.events, []);
     assert.deepEqual(f.args.window.getBounds(), {
       x: 190,
       y: 190,

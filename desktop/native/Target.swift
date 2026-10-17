@@ -5,12 +5,16 @@ func emit(_ value: [String: Any]) {
     if let data = try? JSONSerialization.data(withJSONObject: value), let text = String(data: data, encoding: .utf8) { print(text) }
 }
 let args = CommandLine.arguments
-guard args.count == 3, let x = Double(args[1]), let y = Double(args[2]) else { emit(["error": "coordinates"]); exit(0) }
+guard args.count == 4, let x = Double(args[1]), let y = Double(args[2]),
+      let companionPID = Int32(args[3]), companionPID > 0 else { emit(["error": "coordinates"]); exit(0) }
 let point = CGPoint(x: x, y: y)
 // Window geometry and owning process only. No Accessibility API, screenshots, window titles, or permission prompts.
 let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
 let windows = info.filter { window in
-    guard (window[kCGWindowLayer as String] as? Int) == 0,
+    // Ignore only this companion's windows, without hiding them to see beneath.
+    guard let ownerPID = window[kCGWindowOwnerPID as String] as? Int32,
+          ownerPID != companionPID,
+          (window[kCGWindowLayer as String] as? Int) == 0,
           let raw = window[kCGWindowBounds as String] as? NSDictionary,
           let rect = CGRect(dictionaryRepresentation: raw) else { return false }
     return rect.width >= 150 && rect.height >= 100

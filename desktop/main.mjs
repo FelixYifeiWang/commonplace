@@ -326,7 +326,7 @@ if (!lock) {
         inspect: async (point) => {
           const { stdout } = await exec(
             path.join(__dirname, "native/bin/commonplace-target"),
-            [String(point.x), String(point.y)],
+            [String(point.x), String(point.y), String(process.pid)],
             { timeout: 8000, maxBuffer: 64 * 1024 },
           );
           return JSON.parse(stdout);
