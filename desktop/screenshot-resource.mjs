@@ -1,6 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { request as https } from "node:https";
 import { request as http } from "node:http";
+import { gunzipSync, brotliDecompressSync, inflateSync } from "node:zlib";
 import { publicUrl } from "../lib/media.mjs";
 import { isPublicAddress } from "./public-fetch.mjs";
 // All renderer HTTP traffic uses this pinned, credential-free transport.
@@ -49,20 +50,38 @@ export async function screenshotResource(
           chunks.push(chunk);
         });
         res.on("error", reject);
-        res.on("end", () =>
-          resolve({
-            status: res.statusCode || 502,
-            headers: {
-              "Content-Type": String(
-                res.headers["content-type"] || "application/octet-stream",
-              ),
-              ...(res.headers.location
-                ? { Location: res.headers.location }
-                : {}),
-            },
-            body: Buffer.concat(chunks),
-          }),
-        );
+        res.on("end", () => {
+          try {
+            let body = Buffer.concat(chunks);
+            const decode = {
+              gzip: gunzipSync,
+              br: brotliDecompressSync,
+              deflate: inflateSync,
+            }[res.headers["content-encoding"]];
+            if (decode)
+              body = decode(body, { maxOutputLength: 8 * 1024 * 1024 });
+            resolve({
+              status: res.statusCode || 502,
+              headers: {
+                "Content-Type": String(
+                  res.headers["content-type"] || "application/octet-stream",
+                ),
+                ...(res.headers.location
+                  ? { Location: res.headers.location }
+                  : {}),
+                ...(res.headers["access-control-allow-origin"]
+                  ? {
+                      "Access-Control-Allow-Origin":
+                        res.headers["access-control-allow-origin"],
+                    }
+                  : {}),
+              },
+              body,
+            });
+          } catch (error) {
+            reject(error);
+          }
+        });
       },
     );
     const deadline = setTimeout(

@@ -153,88 +153,44 @@ function dragFixture() {
     },
   };
 }
-test("the buddy stays visible while inspecting and connecting to the dropped session", async () => {
+test("a drag over Codex only moves and never inspects or subscribes", async () => {
   const f = dragFixture(),
     d = createDragController(f.args);
   d.start();
   f.move();
-  await d.end();
-  assert.deepEqual(f.events, [
-    "inspect",
-    "reading",
-    "connecting",
-    "subscribe",
-    "collecting",
-    "following",
-    "restore",
-  ]);
-});
-test("an unresolved drop never calls subscribe", async () => {
-  const f = dragFixture();
-  f.args.inspect = async () => target("Unknown");
-  const d = createDragController(f.args);
-  d.start();
-  f.move();
-  await d.end();
-  assert.equal(f.events.includes("subscribe"), false);
-});
-test("a click opens controls without reading any target", async () => {
-  const f = dragFixture(),
-    d = createDragController(f.args);
-  d.start();
   const result = await d.end();
-  assert.deepEqual(
-    { result, events: f.events },
-    { result: { click: true }, events: [] },
-  );
+  assert.deepEqual(result, { click: false, moved: true });
+  assert.deepEqual(f.events, []);
+  assert.equal(f.args.window.getBounds().x, 190);
 });
-test("cancelled drags cannot subscribe", async () => {
+test("clicking the buddy does not subscribe", async () => {
+  const f = dragFixture(),
+    d = createDragController(f.args);
+  d.start();
+  assert.deepEqual(await d.end(), { click: true });
+  assert.deepEqual(f.events, []);
+});
+test("a fast drag applies its final cursor delta without a timer tick", async () => {
+  const f = dragFixture(),
+    d = createDragController(f.args);
+  d.start();
+  f.move();
+  await d.end();
+  assert.equal(f.args.window.getBounds().y, 190);
+});
+test("pointer-down origin is retained across IPC delay", async () => {
+  const f = dragFixture(),
+    d = createDragController(f.args);
+  f.move();
+  d.start({ x: 100, y: 100 });
+  await d.end();
+  assert.equal(f.args.window.getBounds().x, 100);
+});
+test("cancel restores the original position", () => {
   const f = dragFixture(),
     d = createDragController(f.args);
   d.start();
   f.move();
   d.cancel();
-  await d.end();
-  assert.equal(f.events.includes("subscribe"), false);
+  assert.equal(d.isDragging(), false);
 });
-
-test("capture failure is not reported as a successful connection", async () => {
-  const f = dragFixture();
-  f.args.capture = async () => {
-    throw new Error("Upload failed");
-  };
-  const d = createDragController(f.args);
-  d.start();
-  f.move();
-  const result = await d.end();
-  assert.equal(result.connected, false);
-  assert.equal(f.events.includes("following"), false);
-  assert.equal(f.events.includes("error"), true);
-});
-
-for (const [name, dropTarget] of [
-  ["another app", { bundleId: "com.apple.Safari" }],
-  ["the desktop", { error: "no-target" }],
-  ["an unidentified app", { bundleId: "" }],
-]) {
-  test(`dropping on ${name} only moves the buddy`, async () => {
-    const f = dragFixture();
-    f.args.inspect = async () => dropTarget;
-    f.args.resolve = async () => {
-      throw new Error("Must not resolve a session");
-    };
-    const d = createDragController(f.args);
-    d.start();
-    f.move();
-    const result = await d.end();
-    assert.deepEqual(result, { click: false, moved: true });
-    assert.deepEqual(f.events, []);
-    assert.deepEqual(f.args.window.getBounds(), {
-      x: 190,
-      y: 190,
-      width: 100,
-      height: 100,
-    });
-    assert.equal(d.isDragging(), false);
-  });
-}

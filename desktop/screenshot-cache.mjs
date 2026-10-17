@@ -14,7 +14,9 @@ export function createScreenshotCache(root) {
     failures = new Map();
   return async (url) => {
     if (!publicUrl(url)) throw new Error("Public web pages only.");
-    const key = createHash("sha256").update(url).digest("hex"),
+    const key = createHash("sha256")
+        .update("content-ready-v2:" + url)
+        .digest("hex"),
       file = join(root, key + ".jpg");
     try {
       return await readFile(file);
@@ -40,7 +42,7 @@ export function createScreenshotCache(root) {
             file,
             profile,
           ],
-          { timeout: 23000, maxBuffer: 128 * 1024, env },
+          { timeout: 33000, maxBuffer: 128 * 1024, env },
         );
         return await readFile(file);
       } catch (error) {

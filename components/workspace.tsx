@@ -15,6 +15,7 @@ import {
   Plus,
   Unplug,
   Monitor,
+  Trash2,
   Radio,
 } from "lucide-react";
 import type {
@@ -27,6 +28,8 @@ import type {
 import { SAMPLE } from "@/lib/sample";
 import { sessionLabel } from "./buddy";
 import { MediaDetail } from "./media-card";
+import { CollectionPicker } from "./collection-picker";
+import { parseBlockInput } from "@/lib/gallery.mjs";
 import { Gallery } from "./gallery";
 import { AddBlock } from "./add-block";
 import { Modal } from "./modal";
@@ -106,6 +109,11 @@ export default function Workspace({
     [modalError, setModalError] = useState("");
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const [droppedText, setDroppedText] = useState("");
+  const [undo, setUndo] = useState<{
+    kind: "items" | "collection";
+    ids: string[];
+    previous?: WorkspaceData;
+  } | null>(null);
   const previewBusy = useRef(false);
   const refresh = useCallback(async () => {
     try {
@@ -150,9 +158,15 @@ export default function Workspace({
   }, [demo, refresh]);
   useEffect(() => {
     if (!toast) return;
-    const id = setTimeout(() => setToast(""), 3500);
+    const id = setTimeout(
+      () => {
+        setToast("");
+        setUndo(null);
+      },
+      undo ? 15000 : 3500,
+    );
     return () => clearTimeout(id);
-  }, [toast]);
+  }, [toast, undo]);
   useEffect(() => {
     if (demo || previewBusy.current) return;
     const pending = data.items
@@ -318,18 +332,69 @@ export default function Workspace({
       await refresh();
     }
   }
-  async function groupBlocks(ids: string[], name: string) {
-    if (demo)
+  async function deleteBlocks(ids: string[]) {
+    const previous = demo ? structuredClone(data) : undefined;
+    if (!demo) await api("/api/items", "DELETE", { ids });
+    setData((d) => ({
+      ...d,
+      items: d.items.filter((i) => !ids.includes(i.id)),
+    }));
+    setDetail(null);
+    setUndo({ kind: "items", ids, previous });
+    setToast(`${ids.length} ${ids.length === 1 ? "block" : "blocks"} deleted`);
+  }
+  async function deleteCollection(id: string) {
+    try {
+      const previous = demo ? structuredClone(data) : undefined;
+      if (!demo) await api("/api/collections", "DELETE", { id });
       setData((d) => ({
         ...d,
-        items: d.items.map((i) =>
-          ids.includes(i.id) ? { ...i, groupName: name } : i,
-        ),
+        collections: d.collections.filter((c) => c.id !== id),
+        items: d.items.filter((i) => i.collectionId !== id),
+        sessions: d.sessions.filter((s) => s.collectionId !== id),
       }));
-    else {
-      await api("/api/groups", "PATCH", { ids, name });
-      await refresh();
+      if (selected === id) chooseCollection("all");
+      setUndo({ kind: "collection", ids: [id], previous });
+      setToast("Channel deleted · disconnected");
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "Could not delete channel.");
     }
+  }
+  async function undoDelete() {
+    if (!undo) return;
+    try {
+      if (demo && undo.previous) setData(undo.previous);
+      else {
+        await api(
+          undo.kind === "items" ? "/api/items" : "/api/collections",
+          "PATCH",
+          {
+            action: "restore",
+            ...(undo.kind === "items"
+              ? { ids: undo.ids }
+              : { id: undo.ids[0] }),
+          },
+        );
+        await refresh();
+      }
+      setToast(
+        undo.kind === "collection"
+          ? "Channel restored · disconnected"
+          : "Blocks restored",
+      );
+      setUndo(null);
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "Could not restore.");
+    }
+  }
+  function addFromGallery(drop?: { files?: File[]; text?: string }) {
+    if (!collections.length) {
+      openModal("collection");
+      return;
+    }
+    setDroppedFiles(drop?.files || []);
+    setDroppedText(drop?.text || "");
+    setModal("item");
   }
   function renderSession(session: Session, compact = false) {
     const count = data.items.filter((i) => i.sessionId === session.id).length;
@@ -414,30 +479,15 @@ export default function Workspace({
           >
             <Logo />
           </button>
-          <select
-            className="collection-picker"
-            aria-label="Collection"
-            value={screen === "collection" ? selected : screen}
-            onChange={(e) =>
-              e.target.value === "new"
-                ? openModal("collection")
-                : e.target.value === "sessions" || e.target.value === "settings"
-                  ? setScreen(e.target.value)
-                  : chooseCollection(e.target.value)
-            }
-          >
-            <option value="all">All items</option>
-            {collections.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-            <option value="new">+ New collection</option>
-            <optgroup label="Manage">
-              <option value="sessions">Connections</option>
-              <option value="settings">Settings</option>
-            </optgroup>
-          </select>
+          <CollectionPicker
+            collections={collections}
+            selected={selected}
+            screen={screen}
+            onChoose={chooseCollection}
+            onNew={() => openModal("collection")}
+            onManage={setScreen}
+            onDelete={(id) => void deleteCollection(id)}
+          />
           {demo && (
             <Link className="minimal-demo" href="/">
               Example
@@ -485,12 +535,16 @@ export default function Workspace({
                   key={selected}
                   items={visibleItems}
                   onOpen={setDetail}
-                  onGroup={groupBlocks}
-                  onAdd={() =>
-                    collections.length
-                      ? openModal("item")
-                      : openModal("collection")
+                  onDelete={deleteBlocks}
+                  canAdd={collections.length > 0}
+                  onQuickAdd={(text) =>
+                    saveBlock({
+                      ...parseBlockInput(text),
+                      collectionId:
+                        selected === "all" ? collections[0]?.id : selected,
+                    })
                   }
+                  onAdd={addFromGallery}
                 />
               )}
               {screen === "sessions" && (
@@ -636,6 +690,7 @@ export default function Workspace({
         <div className="toast" role="status">
           <Check size={14} />
           {toast}
+          {undo && <button onClick={() => void undoDelete()}>Undo</button>}
         </div>
       )}
       {modal === "connect" && (
@@ -756,6 +811,15 @@ export default function Workspace({
       )}
       {detail && (
         <Modal title={detail.title} onClose={() => setDetail(null)} wide>
+          <button
+            className="detail-delete"
+            aria-label="Delete block"
+            onClick={() =>
+              void deleteBlocks([detail.id]).catch((e) => setToast(e.message))
+            }
+          >
+            <Trash2 size={15} />
+          </button>
           <MediaDetail
             item={data.items.find((item) => item.id === detail.id) || detail}
           />

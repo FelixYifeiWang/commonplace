@@ -14,7 +14,8 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { resolveLocalTarget } from "./target.mjs";
-import { createDragController } from "./drag.mjs";
+import { connectSession } from "./connect.mjs";
+import { createDragController, buddyBounds } from "./drag.mjs";
 const exec = promisify(execFile);
 import fs from "node:fs/promises";
 import { pathToFileURL, fileURLToPath } from "node:url";
@@ -114,21 +115,71 @@ async function tick() {
     busy = false;
   }
 }
+let buddyOffsetY = 0,
+  candidate = null,
+  candidateConnected = false,
+  connecting = false;
+function anchorPoint() {
+  const b = win.getBounds();
+  return { x: b.x + 52, y: b.y + buddyOffsetY + 54 };
+}
 function setExpanded(value) {
+  const b = win.getBounds(),
+    anchor = { x: b.x, y: b.y + buddyOffsetY },
+    area = screen.getDisplayMatching(b).workArea;
+  const layout = buddyBounds(anchor, area, value);
   expanded = value;
-  const bounds = win.getBounds();
-  const area = screen.getDisplayMatching(bounds).workArea;
-  const width = value ? 320 : 104,
-    height = value ? 390 : 112;
-  win.setBounds(
-    {
-      x: Math.max(area.x, Math.min(bounds.x, area.x + area.width - width)),
-      y: Math.max(area.y, Math.min(bounds.y, area.y + area.height - height)),
-      width,
-      height,
-    },
-    false,
+  buddyOffsetY = layout.offsetY;
+  win.setBounds(layout.bounds, false);
+}
+async function inspectPoint(point) {
+  const { stdout } = await exec(
+    path.join(__dirname, "native/bin/commonplace-target"),
+    [String(point.x), String(point.y), String(process.pid)],
+    { timeout: 8000, maxBuffer: 64 * 1024 },
   );
+  return JSON.parse(stdout);
+}
+async function findCandidate() {
+  candidate = null;
+  candidateConnected = false;
+  lastError = "";
+  try {
+    const target = await inspectPoint(anchorPoint());
+    if (target.error || target.bundleId !== "com.openai.codex") return;
+    candidate = await resolveLocalTarget(target);
+    if (connection) {
+      const r = await request(
+        `${connection.origin}/api/device-session?externalId=${encodeURIComponent(candidate.sessionId)}`,
+        { headers: { Authorization: `Bearer ${connection.token}` } },
+      );
+      if (r.ok) candidateConnected = !!(await r.json()).connected;
+    }
+  } catch (e) {
+    lastError = e.message;
+  }
+}
+async function toggleControls() {
+  setExpanded(!expanded);
+  if (expanded) await findCandidate();
+}
+async function captureSource(_source, subscription) {
+  while (busy) await new Promise((resolve) => setTimeout(resolve, 50));
+  busy = true;
+  try {
+    const result = await collector.syncTranscript({
+      connection,
+      subscription,
+      cursors,
+      request,
+    });
+    subscription.turns = result.total;
+    subscription.lastSynced = new Date().toISOString();
+    subscription.error = "";
+  } finally {
+    busy = false;
+    await persist();
+  }
 }
 function showDropFeedback(value) {
   status = value.state;
@@ -168,7 +219,7 @@ async function subscribeSource(source) {
       !response.ok ||
       !response.headers.get("content-type")?.includes("application/json")
     )
-      throw new Error("Sign in to your space, then drop again.");
+      throw new Error("Sign in to your space, then connect again.");
     const device = await response.json();
     await pair({ origin: ORIGIN, token: device.token });
   }
@@ -186,7 +237,7 @@ async function subscribeSource(source) {
     }),
   });
   if (!response.headers.get("content-type")?.includes("application/json"))
-    throw new Error("Sign in to your space, then drop again.");
+    throw new Error("Sign in to your space, then connect again.");
   const result = await response.json();
   if (!response.ok)
     throw new Error(result.error || "Could not connect this conversation.");
@@ -304,10 +355,17 @@ if (!lock) {
           bounds = win.getBounds();
         const gaze = {
           x: Math.max(-2, Math.min(2, (cursor.x - bounds.x - 52) / 180)),
-          y: Math.max(-1.5, Math.min(1.5, (cursor.y - bounds.y - 54) / 180)),
+          y: Math.max(
+            -1.5,
+            Math.min(1.5, (cursor.y - bounds.y - buddyOffsetY - 54) / 180),
+          ),
         };
         return {
           gaze,
+          buddyOffsetY,
+          candidateTitle: candidate?.title || "",
+          candidateConnected,
+          connecting,
           connected: !!connection,
           expanded,
           targetTitle,
@@ -332,43 +390,44 @@ if (!lock) {
       dragController = createDragController({
         window: win,
         cursor: () => screen.getCursorScreenPoint(),
-        inspect: async (point) => {
-          const { stdout } = await exec(
-            path.join(__dirname, "native/bin/commonplace-target"),
-            [String(point.x), String(point.y), String(process.pid)],
-            { timeout: 8000, maxBuffer: 64 * 1024 },
-          );
-          return JSON.parse(stdout);
-        },
-        resolve: resolveLocalTarget,
-        subscribe: subscribeSource,
-        capture: async (_source, subscription) => {
-          while (busy) await new Promise((resolve) => setTimeout(resolve, 50));
-          try {
-            const result = await collector.syncTranscript({
-              connection,
-              subscription,
-              cursors,
-              request,
-            });
-            subscription.turns = result.total;
-            subscription.lastSynced = new Date().toISOString();
-            subscription.error = "";
-          } finally {
-            await persist();
-          }
-        },
-        report: showDropFeedback,
       });
-      register("companion:drag-start", () => dragController.start());
+      register("companion:drag-start", (point) => {
+        if (connecting) return false;
+        candidate = null;
+        candidateConnected = false;
+        const origin =
+          point && Number.isFinite(point.x) && Number.isFinite(point.y)
+            ? point
+            : screen.getCursorScreenPoint();
+        return dragController.start(origin);
+      });
       register("companion:drag-end", async () => {
         const result = await dragController.end();
-        if (result.click) setExpanded(!expanded);
-        else if (!result.moved) setExpanded(!result.connected);
+        if (result.click) await toggleControls();
+        else if (result.moved && expanded) setExpanded(false);
         return result;
       });
       register("companion:drag-cancel", () => dragController.cancel());
-      register("companion:toggle", () => setExpanded(!expanded));
+      register("companion:toggle", toggleControls);
+      register("companion:connect", async () => {
+        if (connecting) return { connected: false };
+        connecting = true;
+        try {
+          const result = await connectSession({
+            inspect: inspectPoint,
+            resolve: resolveLocalTarget,
+            subscribe: subscribeSource,
+            capture: captureSource,
+            report: showDropFeedback,
+            point: anchorPoint(),
+          });
+          candidateConnected = result.connected;
+          if (result.source) candidate = result.source;
+          return result;
+        } finally {
+          connecting = false;
+        }
+      });
       register("companion:pause", async (id) => {
         const source = subscriptions.find((s) => s.id === id);
         if (!source) throw new Error("Session not found.");

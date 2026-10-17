@@ -35,8 +35,8 @@ export function activeConversation(raw, launchedAt = 0) {
   if (ids.length !== 1)
     throw new Error(
       ids.length
-        ? "More than one conversation is open. Keep one Codex window open and drop again."
-        : "Open the conversation in Codex, then drop again.",
+        ? "More than one conversation is open. Keep one Codex window open and connect again."
+        : "Open the conversation in Codex, then connect again.",
     );
   return ids[0];
 }
@@ -68,10 +68,10 @@ export async function readOpenConversation(
 ) {
   if (target.bundleId !== "com.openai.codex")
     throw new Error(
-      "Drop over the open Codex conversation. Other apps are not supported yet.",
+      "Move the buddy over the open Codex conversation. Other apps are not supported yet.",
     );
   if (target.windowCount !== 1)
-    throw new Error("Keep one Codex window open, then drop again.");
+    throw new Error("Keep one Codex window open, then connect again.");
   if (
     !Number.isSafeInteger(target.pid) ||
     target.pid <= 0 ||
@@ -85,7 +85,7 @@ export async function readOpenConversation(
     target.point.x < target.bounds.x + Math.min(360, target.bounds.width * 0.35)
   )
     throw new Error(
-      "Open that session first, then drop over the conversation area.",
+      "Open that session first, then move the buddy over the conversation area.",
     );
   const files = await Promise.all(
     (await logFiles(root, target.pid)).map(async (file) => ({

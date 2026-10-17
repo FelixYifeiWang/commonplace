@@ -6,8 +6,34 @@ import { join } from "node:path";
 import { createServer } from "node:http";
 import { EventEmitter } from "node:events";
 import { Readable } from "node:stream";
+import { gzipSync } from "node:zlib";
 import { createLocalFiles } from "../build/local-files.mjs";
 import { screenshotResource } from "../desktop/screenshot-resource.mjs";
+
+test("screenshots decode compressed resources and retain font CORS headers", async () => {
+  const result = await screenshotResource("https://example.com/font", {
+    resolve: async () => [{ address: "93.184.216.34", family: 4 }],
+    transport: (_url, _opts, callback) => {
+      const req = new EventEmitter();
+      req.end = () => {
+        const res = Readable.from([gzipSync("font bytes")]);
+        res.statusCode = 200;
+        res.headers = {
+          "content-encoding": "gzip",
+          "content-type": "font/woff2",
+          "access-control-allow-origin": "*",
+          "set-cookie": "secret=1",
+        };
+        callback(res);
+        res.on("end", () => req.emit("close"));
+      };
+      return req;
+    },
+  });
+  assert.equal(result.body.toString(), "font bytes");
+  assert.equal(result.headers["Access-Control-Allow-Origin"], "*");
+  assert.equal(result.headers["set-cookie"], undefined);
+});
 
 test("screenshots reject private DNS results before connecting", async () => {
   await assert.rejects(

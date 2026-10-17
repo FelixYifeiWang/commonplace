@@ -1,7 +1,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("commonplaceDesktop", {
   snapshot: () => ipcRenderer.invoke("companion:snapshot"),
-  dragStart: () => ipcRenderer.invoke("companion:drag-start"),
+  dragStart: (point) => ipcRenderer.invoke("companion:drag-start", point),
+  connect: () => ipcRenderer.invoke("companion:connect"),
   dragEnd: () => ipcRenderer.invoke("companion:drag-end"),
   dragCancel: () => ipcRenderer.invoke("companion:drag-cancel"),
   toggle: () => ipcRenderer.invoke("companion:toggle"),

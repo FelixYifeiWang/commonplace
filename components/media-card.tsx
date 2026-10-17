@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FileText, Play, Music2, ArrowUpRight, File } from "lucide-react";
 import type { Item } from "@/lib/types";
 import { embedFor } from "@/lib/media.mjs";
@@ -18,6 +18,42 @@ export function MediaCard({
   item: Item;
   screenshots?: boolean;
 }) {
+  const element = useRef<HTMLDivElement>(null),
+    video = useRef<HTMLVideoElement>(null),
+    still = useRef<HTMLCanvasElement>(null);
+  const [hover, setHover] = useState(false),
+    [motion, setMotion] = useState(false),
+    [near, setNear] = useState(false),
+    [embedActive, setEmbedActive] = useState(false);
+  useEffect(() => {
+    const media = matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setMotion(!media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setNear(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "100px" },
+    );
+    if (element.current) observer.observe(element.current);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    if (hover && motion) {
+      void video.current?.play().catch(() => {});
+      const timer = setTimeout(() => setEmbedActive(true), 400);
+      return () => clearTimeout(timer);
+    }
+    video.current?.pause();
+    if (video.current) video.current.currentTime = 0;
+  }, [hover, motion]);
   const [failed, setFailed] = useState<string | null>(null);
   const cover =
     item.fileKey && item.kind === "image"
@@ -28,10 +64,20 @@ export function MediaCard({
   const [pageFailed, setPageFailed] = useState(false);
   const page =
     screenshots &&
+    near &&
     item.kind === "link" &&
     !!item.url &&
     /^[0-9a-f-]{36}$/.test(item.id) &&
     !pageFailed;
+  const mediaUrl = item.fileKey ? `/api/files/${item.id}` : item.url;
+  const directVideo =
+    item.kind === "video" &&
+    mediaUrl &&
+    (item.fileKey || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(mediaUrl));
+  const embed = item.kind === "video" && item.url ? embedFor(item.url) : null;
+  const gif =
+    item.kind === "image" &&
+    (item.mimeType === "image/gif" || /\.gif(\?|$)/i.test(cover || item.title));
   const text = ["note", "idea", "quote"].includes(item.kind);
   const Icon =
     item.kind === "video"
@@ -43,7 +89,13 @@ export function MediaCard({
           : File;
   return (
     <div
-      className={`block-preview block-${item.kind} ${hasImage ? "has-cover" : ""} ${pageLoaded && page ? "has-screenshot" : ""}`}
+      ref={element}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => {
+        setHover(false);
+        setEmbedActive(false);
+      }}
+      className={`block-preview ${hover && motion ? "motion-active" : ""} ${gif ? "is-gif" : ""} block-${item.kind} ${hasImage ? "has-cover" : ""} ${pageLoaded && page ? "has-screenshot" : ""}`}
     >
       {hasImage ? (
         <Image
@@ -54,6 +106,14 @@ export function MediaCard({
           alt={item.title}
           loading="lazy"
           referrerPolicy="no-referrer"
+          onLoad={(e) => {
+            if (gif && still.current) {
+              const img = e.currentTarget;
+              still.current.width = img.naturalWidth;
+              still.current.height = img.naturalHeight;
+              still.current.getContext("2d")?.drawImage(img, 0, 0);
+            }
+          }}
           onError={() => setFailed(cover)}
         />
       ) : text ? (
@@ -70,13 +130,39 @@ export function MediaCard({
           <span>{hostname(item.url)}</span>
         </div>
       )}
+      {gif && hasImage && (
+        <canvas ref={still} className="gif-still" aria-hidden="true" />
+      )}
+      {directVideo && near && (
+        <video
+          ref={video}
+          className={`hover-video ${hover && motion ? "playing" : ""}`}
+          src={mediaUrl!}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          aria-label={`Preview ${item.title}`}
+        />
+      )}
+      {embed && hover && embedActive && motion && (
+        <iframe
+          className="hover-embed"
+          src={`${embed}?autoplay=1&mute=1&muted=1&controls=0&playsinline=1`}
+          title={`Preview ${item.title}`}
+          allow="autoplay"
+          sandbox="allow-scripts allow-same-origin allow-presentation"
+          referrerPolicy="no-referrer"
+          tabIndex={-1}
+        />
+      )}
       {page && (
         <Image
           className={`page-screenshot ${pageLoaded ? "loaded" : ""}`}
           unoptimized
           width={960}
           height={720}
-          src={`/api/screenshots/${item.id}`}
+          src={`/api/screenshots/${item.id}?v=2`}
           alt={`Page preview of ${item.title}`}
           loading="lazy"
           onLoad={() => setPageLoaded(true)}

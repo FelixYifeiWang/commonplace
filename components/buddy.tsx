@@ -54,7 +54,6 @@ export function Buddy({
             </g>
           </g>
           <path className="nosy-nose" d="M39 30L34 49L45 49" />
-          <path className="nosy-smile" d="M34 57Q40 61 47 56" strokeWidth="2" />
         </g>
       </svg>
     </span>
