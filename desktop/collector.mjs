@@ -1,4 +1,4 @@
-import { open, readdir, readFile, stat } from "node:fs/promises";
+import { open, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
@@ -78,13 +78,38 @@ export async function discoverSessions(base = homedir()) {
   }
   return result;
 }
-export async function readSelectedTranscript(path) {
-  const info = await stat(path);
-  if (info.size > 25 * 1024 * 1024)
-    throw new Error(
-      "This transcript exceeds the 25 MB preview limit. Choose a smaller session.",
-    );
-  return parseTranscript(await readFile(path, "utf8"));
+// Snapshot the current end so an actively growing log cannot keep an import open.
+// Memory is bounded by one JSONL record, rather than the entire session file.
+export async function* readSelectedTranscript(path) {
+  const file = await open(path, "r");
+  let stream;
+  try {
+    const { size } = await file.stat();
+    if (!size) return;
+    stream = file.createReadStream({
+      encoding: "utf8",
+      end: size - 1,
+      autoClose: false,
+    });
+    let lineIndex = 0;
+    let fragments = [];
+    for await (const chunk of stream) {
+      let start = 0;
+      let end;
+      while ((end = chunk.indexOf("\n", start)) !== -1) {
+        fragments.push(chunk.slice(start, end));
+        const line = fragments.join("");
+        fragments = [];
+        yield* parseTranscript(line, lineIndex++);
+        start = end + 1;
+      }
+      if (start < chunk.length) fragments.push(chunk.slice(start));
+    }
+    if (fragments.length) yield* parseTranscript(fragments.join(""), lineIndex);
+  } finally {
+    stream?.destroy();
+    await file.close();
+  }
 }
 export async function syncTranscript({
   connection,
@@ -92,32 +117,13 @@ export async function syncTranscript({
   cursors,
   request = fetch,
 }) {
-  const turns = await readSelectedTranscript(subscription.file);
   const seen = new Set(cursors[subscription.id] || []);
-  const pending = turns
-    .map((t) => ({ ...t, text: t.text.slice(0, 64000) }))
-    .map((t) => ({
-      turn: t,
-      key: createHash("sha256").update(`${t.id}:${t.text}`).digest("hex"),
-    }))
-    .filter((t) => !seen.has(t.key));
-  const batches = [];
-  let current = [],
-    size = 0;
-  for (const entry of pending) {
-    const length = JSON.stringify(entry.turn).length;
-    if (current.length >= 10 || size + length > 700000) {
-      batches.push(current);
-      current = [];
-      size = 0;
-    }
-    current.push(entry);
-    size += length;
-  }
-  if (current.length) batches.push(current);
-  if (!batches.length) batches.push([]);
-  let captured = 0;
-  for (const batch of batches) {
+  const queued = new Set();
+  let batch = [],
+    size = 0,
+    captured = 0,
+    total = 0;
+  async function sendBatch(complete) {
     const response = await request(`${connection.origin}/api/capture`, {
       method: "POST",
       headers: {
@@ -128,8 +134,7 @@ export async function syncTranscript({
       body: JSON.stringify({
         subscriptionId: subscription.id,
         turns: batch.map((e) => e.turn),
-        complete:
-          subscription.mode === "once" && batch === batches[batches.length - 1],
+        complete: subscription.mode === "once" && complete,
       }),
     });
     if (!response.headers.get("content-type")?.includes("application/json"))
@@ -143,6 +148,25 @@ export async function syncTranscript({
     for (const entry of batch) seen.add(entry.key);
     captured += batch.length;
     cursors[subscription.id] = [...seen];
+    batch = [];
+    size = 0;
+    queued.clear();
   }
-  return { captured, total: turns.length, pendingAI: pending.length > 0 };
+  for await (const raw of readSelectedTranscript(subscription.file)) {
+    total++;
+    const turn = { ...raw, text: raw.text.slice(0, 64000) };
+    const key = createHash("sha256")
+      .update(`${turn.id}:${turn.text}`)
+      .digest("hex");
+    if (seen.has(key) || queued.has(key)) continue;
+    const length = Buffer.byteLength(JSON.stringify(turn), "utf8");
+    if (batch.length && (batch.length >= 10 || size + length > 700000))
+      await sendBatch(false);
+    batch.push({ turn, key });
+    queued.add(key);
+    size += length;
+  }
+  // Even an unchanged session needs a heartbeat; only the last batch completes imports.
+  await sendBatch(true);
+  return { captured, total, pendingAI: captured > 0 };
 }

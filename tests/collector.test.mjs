@@ -66,3 +66,71 @@ test("an authentication HTML response is never treated as successful ingestion",
     });
   await assert.rejects(syncTranscript(args), /Sign in/);
 });
+
+test("a transcript larger than 25 MB imports references after large tool output", async (t) => {
+  const args = await fixture(t);
+  const { appendFile } = await import("node:fs/promises");
+  const toolLine =
+    JSON.stringify({ type: "tool", content: "x".repeat(1024 * 1024) }) + "\n";
+  await writeFile(args.subscription.file, "");
+  for (let i = 0; i < 26; i++)
+    await appendFile(args.subscription.file, toolLine);
+  await appendFile(
+    args.subscription.file,
+    JSON.stringify({ role: "user", content: "https://are.na" }),
+  );
+  const sent = [];
+  args.request = async (_url, opts) => {
+    sent.push(...JSON.parse(opts.body).turns);
+    return ok();
+  };
+  await syncTranscript(args);
+  assert.deepEqual(
+    sent.map(({ id, text }) => ({ id, text })),
+    [{ id: "line-26", text: "https://are.na" }],
+  );
+});
+
+test("retry after a failed batch sends only unacknowledged turns", async (t) => {
+  const args = await fixture(t, 21);
+  let calls = 0;
+  args.request = async () =>
+    ++calls === 2
+      ? Response.json({ error: "Unavailable" }, { status: 503 })
+      : ok();
+  await assert.rejects(syncTranscript(args), { status: 503 });
+  const sent = [];
+  args.request = async (_url, opts) => {
+    sent.push(...JSON.parse(opts.body).turns);
+    return ok();
+  };
+  await syncTranscript(args);
+  assert.deepEqual(
+    sent.map((turn) => turn.id),
+    Array.from({ length: 11 }, (_, i) => `turn-${i + 10}`),
+  );
+});
+
+test("growing JSONL preserves line IDs and waits for partial records", async (t) => {
+  const args = await fixture(t);
+  const { appendFile } = await import("node:fs/promises");
+  await writeFile(
+    args.subscription.file,
+    '\n{"role":"user","content":"你好"}\n{"role":"assistant","content":"par',
+  );
+  const sent = [];
+  args.request = async (_url, opts) => {
+    sent.push(...JSON.parse(opts.body).turns);
+    return ok();
+  };
+  await syncTranscript(args);
+  await appendFile(args.subscription.file, 'tial"}\n');
+  await syncTranscript(args);
+  assert.deepEqual(
+    sent.map(({ id, text }) => ({ id, text })),
+    [
+      { id: "line-1", text: "你好" },
+      { id: "line-2", text: "partial" },
+    ],
+  );
+});
