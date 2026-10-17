@@ -38,9 +38,11 @@ Automatic generation requires the local server to stay running. The production b
 - Production: https://commonplace-pearl.vercel.app. Private access-code sign-in; anonymous requests and forged Sites identity headers are rejected. The configured OpenAI key stays server-side.
 - Turso Starter migrations applied; live adapter checks verified atomic rollback and ordered result columns. Local D1 data was not uploaded.
 - Real GPT-6 Luna generation ran after gallery changes without visiting Story. A second update appended new moments while preserving earlier records exactly.
-- OIDC-backed presigned Blob upload, authenticated file delivery, byte ranges and channel/block deletion passed on production. Temporary database and Blob fixtures were removed.
+- OIDC-backed presigned Blob upload, authenticated file delivery, byte ranges and channel/block deletion passed on production. Temporary database fixtures were removed. One private 27-byte upload fixture remains unreferenced: local cleanup was blocked by Blob OIDC environment permissions.
 - Reviewed the deployed minimal entry page and access-code form in the browser. Hosted authenticated data flows were verified through HTTP integration tests.
 - 95 unit tests, ESLint, typecheck, local Vinext build, Vercel Next production build and live local API regression checks passed. The local server was restarted successfully after the runtime split.
 - No configured secret values were found in publishable source files or the deployed page's browser scripts. Environment files, local databases and companion binaries are excluded from CLI uploads and Git.
 
 Hosted cards currently use metadata covers; full-page screenshot capture remains a local feature. The companion was not switched to the hosted destination, so existing subscriptions continue writing locally. Hosted Story work is bounded per invocation with durable checkpoints and daily recovery; very long imports may continue on a subsequent update or Story visit.
+
+QA cleanup limitation: CLI attempts exposed missing paired OIDC/store configuration and a development-environment authorization error. Adding a development connection did not resolve the provider authorization; the direct SDK returned the same error. Cleanup was stopped rather than changing production permissions. The fixture contains only “Commonplace hosted upload QA” and is absent from the gallery.
