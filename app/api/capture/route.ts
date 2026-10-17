@@ -1,7 +1,8 @@
 import { getDb } from "@/db";
 import { sessions, items, turns, devices } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 import { agentSession, jsonBody, fail, HttpError, hash } from "@/lib/server";
+import { isReferenceUrl } from "@/lib/source-policy.mjs";
 import { classifyMedia } from "@/lib/media.mjs";
 import { itemIdentity, safeUrl } from "@/lib/protocol.mjs";
 export async function POST(request: Request) {
@@ -50,16 +51,7 @@ export async function POST(request: Request) {
         const url = safeUrl(raw.replace(/[.,;:!?]+$/, ""));
         if (!url) continue;
         const parsed = new URL(url);
-        // Do not turn likely credentials or local service links into collected references.
-        if (
-          parsed.username ||
-          parsed.password ||
-          /localhost|^127\.|^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[01])\.|^\[::1\]$/.test(
-            parsed.hostname,
-          ) ||
-          /[?&](token|key|secret|auth|signature|access_token)=/i.test(url)
-        )
-          continue;
+        if (!isReferenceUrl(url)) continue;
         const kind = classifyMedia(url);
         const identity = await hash(itemIdentity({ url }));
         const lastPath =
@@ -105,7 +97,12 @@ export async function POST(request: Request) {
       db
         .update(sessions)
         .set({ lastSeen: now, state })
-        .where(eq(sessions.id, session.id)),
+        .where(
+          and(
+            eq(sessions.id, session.id),
+            notInArray(sessions.state, ["paused", "revoked"]),
+          ),
+        ),
     );
     if (session.deviceId)
       statements.push(

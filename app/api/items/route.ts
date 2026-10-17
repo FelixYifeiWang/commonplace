@@ -1,6 +1,7 @@
+import { isReferenceUrl } from "@/lib/source-policy.mjs";
 import { getDb } from "@/db";
 import { items, collections } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull, inArray } from "drizzle-orm";
 import {
   userRequired,
   jsonBody,
@@ -25,9 +26,15 @@ export async function POST(request: Request) {
         and(
           eq(collections.id, body.collectionId),
           eq(collections.ownerId, user.userId),
+          isNull(collections.deletedAt),
         ),
       );
     if (!collection) throw new HttpError(404, "Choose a collection.");
+    if (body.url && !isReferenceUrl(body.url))
+      throw new HttpError(
+        400,
+        "Sign-in, callback and private pages aren’t saved.",
+      );
     const file = body.fileKey ? await preview.fileInfo(body.fileKey) : null;
     if (file && file.ownerId !== user.userId)
       throw new HttpError(403, "File unavailable.");
@@ -93,6 +100,20 @@ export async function PATCH(request: Request) {
     const user = await userRequired(),
       body = await jsonBody(request),
       db = getDb();
+    if (body.action === "restore") {
+      const ids = validateIds(body.ids);
+      for (let i = 0; i < ids.length; i += 80)
+        await db
+          .update(items)
+          .set({ deletedAt: null })
+          .where(
+            and(
+              eq(items.ownerId, user.userId),
+              inArray(items.id, ids.slice(i, i + 80)),
+            ),
+          );
+      return Response.json({ ok: true });
+    }
     const [item] = await db
       .select()
       .from(items)
@@ -108,6 +129,39 @@ export async function PATCH(request: Request) {
       .update(items)
       .set({ title: body.title.trim(), updatedAt: new Date().toISOString() })
       .where(eq(items.id, item.id));
+    return Response.json({ ok: true });
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+function validateIds(value: unknown): string[] {
+  if (
+    !Array.isArray(value) ||
+    !value.length ||
+    value.length > 1000 ||
+    value.some((id) => typeof id !== "string")
+  )
+    throw new HttpError(400, "Choose blocks to delete.");
+  return [...new Set<string>(value)];
+}
+export async function DELETE(request: Request) {
+  try {
+    checkOrigin(request);
+    const user = await userRequired(),
+      body = await jsonBody(request),
+      ids = validateIds(body.ids),
+      db = getDb();
+    for (let i = 0; i < ids.length; i += 80)
+      await db
+        .update(items)
+        .set({ deletedAt: new Date().toISOString() })
+        .where(
+          and(
+            eq(items.ownerId, user.userId),
+            inArray(items.id, ids.slice(i, i + 80)),
+          ),
+        );
     return Response.json({ ok: true });
   } catch (e) {
     return fail(e);

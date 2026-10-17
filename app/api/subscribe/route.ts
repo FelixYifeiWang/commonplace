@@ -33,17 +33,25 @@ export async function POST(request: Request) {
         ),
       );
     if (existing) {
-      if (existing.state === "revoked")
-        throw new HttpError(
-          409,
-          "This subscription was disconnected. Create a new device connection to reconnect.",
-        );
-      // A deliberate new drop resumes the same subscription instead of creating a duplicate.
+      const [collection] = await db
+        .select()
+        .from(collections)
+        .where(eq(collections.id, existing.collectionId));
+      if (!collection) throw new HttpError(404, "Channel not found.");
+      if (collection.deletedAt && body.mode !== "follow")
+        throw new HttpError(409, "Reconnect this channel to restore it.");
+      // An explicit Connect resumes the existing channel without reimporting deleted blocks.
       if (body.mode === "follow") {
-        await db
-          .update(sessions)
-          .set({ mode: "follow", state: "reading" })
-          .where(eq(sessions.id, existing.id));
+        await db.batch([
+          db
+            .update(collections)
+            .set({ deletedAt: null })
+            .where(eq(collections.id, collection.id)),
+          db
+            .update(sessions)
+            .set({ mode: "follow", state: "reading" })
+            .where(eq(sessions.id, existing.id)),
+        ]);
       }
       return Response.json({
         subscriptionId: existing.id,
@@ -59,15 +67,13 @@ export async function POST(request: Request) {
         ? body.title.trim().slice(0, 120)
         : `A session with ${body.provider}`;
     await db.batch([
-      db
-        .insert(collections)
-        .values({
-          id: collectionId,
-          ownerId: device.ownerId,
-          name: title,
-          description: "",
-          createdAt: now,
-        }),
+      db.insert(collections).values({
+        id: collectionId,
+        ownerId: device.ownerId,
+        name: title,
+        description: "",
+        createdAt: now,
+      }),
       db.insert(sessions).values({
         id,
         ownerId: device.ownerId,

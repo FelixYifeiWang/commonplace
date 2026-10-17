@@ -28,3 +28,29 @@ export async function PATCH(request: Request) {
     return fail(e);
   }
 }
+
+export async function GET(request: Request) {
+  try {
+    const device = await deviceRequired(request),
+      url = new URL(request.url);
+    const [session] = await getDb()
+      .select({ id: sessions.id, state: sessions.state })
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.deviceId, device.id),
+          eq(sessions.ownerId, device.ownerId),
+          eq(sessions.externalId, url.searchParams.get("externalId") || ""),
+        ),
+      );
+    return Response.json(
+      {
+        connected: !!session && !["revoked", "paused"].includes(session.state),
+        session,
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (e) {
+    return fail(e);
+  }
+}

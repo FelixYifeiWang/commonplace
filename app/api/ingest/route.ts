@@ -1,6 +1,7 @@
+import { isReferenceUrl } from "@/lib/source-policy.mjs";
 import { getDb } from "@/db";
 import { sessions, items } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, notInArray } from "drizzle-orm";
 import { agentSession, jsonBody, fail, HttpError, hash } from "@/lib/server";
 import { validateIngest, itemIdentity } from "@/lib/protocol.mjs";
 export async function POST(request: Request) {
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
       db = getDb();
     const statements = [];
     for (const item of body.items) {
+      if (item.url && !isReferenceUrl(item.url)) continue;
       const identity = await hash(itemIdentity(item));
       const row = {
         id: crypto.randomUUID(),
@@ -55,6 +57,7 @@ export async function POST(request: Request) {
           .values(row)
           .onConflictDoUpdate({
             target: [items.sessionId, items.identity],
+            setWhere: isNull(items.deletedAt),
             set: {
               title: row.title,
               body: row.body,
@@ -84,7 +87,12 @@ export async function POST(request: Request) {
             ? { title: body.title.slice(0, 120) }
             : {}),
         })
-        .where(eq(sessions.id, session.id)),
+        .where(
+          and(
+            eq(sessions.id, session.id),
+            notInArray(sessions.state, ["paused", "revoked"]),
+          ),
+        ),
     );
     await db.batch(
       statements as [

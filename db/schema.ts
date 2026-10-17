@@ -14,6 +14,7 @@ export const devices = sqliteTable("devices", {
   createdAt: text("created_at").notNull(),
 });
 export const collections = sqliteTable("collections", {
+  deletedAt: text("deleted_at"),
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
   name: text("name").notNull(),
@@ -46,6 +47,7 @@ export const items = sqliteTable(
       .notNull()
       .references(() => collections.id),
     identity: text("identity").notNull(),
+    deletedAt: text("deleted_at"),
     kind: text("kind").notNull(),
     title: text("title").notNull(),
     body: text("body").notNull().default(""),

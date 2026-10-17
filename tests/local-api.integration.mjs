@@ -171,8 +171,129 @@ try {
     (await fetch(origin + "/api/uploads", { method: "POST" })).status,
     401,
   );
+
+  // A tombstone survives both transcript replay and structured agent updates.
+  assert.equal(
+    (await call("/api/items", "DELETE", { ids: [link.id] })).status,
+    200,
+  );
+  const replay = {
+    subscriptionId: created.sessions[0],
+    turns: [
+      {
+        id: "replay-after-delete",
+        role: "assistant",
+        text: `Again ${link.url} plus https://auth.openai.com/log-in and https://example.com/new-reference`,
+      },
+    ],
+  };
+  assert.equal(
+    (await call("/api/capture", "POST", replay, device.data.token)).status,
+    200,
+  );
+  space = (await call("/api/workspace")).data;
+  assert.equal(
+    space.items.some((i) => i.id === link.id),
+    false,
+  );
+  assert.equal(
+    space.items.some(
+      (i) =>
+        i.sessionId === created.sessions[0] &&
+        i.url?.includes("auth.openai.com"),
+    ),
+    false,
+  );
+  assert.equal(
+    space.items.some(
+      (i) =>
+        i.sessionId === created.sessions[0] &&
+        i.url === "https://example.com/new-reference",
+    ),
+    true,
+  );
+  const structured = {
+    subscriptionId: created.sessions[0],
+    sessionId: inputs[0].sessionId,
+    items: [
+      {
+        kind: "link",
+        url: link.url,
+        title: "Updated deleted block",
+        sourceText: "A source passage",
+        sourceRole: "assistant",
+      },
+    ],
+  };
+  assert.equal(
+    (await call("/api/ingest", "POST", structured, device.data.token)).status,
+    200,
+  );
+  assert.equal(
+    (await call("/api/workspace")).data.items.some((i) => i.id === link.id),
+    false,
+  );
+  assert.equal(
+    (await call("/api/items", "PATCH", { action: "restore", ids: [link.id] }))
+      .status,
+    200,
+  );
+  assert.equal(
+    (await call("/api/workspace")).data.items.some((i) => i.id === link.id),
+    true,
+  );
+  assert.equal(
+    (await call("/api/collections", "DELETE", { id: created.collections[0] }))
+      .status,
+    200,
+  );
+  assert.equal(
+    (await call("/api/capture", "POST", replay, device.data.token)).status,
+    401,
+  );
+  space = (await call("/api/workspace")).data;
+  assert.equal(
+    space.collections.some((c) => c.id === created.collections[0]),
+    false,
+  );
+  assert.equal(
+    space.items.some((i) => i.collectionId === created.collections[0]),
+    false,
+  );
+  assert.equal(
+    (
+      await call("/api/collections", "PATCH", {
+        action: "restore",
+        id: created.collections[0],
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (await call("/api/capture", "POST", replay, device.data.token)).status,
+    401,
+  );
+  assert.equal(
+    (await call("/api/subscribe", "POST", inputs[0], device.data.token)).status,
+    200,
+  );
+  assert.equal(
+    (await call("/api/capture", "POST", replay, device.data.token)).status,
+    200,
+  );
+  await call("/api/collections", "DELETE", { id: created.collections[0] });
+  assert.equal(
+    (await call("/api/subscribe", "POST", inputs[0], device.data.token)).status,
+    200,
+  );
+  assert.equal(
+    (await call("/api/workspace")).data.collections.some(
+      (c) => c.id === created.collections[0],
+    ),
+    true,
+  );
   console.log(
-    "Verified: separate session collections, repeat-drop reuse, All items union, capture deduplication, media classification, real website metadata, authenticated previews, saved groups, local file upload and download, media authentication.",
+    "Verified: separate session collections, repeat-drop reuse, All items union, capture deduplication, media classification, real website metadata, authenticated previews, saved groups, local file upload and download, media authentication, deletion replay protection, source hygiene, channel disconnect/restore/reconnect.",
   );
 } finally {
   const db = new DatabaseSync(join(root, dbFile));
