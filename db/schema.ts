@@ -87,3 +87,38 @@ export const turns = sqliteTable(
     uniqueIndex("turns_session_external").on(table.sessionId, table.externalId),
   ],
 );
+
+export const stories = sqliteTable("stories", {
+  collectionId: text("collection_id")
+    .primaryKey()
+    .references(() => collections.id, { onDelete: "cascade" }),
+  ownerId: text("owner_id").notNull(),
+  revision: integer("revision").notNull().default(1),
+  processedRevision: integer("processed_revision").notNull().default(0),
+  checkpoint: text("checkpoint").notNull().default("{}"),
+  status: text("status").notNull().default("pending"),
+  error: text("error"),
+  leaseToken: text("lease_token"),
+  leaseUntil: integer("lease_until").notNull().default(0),
+  nextAttemptAt: integer("next_attempt_at").notNull().default(0),
+  updatedAt: text("updated_at").notNull(),
+});
+export const storyBeats = sqliteTable(
+  "story_beats",
+  {
+    id: text("id").primaryKey(),
+    collectionId: text("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    title: text("title").notNull(),
+    text: text("text").notNull(),
+    connections: text("connections").notNull(),
+    evidence: text("evidence").notNull(),
+    model: text("model").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("story_beats_order").on(table.collectionId, table.position),
+  ],
+);

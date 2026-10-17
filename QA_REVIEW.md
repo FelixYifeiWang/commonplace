@@ -21,3 +21,14 @@ Reviewed at http://127.0.0.1:3100/ in the in-app browser and in the Electron com
 Actual live Codex connection still needs a user check with one Codex window open. This review tested movement and controls in Electron plus connection lifecycle fixtures; it did not bypass denied access to Codex. Claude Code and Cursor remain unimplemented adapters.
 
 Hover GIF/direct-video/YouTube/Vimeo playback and reduced-motion behavior were implemented and reviewed in code; provider autoplay was not exercised end-to-end in this browser run. Website motion is a screenshot pan/zoom, not a live website. Readiness checks cannot guarantee every external site will render; slow, private or blocked pages use a cover or text fallback.
+
+## Story view — 17 October 2026
+
+- Verified a per-channel Gallery/Story switch, existing gallery preservation, connected media opening the existing detail viewer, and expandable source quotes.
+- Reviewed the quiet timeline and connected-thumbnail canvas at desktop width and 390 × 844. No horizontal overflow; viewport override reset. Reduced-motion styling is included.
+- All seven currently connected channels completed real GPT-6 Luna generation. Invalid paraphrased evidence is rejected and gets one bounded corrective attempt, with valid source IDs constrained in the output schema.
+- A live temporary channel generated its first story, appended after a new gallery note, and retained earlier beat records byte-for-byte. Deleting media preserved the narrative and did not trigger rewriting. Fixtures were removed.
+- Durable queue tests cover updates during generation, exclusive leases, replay, expired workers, deletion, and failures retaining checkpoints. Long turns continue across batches; credential redaction happens before slicing to avoid leaking split secrets.
+- 93 unit tests, typecheck, lint, production build and both local API integration suites passed. Wrangler SQL splitting was tested against the migration. The configured key is ignored by Git and absent from source files and built browser assets.
+
+Automatic generation requires the local server to stay running. The production build intentionally does not contain a hosted story worker. Graph relationships use supplied transcript/media metadata; this version does not perform image vision or provide a freely editable graph canvas.

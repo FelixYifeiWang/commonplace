@@ -62,3 +62,5 @@ next-env.d.ts
 !/build/media-preview-plugin.mjs
 
 !/build/local-files.mjs
+
+!/build/story-plugin.mjs

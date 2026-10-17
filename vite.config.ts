@@ -1,3 +1,4 @@
+import { storyWorker } from "./build/story-plugin.mjs";
 import { mediaPreview } from "./build/media-preview-plugin.mjs";
 import vinext from "vinext";
 import { defineConfig } from "vite";
@@ -73,6 +74,7 @@ export default defineConfig(async ({ command }) => {
       sites({ mockAuth: !managedLinux }),
       connectorPreview(),
       mediaPreview(),
+      storyWorker(),
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         inspectorPort: false,

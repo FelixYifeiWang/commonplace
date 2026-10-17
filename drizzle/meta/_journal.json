@@ -36,6 +36,13 @@
       "when": 1792268075296,
       "tag": "0004_pretty_sally_floyd",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1792270350775,
+      "tag": "0005_lucky_frightful_four",
+      "breakpoints": true
     }
   ]
 }

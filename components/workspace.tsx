@@ -31,6 +31,7 @@ import { MediaDetail } from "./media-card";
 import { CollectionPicker } from "./collection-picker";
 import { parseBlockInput } from "@/lib/gallery.mjs";
 import { Gallery } from "./gallery";
+import { StoryView } from "./story-view";
 import { AddBlock } from "./add-block";
 import { Modal } from "./modal";
 
@@ -107,6 +108,7 @@ export default function Workspace({
     [copyText, setCopyText] = useState(""),
     [copied, setCopied] = useState(false),
     [modalError, setModalError] = useState("");
+  const [view, setView] = useState<"gallery" | "story">("gallery");
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const [droppedText, setDroppedText] = useState("");
   const [undo, setUndo] = useState<{
@@ -488,6 +490,26 @@ export default function Workspace({
             onManage={setScreen}
             onDelete={(id) => void deleteCollection(id)}
           />
+          {screen === "collection" && selected !== "all" && (
+            <div
+              className="channel-view-switch"
+              role="group"
+              aria-label="Channel view"
+            >
+              <button
+                aria-pressed={view === "gallery"}
+                onClick={() => setView("gallery")}
+              >
+                Gallery
+              </button>
+              <button
+                aria-pressed={view === "story"}
+                onClick={() => setView("story")}
+              >
+                Story
+              </button>
+            </div>
+          )}
           {demo && (
             <Link className="minimal-demo" href="/">
               Example
@@ -530,23 +552,35 @@ export default function Workspace({
                   <button onClick={() => void refresh()}>Try again</button>
                 </div>
               )}
-              {screen === "collection" && (
-                <Gallery
-                  key={selected}
-                  items={visibleItems}
-                  onOpen={setDetail}
-                  onDelete={deleteBlocks}
-                  canAdd={collections.length > 0}
-                  onQuickAdd={(text) =>
-                    saveBlock({
-                      ...parseBlockInput(text),
-                      collectionId:
-                        selected === "all" ? collections[0]?.id : selected,
-                    })
-                  }
-                  onAdd={addFromGallery}
-                />
-              )}
+              {screen === "collection" &&
+                (view === "gallery" || selected === "all") && (
+                  <Gallery
+                    key={selected}
+                    items={visibleItems}
+                    onOpen={setDetail}
+                    onDelete={deleteBlocks}
+                    canAdd={collections.length > 0}
+                    onQuickAdd={(text) =>
+                      saveBlock({
+                        ...parseBlockInput(text),
+                        collectionId:
+                          selected === "all" ? collections[0]?.id : selected,
+                      })
+                    }
+                    onAdd={addFromGallery}
+                  />
+                )}
+              {screen === "collection" &&
+                view === "story" &&
+                selected !== "all" && (
+                  <StoryView
+                    key={selected}
+                    collectionId={selected}
+                    items={visibleItems}
+                    onOpen={setDetail}
+                    demo={demo}
+                  />
+                )}
               {screen === "sessions" && (
                 <>
                   <div className="page-heading">
