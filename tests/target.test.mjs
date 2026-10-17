@@ -120,10 +120,16 @@ test("a symlink cannot turn a session target into an arbitrary file read", async
 function dragFixture() {
   let point = { x: 10, y: 10 };
   const events = [];
+  let bounds = { x: 0, y: 0, width: 100, height: 100 };
   const window = {
-    getBounds: () => ({ x: 0, y: 0, width: 100, height: 100 }),
-    setPosition: () => {},
-    setBounds: () => events.push("restore"),
+    getBounds: () => ({ ...bounds }),
+    setPosition: (x, y) => {
+      bounds = { ...bounds, x, y };
+    },
+    setBounds: (value) => {
+      bounds = { ...value };
+      events.push("restore");
+    },
     hide: () => events.push("hide"),
     showInactive: () => events.push("show"),
   };
@@ -156,8 +162,8 @@ test("the overlay is hidden before inspecting and subscribing to the dropped ses
   await d.end();
   assert.deepEqual(f.events, [
     "hide",
-    "reading",
     "inspect",
+    "reading",
     "connecting",
     "subscribe",
     "collecting",
@@ -208,3 +214,30 @@ test("capture failure is not reported as a successful connection", async () => {
   assert.equal(f.events.includes("following"), false);
   assert.equal(f.events.includes("error"), true);
 });
+
+for (const [name, dropTarget] of [
+  ["another app", { bundleId: "com.apple.Safari" }],
+  ["the desktop", { error: "no-target" }],
+  ["an unidentified app", { bundleId: "" }],
+]) {
+  test(`dropping on ${name} only moves the buddy`, async () => {
+    const f = dragFixture();
+    f.args.inspect = async () => dropTarget;
+    f.args.resolve = async () => {
+      throw new Error("Must not resolve a session");
+    };
+    const d = createDragController(f.args);
+    d.start();
+    f.move();
+    const result = await d.end();
+    assert.deepEqual(result, { click: false, moved: true });
+    assert.deepEqual(f.events, ["hide", "show"]);
+    assert.deepEqual(f.args.window.getBounds(), {
+      x: 190,
+      y: 190,
+      width: 100,
+      height: 100,
+    });
+    assert.equal(d.isDragging(), false);
+  });
+}

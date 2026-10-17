@@ -355,7 +355,7 @@ if (!lock) {
       register("companion:drag-end", async () => {
         const result = await dragController.end();
         if (result.click) setExpanded(!expanded);
-        else setExpanded(!result.connected);
+        else if (!result.moved) setExpanded(!result.connected);
         return result;
       });
       register("companion:drag-cancel", () => dragController.cancel());

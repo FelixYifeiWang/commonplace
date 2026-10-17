@@ -3,6 +3,8 @@ export function createDragController({
   window,
   cursor,
   inspect,
+  // Only enable providers whose session resolver is implemented.
+  canConnect = (target) => target?.bundleId === "com.openai.codex",
   resolve,
   subscribe,
   capture = async () => {},
@@ -48,17 +50,31 @@ export function createDragController({
       active.moved ||
       Math.hypot(point.x - active.origin.x, point.y - active.origin.y) > 6;
     if (!moved) return { click: true };
+    // A quick drag can end between timer ticks. Always apply the final position.
+    window.setPosition(
+      Math.round(active.bounds.x + point.x - active.origin.x),
+      Math.round(active.bounds.y + point.y - active.origin.y),
+      false,
+    );
     finishing = true;
+    let repositionOnly = false;
     window.hide();
     try {
-      report({ state: "reading", error: "", target: "" });
       await sleep(90); // Let macOS remove our overlay before hit-testing the same screen point.
       const target = await inspect(point);
+      if (
+        target.error === "no-target" ||
+        (!target.error && !canConnect(target))
+      ) {
+        repositionOnly = true;
+        return { click: false, moved: true };
+      }
       if (target.error)
         throw Object.assign(
           new Error(target.message || "Could not identify this session."),
           { code: target.error },
         );
+      report({ state: "reading", error: "", target: "" });
       const session = await resolve(target);
       report({ state: "connecting", target: session.title, point });
       const subscription = await subscribe(session);
@@ -73,7 +89,7 @@ export function createDragController({
       });
       return { click: false, connected: false };
     } finally {
-      window.setBounds(active.bounds, false);
+      if (!repositionOnly) window.setBounds(active.bounds, false);
       window.showInactive();
       finishing = false;
     }
