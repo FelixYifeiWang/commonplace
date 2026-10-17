@@ -160,6 +160,7 @@ test("the overlay is hidden before inspecting and subscribing to the dropped ses
     "inspect",
     "connecting",
     "subscribe",
+    "collecting",
     "following",
     "restore",
     "show",
@@ -192,4 +193,18 @@ test("cancelled drags cannot subscribe", async () => {
   d.cancel();
   await d.end();
   assert.equal(f.events.includes("subscribe"), false);
+});
+
+test("capture failure is not reported as a successful connection", async () => {
+  const f = dragFixture();
+  f.args.capture = async () => {
+    throw new Error("Upload failed");
+  };
+  const d = createDragController(f.args);
+  d.start();
+  f.move();
+  const result = await d.end();
+  assert.equal(result.connected, false);
+  assert.equal(f.events.includes("following"), false);
+  assert.equal(f.events.includes("error"), true);
 });

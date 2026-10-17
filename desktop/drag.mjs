@@ -5,6 +5,7 @@ export function createDragController({
   inspect,
   resolve,
   subscribe,
+  capture = async () => {},
   report,
   sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
   every = setInterval,
@@ -50,7 +51,7 @@ export function createDragController({
     finishing = true;
     window.hide();
     try {
-      report({ state: "reading", error: "" });
+      report({ state: "reading", error: "", target: "" });
       await sleep(90); // Let macOS remove our overlay before hit-testing the same screen point.
       const target = await inspect(point);
       if (target.error)
@@ -59,8 +60,10 @@ export function createDragController({
           { code: target.error },
         );
       const session = await resolve(target);
-      report({ state: "connecting", target: session.title });
-      await subscribe(session);
+      report({ state: "connecting", target: session.title, point });
+      const subscription = await subscribe(session);
+      report({ state: "collecting", target: session.title });
+      await capture(session, subscription);
       report({ state: "following", target: session.title, error: "" });
       return { click: false, connected: true };
     } catch (error) {

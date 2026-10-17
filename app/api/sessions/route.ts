@@ -18,48 +18,38 @@ export async function POST(request: Request) {
       db = getDb();
     if (!["Codex", "Claude Code", "Cursor", "Other"].includes(body.provider))
       throw new HttpError(400, "Choose a supported agent.");
-    let collectionId = body.collectionId;
-    if (collectionId) {
-      const [c] = await db
-        .select()
-        .from(collections)
-        .where(
-          and(
-            eq(collections.id, collectionId),
-            eq(collections.ownerId, user.userId),
-          ),
-        );
-      if (!c) throw new HttpError(404, "Collection not found.");
-    } else {
-      collectionId = crypto.randomUUID();
-      await db
+    const token = newToken(),
+      id = crypto.randomUUID(),
+      collectionId = `session-${id}`;
+    const title =
+      typeof body.title === "string" && body.title.trim()
+        ? body.title.trim().slice(0, 120)
+        : `A session with ${body.provider}`;
+    const now = new Date().toISOString();
+    await db.batch([
+      db
         .insert(collections)
         .values({
           id: collectionId,
           ownerId: user.userId,
-          name: "Collected thoughts",
-          description: "A little of everything worth keeping.",
-          createdAt: new Date().toISOString(),
-        });
-    }
-    const token = newToken(),
-      id = crypto.randomUUID();
-    await db
-      .insert(sessions)
-      .values({
-        id,
-        ownerId: user.userId,
-        collectionId,
-        title:
-          typeof body.title === "string" && body.title.trim()
-            ? body.title.trim().slice(0, 120)
-            : `A session with ${body.provider}`,
-        provider: body.provider,
-        mode: body.mode === "once" ? "once" : "follow",
-        state: "waiting",
-        tokenHash: await hash(token),
-        createdAt: new Date().toISOString(),
-      });
+          name: title,
+          description: "",
+          createdAt: now,
+        }),
+      db
+        .insert(sessions)
+        .values({
+          id,
+          ownerId: user.userId,
+          collectionId,
+          title,
+          provider: body.provider,
+          mode: body.mode === "once" ? "once" : "follow",
+          state: "waiting",
+          tokenHash: await hash(token),
+          createdAt: now,
+        }),
+    ]);
     return Response.json(
       { id, token, collectionId },
       { status: 201, headers: { "Cache-Control": "no-store" } },

@@ -58,3 +58,5 @@ next-env.d.ts
 /desktop/native/bin/
 
 *.tsbuildinfo
+
+!/build/media-preview-plugin.mjs

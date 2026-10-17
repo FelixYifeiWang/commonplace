@@ -2,6 +2,7 @@ import { getDb } from "@/db";
 import { sessions, items, turns, devices } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { agentSession, jsonBody, fail, HttpError, hash } from "@/lib/server";
+import { classifyMedia } from "@/lib/media.mjs";
 import { itemIdentity, safeUrl } from "@/lib/protocol.mjs";
 export async function POST(request: Request) {
   try {
@@ -59,11 +60,7 @@ export async function POST(request: Request) {
           /[?&](token|key|secret|auth|signature|access_token)=/i.test(url)
         )
           continue;
-        const kind = /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url)
-          ? "image"
-          : /youtube\.com|youtu\.be|vimeo\.com/.test(parsed.hostname)
-            ? "video"
-            : "link";
+        const kind = classifyMedia(url);
         const identity = await hash(itemIdentity({ url }));
         const lastPath =
           parsed.pathname.split("/").filter(Boolean).pop() || parsed.hostname;
@@ -87,7 +84,7 @@ export async function POST(request: Request) {
               identity,
               kind,
               title,
-              body: "A reference mentioned in your conversation.",
+              body: "",
               url,
               imageUrl: kind === "image" ? url : null,
               sourceText: turn.text.slice(excerptStart, excerptStart + 16000),

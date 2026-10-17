@@ -15,6 +15,13 @@
       "when": 1792260894705,
       "tag": "0001_sloppy_human_torch",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792263713970,
+      "tag": "0002_yellow_freak",
+      "breakpoints": true
     }
   ]
 }

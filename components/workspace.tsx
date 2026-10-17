@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -24,11 +23,11 @@ import type {
   Item,
   ItemKind,
   Session,
-  SessionState,
   WorkspaceData,
 } from "@/lib/types";
 import { SAMPLE } from "@/lib/sample";
-import { Buddy, sessionLabel } from "./buddy";
+import { sessionLabel } from "./buddy";
+import { MediaCard, MediaDetail } from "./media-card";
 import { Modal } from "./modal";
 
 const EMPTY: WorkspaceData = {
@@ -38,7 +37,6 @@ const EMPTY: WorkspaceData = {
   devices: [],
   user: null,
 };
-const ACTIVE = ["reading", "collecting", "connecting"];
 async function api<T = Record<string, unknown>>(
   path: string,
   method = "GET",
@@ -54,13 +52,6 @@ async function api<T = Record<string, unknown>>(
   const data = (await response.json()) as T & { error?: string };
   if (!response.ok) throw new Error(data.error || "Something went wrong.");
   return data;
-}
-function domain(url: string | null) {
-  try {
-    return new URL(url || "").hostname.replace("www.", "");
-  } catch {
-    return "";
-  }
 }
 function Logo() {
   return (
@@ -84,55 +75,6 @@ function Provider({ name }: { name: string }) {
             ? "◈"
             : "↗"}
     </span>
-  );
-}
-function CardArt({ item }: { item: Item }) {
-  if (item.imageUrl)
-    return (
-      <div className="card-visual photo">
-        <Image
-          unoptimized
-          width={600}
-          height={600}
-          src={item.imageUrl}
-          alt={item.title}
-          loading="lazy"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-            e.currentTarget.parentElement?.classList.add("image-failed");
-          }}
-        />
-        <span className="image-unavailable">Image preview unavailable</span>
-      </div>
-    );
-  if (item.kind === "quote")
-    return (
-      <div className="card-visual quote-art">
-        <span className="quote-mark">“</span>
-        <p>{item.body}</p>
-      </div>
-    );
-  if (item.kind === "idea")
-    return (
-      <div
-        className={`card-visual thought-art ${item.art === "connection" ? "connection-art" : ""}`}
-      >
-        <p>{item.title}</p>
-        <span className="thought-line" />
-      </div>
-    );
-  if (item.kind === "note")
-    return (
-      <div className="card-visual note-art">
-        <p>{item.title}</p>
-      </div>
-    );
-  return (
-    <div className="card-visual generic-art">
-      <Link2 size={25} strokeWidth={1} />
-      <p>{item.title}</p>
-      <span>{domain(item.url)}</span>
-    </div>
   );
 }
 
@@ -161,18 +103,7 @@ export default function Workspace({
     [copyText, setCopyText] = useState(""),
     [copied, setCopied] = useState(false),
     [modalError, setModalError] = useState("");
-  const [buddyOpen, setBuddyOpen] = useState(false),
-    [buddyPos, setBuddyPos] = useState<{ x: number; y: number } | null>(null),
-    [dragging, setDragging] = useState(false),
-    [target, setTarget] = useState<string | null>(null);
-  const dragRef = useRef<{
-      x: number;
-      y: number;
-      bx: number;
-      by: number;
-      moved: boolean;
-    } | null>(null),
-    buddyRef = useRef<HTMLButtonElement>(null);
+  const previewBusy = useRef(false);
   const refresh = useCallback(async () => {
     try {
       const result = await api<WorkspaceData>("/api/workspace");
@@ -220,14 +151,21 @@ export default function Workspace({
     return () => clearTimeout(id);
   }, [toast]);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setBuddyOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    if (demo || previewBusy.current) return;
+    const pending = data.items
+      .filter((item) => item.url && item.previewStatus === "pending")
+      .slice(0, 4);
+    if (!pending.length) return;
+    previewBusy.current = true;
+    void api("/api/previews", "POST", { ids: pending.map((item) => item.id) })
+      .then(() => refresh())
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Preview unavailable."),
+      )
+      .finally(() => {
+        previewBusy.current = false;
+      });
+  }, [data.items, demo, refresh]);
   const collections = data.collections;
   const allItems =
     selected === "all"
@@ -236,17 +174,6 @@ export default function Workspace({
   const visibleItems = [...allItems].sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt),
   );
-  const connected = data.sessions.filter(
-    (s) => !["revoked", "complete"].includes(s.state),
-  );
-  const working = connected.find((s) => ACTIVE.includes(s.state));
-  const buddyState: SessionState =
-    working?.state ||
-    (connected.some((s) => s.state === "following")
-      ? "following"
-      : connected.some((s) => s.state === "paused")
-        ? "paused"
-        : "waiting");
   function openModal(value: typeof modal) {
     setModalError("");
     setCopied(false);
@@ -407,63 +334,11 @@ export default function Workspace({
       setBusy(false);
     }
   }
-  function dragStart(e: React.PointerEvent<HTMLButtonElement>) {
-    if (e.button !== 0) return;
-    const box = e.currentTarget.getBoundingClientRect();
-    dragRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      bx: box.left,
-      by: box.top,
-      moved: false,
-    };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }
-  function dragMove(e: React.PointerEvent<HTMLButtonElement>) {
-    const d = dragRef.current;
-    if (!d) return;
-    const dx = e.clientX - d.x,
-      dy = e.clientY - d.y;
-    if (Math.abs(dx) + Math.abs(dy) > 5) {
-      d.moved = true;
-      setDragging(true);
-      setBuddyOpen(false);
-      setBuddyPos({
-        x: Math.max(12, Math.min(window.innerWidth - 180, d.bx + dx)),
-        y: Math.max(12, Math.min(window.innerHeight - 90, d.by + dy)),
-      });
-      const element = document
-        .elementsFromPoint(e.clientX, e.clientY)
-        .find((el) => el.closest("[data-session-id]"));
-      setTarget(
-        element
-          ?.closest("[data-session-id]")
-          ?.getAttribute("data-session-id") || null,
-      );
-    }
-  }
-  function dragEnd() {
-    const d = dragRef.current;
-    dragRef.current = null;
-    setDragging(false);
-    if (d?.moved) {
-      const s = data.sessions.find((s) => s.id === target);
-      if (s) {
-        if (s.state === "paused" || s.state === "complete")
-          void sessionAction(s, "resume");
-        else {
-          setScreen("sessions");
-          setToast(`Following “${s.title}”`);
-        }
-      }
-      setTarget(null);
-    } else setBuddyOpen((v) => !v);
-  }
   function renderSession(session: Session, compact = false) {
     const count = data.items.filter((i) => i.sessionId === session.id).length;
     return (
       <div
-        className={`session-row ${compact ? "compact" : ""} ${target === session.id ? "drop-target" : ""}`}
+        className={`session-row ${compact ? "compact" : ""}`}
         data-session-id={session.id}
         key={session.id}
       >
@@ -515,7 +390,7 @@ export default function Workspace({
   }
 
   return (
-    <div className={`app-shell ${dragging ? "is-dragging" : ""}`}>
+    <div className="app-shell">
       <div className="workspace">
         <header className="minimal-header">
           <button
@@ -528,11 +403,13 @@ export default function Workspace({
           <select
             className="collection-picker"
             aria-label="Collection"
-            value={selected}
+            value={screen === "collection" ? selected : screen}
             onChange={(e) =>
               e.target.value === "new"
                 ? openModal("collection")
-                : chooseCollection(e.target.value)
+                : e.target.value === "sessions" || e.target.value === "settings"
+                  ? setScreen(e.target.value)
+                  : chooseCollection(e.target.value)
             }
           >
             <option value="all">All items</option>
@@ -542,6 +419,10 @@ export default function Workspace({
               </option>
             ))}
             <option value="new">+ New collection</option>
+            <optgroup label="Manage">
+              <option value="sessions">Connections</option>
+              <option value="settings">Settings</option>
+            </optgroup>
           </select>
           {demo && (
             <Link className="minimal-demo" href="/">
@@ -562,13 +443,10 @@ export default function Workspace({
         <main>
           {!ready ? (
             <div className="loading-state">
-              <Buddy state="reading" />
+              <Loader2 className="spin" size={18} aria-label="Loading" />
             </div>
           ) : error && !data.user ? (
             <div className="welcome">
-              <div className="welcome-buddy">
-                <Buddy state="waiting" />
-              </div>
               <a
                 className="button primary"
                 href="/signin-with-chatgpt?return_to=%2F"
@@ -612,7 +490,7 @@ export default function Workspace({
                               onClick={() => setDetail(item)}
                               aria-label={item.title}
                             >
-                              <CardArt item={item} />
+                              <MediaCard item={item} />
                             </button>
                           ))}
                         </div>
@@ -627,11 +505,7 @@ export default function Workspace({
                 <>
                   <div className="page-heading">
                     <div>
-                      <h1>Sessions</h1>
-                      <p>
-                        Your conversations continue here, one discovery at a
-                        time.
-                      </p>
+                      <h1>Connections</h1>
                     </div>
                     <button
                       className="button primary"
@@ -661,19 +535,13 @@ export default function Workspace({
                       </div>
                     )}
                   </div>
-                  <div className="small-note">
-                    <span>↳</span> Each idea keeps a link to the conversation it
-                    came from.
-                  </div>
                 </>
               )}
               {screen === "settings" && (
                 <>
                   <div className="page-heading">
                     <div>
-                      <span className="eyebrow">MAKE YOURSELF AT HOME</span>
-                      <h1>Your space, your pace.</h1>
-                      <p>A few simple things that keep everything connected.</p>
+                      <h1>Settings</h1>
                     </div>
                   </div>
                   <section className="settings-section">
@@ -772,67 +640,6 @@ export default function Workspace({
           )}
         </main>
       </div>
-      <div
-        className={`buddy-dock ${dragging ? "dragging" : ""}`}
-        style={
-          buddyPos
-            ? {
-                left: buddyPos.x,
-                top: buddyPos.y,
-                right: "auto",
-                bottom: "auto",
-              }
-            : undefined
-        }
-      >
-        {buddyOpen && (
-          <div className="buddy-popover">
-            <button
-              className="text-button"
-              onClick={() => {
-                setBuddyOpen(false);
-                openModal("connect");
-              }}
-            >
-              Connect a session
-            </button>
-            <button
-              className="text-button"
-              onClick={() => {
-                setScreen("sessions");
-                setBuddyOpen(false);
-              }}
-            >
-              Sessions
-            </button>
-            <button
-              className="text-button"
-              onClick={() => {
-                setScreen("settings");
-                setBuddyOpen(false);
-              }}
-            >
-              Settings
-            </button>
-          </div>
-        )}
-        <button
-          ref={buddyRef}
-          className="buddy-button"
-          aria-label="Open companion. Drag to reposition."
-          onPointerDown={dragStart}
-          onPointerMove={dragMove}
-          onPointerUp={dragEnd}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              setBuddyOpen((v) => !v);
-            }
-          }}
-        >
-          <Buddy state={buddyState} />
-        </button>
-      </div>
       {toast && (
         <div className="toast" role="status">
           <Check size={14} />
@@ -880,7 +687,7 @@ export default function Workspace({
           {copied && (
             <p className="connection-wait">
               <span className="live-dot" />
-              Ready to pair. Open the installed companion to continue.
+              Open a conversation, then drop the desktop buddy over it.
             </p>
           )}
           {modalError && (
@@ -888,7 +695,9 @@ export default function Workspace({
               {modalError}
             </p>
           )}
-          <p className="companion-build-note">Requires the desktop preview.</p>
+          <p className="companion-build-note">
+            Drag the desktop buddy over an open Codex conversation.
+          </p>
           <details className="advanced-connection">
             <summary>
               Use a coding agent <ChevronDown size={12} />
@@ -954,6 +763,9 @@ export default function Workspace({
                   <option value="link">Link</option>
                   <option value="image">Image link</option>
                   <option value="video">Video</option>
+                  <option value="audio">Audio</option>
+                  <option value="document">Document</option>
+                  <option value="file">File</option>
                   <option value="quote">Quote</option>
                 </select>
               </label>
@@ -1005,12 +817,9 @@ export default function Workspace({
       )}
       {detail && (
         <Modal title={detail.title} onClose={() => setDetail(null)}>
-          {detail.imageUrl && (
-            <div className="detail-art">
-              <CardArt item={detail} />
-            </div>
-          )}
-          <p className="minimal-detail-body">{detail.body}</p>
+          <MediaDetail
+            item={data.items.find((item) => item.id === detail.id) || detail}
+          />
           {detail.inferred && (
             <p className="minimal-inference">AI interpretation</p>
           )}

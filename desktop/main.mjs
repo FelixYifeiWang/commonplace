@@ -21,6 +21,9 @@ import { pathToFileURL, fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ORIGIN = process.env.COMMONPLACE_ORIGIN || "http://127.0.0.1:3100";
 let win,
+  feedbackWindow,
+  feedbackTimer,
+  feedbackPoint = { x: 50, y: 50 },
   tray,
   collector,
   connection = null,
@@ -68,7 +71,11 @@ async function pair({ token, origin }) {
   status = "waiting";
 }
 async function request(url, options) {
-  return net.fetch(url, { ...options, credentials: "include" });
+  return net.fetch(url, {
+    signal: AbortSignal.timeout(15000),
+    ...options,
+    credentials: "include",
+  });
 }
 async function tick() {
   if (!connection || busy || dragController?.isDragging()) return;
@@ -77,6 +84,7 @@ async function tick() {
     for (const subscription of subscriptions.filter(
       (s) => !s.paused && !s.done,
     )) {
+      if (dragController?.isDragging()) break;
       status = "reading";
       try {
         const result = await collector.syncTranscript({
@@ -89,13 +97,17 @@ async function tick() {
         subscription.lastSynced = new Date().toISOString();
         subscription.error = "";
         if (subscription.mode === "once") subscription.done = true;
-        lastError = "";
-        status = "following";
+        if (!dragController?.isDragging()) {
+          lastError = "";
+          status = "following";
+        }
         await persist();
       } catch (error) {
         subscription.error = error.message;
-        lastError = error.message;
-        status = error.status === 409 ? "paused" : "error";
+        if (!dragController?.isDragging()) {
+          lastError = error.message;
+          status = error.status === 409 ? "paused" : "error";
+        }
         if (error.status === 401) subscription.paused = true;
       }
     }
@@ -118,6 +130,33 @@ function setExpanded(value) {
     },
     false,
   );
+}
+function showDropFeedback(value) {
+  status = value.state;
+  if (value.error !== undefined) lastError = value.error;
+  if (value.target !== undefined) targetTitle = value.target;
+  if (!feedbackWindow) return;
+  if (value.state === "reading") {
+    clearTimeout(feedbackTimer);
+    feedbackWindow.hide();
+    return;
+  }
+  clearTimeout(feedbackTimer);
+  if (!feedbackWindow.isVisible()) {
+    const point = value.point || screen.getCursorScreenPoint(),
+      display = screen.getDisplayNearestPoint(point);
+    feedbackPoint = {
+      x: ((point.x - display.bounds.x) / display.bounds.width) * 100,
+      y: ((point.y - display.bounds.y) / display.bounds.height) * 100,
+    };
+    feedbackWindow.setBounds(display.bounds);
+    feedbackWindow.showInactive();
+  }
+  if (["following", "error"].includes(value.state))
+    feedbackTimer = setTimeout(
+      () => feedbackWindow?.hide(),
+      value.state === "error" ? 2400 : 1800,
+    );
 }
 async function subscribeSource(source) {
   if (!connection) {
@@ -171,8 +210,7 @@ async function subscribeSource(source) {
       done: false,
     });
   await persist();
-  // Start after the drop has restored the buddy so errors remain visible.
-  setTimeout(() => void tick(), 250);
+  return subscriptions.find((s) => s.id === result.subscriptionId);
 }
 async function handleProtocol(raw) {
   try {
@@ -266,6 +304,7 @@ if (!lock) {
         connected: !!connection,
         expanded,
         targetTitle,
+        feedbackPoint,
         subscriptions: subscriptions.map((s) => ({
           id: s.id,
           title: s.title,
@@ -294,11 +333,23 @@ if (!lock) {
         },
         resolve: resolveLocalTarget,
         subscribe: subscribeSource,
-        report: (value) => {
-          status = value.state;
-          if (value.error !== undefined) lastError = value.error;
-          if (value.target !== undefined) targetTitle = value.target;
+        capture: async (_source, subscription) => {
+          while (busy) await new Promise((resolve) => setTimeout(resolve, 50));
+          try {
+            const result = await collector.syncTranscript({
+              connection,
+              subscription,
+              cursors,
+              request,
+            });
+            subscription.turns = result.total;
+            subscription.lastSynced = new Date().toISOString();
+            subscription.error = "";
+          } finally {
+            await persist();
+          }
         },
+        report: showDropFeedback,
       });
       register("companion:drag-start", () => dragController.start());
       register("companion:drag-end", async () => {
@@ -338,6 +389,35 @@ if (!lock) {
       register("companion:open-space", () => shell.openExternal(ORIGIN));
       register("companion:hide", () => win.hide());
       win.on("closed", () => dragController?.cancel());
+      feedbackWindow = new BrowserWindow({
+        ...screen.getPrimaryDisplay().bounds,
+        frame: false,
+        transparent: true,
+        backgroundColor: "#00000000",
+        hasShadow: false,
+        resizable: false,
+        alwaysOnTop: true,
+        skipTaskbar: true,
+        show: false,
+        focusable: false,
+        webPreferences: {
+          preload: path.join(__dirname, "preload.cjs"),
+          contextIsolation: true,
+          nodeIntegration: false,
+          sandbox: true,
+        },
+      });
+      feedbackWindow.setIgnoreMouseEvents(true);
+      feedbackWindow.setVisibleOnAllWorkspaces(true, {
+        visibleOnFullScreen: true,
+      });
+      feedbackWindow.webContents.setWindowOpenHandler(() => ({
+        action: "deny",
+      }));
+      feedbackWindow.webContents.on("will-navigate", (event) =>
+        event.preventDefault(),
+      );
+      await feedbackWindow.loadURL(`${ORIGIN}/buddy/feedback`);
       const authCheck = await net.fetch(`${ORIGIN}/api/workspace`, {
         redirect: "manual",
       });

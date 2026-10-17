@@ -7,6 +7,7 @@ type Snapshot = {
   connected: boolean;
   expanded: boolean;
   targetTitle: string;
+  feedbackPoint?: { x: number; y: number };
   state: SessionState;
   error: string;
 };

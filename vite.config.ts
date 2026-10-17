@@ -1,3 +1,4 @@
+import { mediaPreview } from "./build/media-preview-plugin.mjs";
 import vinext from "vinext";
 import { defineConfig } from "vite";
 import hostingConfig from "./.openai/hosting.json";
@@ -64,6 +65,7 @@ export default defineConfig(async ({ command }) => {
       vinext(),
       sites({ mockAuth: !managedLinux }),
       connectorPreview(),
+      mediaPreview(),
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         inspectorPort: false,

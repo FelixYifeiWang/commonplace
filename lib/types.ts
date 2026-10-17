@@ -1,4 +1,13 @@
-export type ItemKind = "link" | "image" | "video" | "idea" | "quote" | "note";
+export type ItemKind =
+  | "link"
+  | "image"
+  | "video"
+  | "idea"
+  | "quote"
+  | "note"
+  | "audio"
+  | "document"
+  | "file";
 export type SessionState =
   | "waiting"
   | "reading"
@@ -36,6 +45,9 @@ export type Item = {
   body: string;
   url: string | null;
   imageUrl: string | null;
+  previewStatus?: "pending" | "ready" | "unavailable";
+  mimeType?: string | null;
+  embedUrl?: string | null;
   sourceText: string;
   sourceRole: string;
   sourceTurn: string;

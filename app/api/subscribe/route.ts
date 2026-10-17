@@ -29,6 +29,7 @@ export async function POST(request: Request) {
         and(
           eq(sessions.deviceId, device.id),
           eq(sessions.externalId, body.sessionId),
+          eq(sessions.provider, body.provider),
         ),
       );
     if (existing) {
@@ -46,50 +47,33 @@ export async function POST(request: Request) {
       }
       return Response.json({
         subscriptionId: existing.id,
+        collectionId: existing.collectionId,
         state: body.mode === "follow" ? "reading" : existing.state,
       });
     }
-    let collectionId = body.collectionId;
-    if (collectionId) {
-      const [c] = await db
-        .select()
-        .from(collections)
-        .where(
-          and(
-            eq(collections.id, collectionId),
-            eq(collections.ownerId, device.ownerId),
-          ),
-        );
-      if (!c) throw new HttpError(404, "Collection not found.");
-    } else {
-      const [c] = await db
-        .select()
-        .from(collections)
-        .where(eq(collections.ownerId, device.ownerId));
-      collectionId = c?.id;
-      if (!collectionId) {
-        collectionId = crypto.randomUUID();
-        await db.insert(collections).values({
-          id: collectionId,
-          ownerId: device.ownerId,
-          name: "Collected thoughts",
-          description: "Ideas from your conversations.",
-          createdAt: new Date().toISOString(),
-        });
-      }
-    }
     const id = crypto.randomUUID(),
       now = new Date().toISOString();
+    const collectionId = `session-${id}`;
+    const title =
+      typeof body.title === "string" && body.title.trim()
+        ? body.title.trim().slice(0, 120)
+        : `A session with ${body.provider}`;
     await db.batch([
+      db
+        .insert(collections)
+        .values({
+          id: collectionId,
+          ownerId: device.ownerId,
+          name: title,
+          description: "",
+          createdAt: now,
+        }),
       db.insert(sessions).values({
         id,
         ownerId: device.ownerId,
         deviceId: device.id,
         collectionId,
-        title:
-          typeof body.title === "string"
-            ? body.title.slice(0, 120)
-            : `A session with ${body.provider}`,
+        title,
         provider: body.provider,
         externalId: body.sessionId,
         mode: body.mode === "once" ? "once" : "follow",
@@ -103,7 +87,7 @@ export async function POST(request: Request) {
         .where(eq(devices.id, device.id)),
     ]);
     return Response.json(
-      { subscriptionId: id, state: "reading" },
+      { subscriptionId: id, collectionId, state: "reading" },
       { status: 201 },
     );
   } catch (e) {
