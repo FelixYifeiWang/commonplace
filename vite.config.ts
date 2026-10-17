@@ -38,6 +38,8 @@ const localBindingConfig = {
 };
 
 export default defineConfig(async ({ command }) => {
+  const localPreview =
+    command === "serve" && process.env.COMMONPLACE_LOCAL_PREVIEW === "1";
   // Use Miniflare's local Request.cf placeholder unless fetching is requested.
   process.env.CLOUDFLARE_CF_FETCH_ENABLED ??= "false";
   process.env.WRANGLER_SEND_METRICS ??= "false";
@@ -53,6 +55,8 @@ export default defineConfig(async ({ command }) => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    // Local trials should not share optimizer state with builds or live editing.
+    ...(localPreview ? { cacheDir: "node_modules/.vite-local" } : {}),
     server: {
       ...(managedLinux
         ? { host: "0.0.0.0", allowedHosts: ["terminal.local"] }
@@ -60,6 +64,9 @@ export default defineConfig(async ({ command }) => {
       ...(isCodexSeatbeltSandbox
         ? { watch: { useFsEvents: false, usePolling: true } }
         : {}),
+      // Keep the tested code loaded until an explicit restart. Worker/RSC hot
+      // replacement can invalidate in-flight page and buddy requests.
+      ...(localPreview ? { watch: null, hmr: false } : {}),
     },
     plugins: [
       vinext(),

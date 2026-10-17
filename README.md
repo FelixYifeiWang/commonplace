@@ -31,10 +31,12 @@ React 19, TypeScript, Vinext (Next App Router compatibility), Cloudflare Workers
 
 ```sh
 npm ci
-npm run dev -- --host 127.0.0.1 --port 3100
+npm run local
 # Another terminal:
 npm run desktop
 ```
+
+`local` keeps live code replacement off and uses a separate optimizer cache. Restart it after code changes. For active editing with hot reload, use `npm run dev -- --host 127.0.0.1 --port 3100` instead. Collection updates still arrive normally in local mode.
 
 The checked-out local D1 migrations have already been applied. A fresh checkout needs a build and the `drizzle/` migrations applied to its local DB binding. Never commit `.wrangler/`, `.sites-runtime/`, or credentials.
 

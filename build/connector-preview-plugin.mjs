@@ -59,7 +59,7 @@ export function connectorPreview() {
               "**/.sites-runtime/**",
             ],
           },
-          watch: { ignored: ["**/.sites-runtime/**"] },
+          watch: config.server?.watch === null ? null : { ignored: ["**/.sites-runtime/**"] },
         },
       };
     },
