@@ -27,10 +27,15 @@ The private hosted preview has an additional Sites authentication boundary. A de
 
 ## Development
 
-React 19, TypeScript, Vinext (Next App Router compatibility), Cloudflare Workers, D1/Drizzle, Electron. Node >=22.13.
+React 19, TypeScript, Vinext (Next App Router compatibility), Cloudflare Workers, D1/Drizzle, Electron. Node >=22.13. The desktop buddy requires macOS and Xcode Command Line Tools (`swiftc`).
 
 ```sh
 npm ci
+# First run on a fresh clone: build the local Worker config and initialize the database.
+npm run build
+for migration in drizzle/*.sql; do
+  npx wrangler d1 execute DB --config dist/server/wrangler.json --local --persist-to .wrangler/state --file "$migration"
+done
 npm run local
 # Another terminal:
 npm run desktop
@@ -38,7 +43,7 @@ npm run desktop
 
 `local` keeps live code replacement off and uses a separate optimizer cache. Restart it after code changes. For active editing with hot reload, use `npm run dev -- --host 127.0.0.1 --port 3100` instead. Collection updates still arrive normally in local mode.
 
-The checked-out local D1 migrations have already been applied. A fresh checkout needs a build and the `drizzle/` migrations applied to its local DB binding. Never commit `.wrangler/`, `.sites-runtime/`, or credentials.
+Run the initialization loop only against a new, empty database. On later launches use `Start Commonplace.command` or `npm run local` and `npm run desktop`. Session data, device credentials, dependencies, and build outputs are local-only and are excluded from Git. Never commit `.wrangler/`, `.sites-runtime/`, or credentials.
 
 ```sh
 npm test
@@ -51,7 +56,7 @@ Verification: protocol, collector, drop lifecycle, and media-preview tests; loca
 
 ## How the drop works
 
-The local helper reads window geometry and the owning process, never screen pixels or window titles. Codex navigation logs identify the open conversation; its ID resolves to a transcript in the local session index. Unsupported targets, ambiguous windows, sidebar drops, and missing navigation records fail without uploading. This uses undocumented local formats and may require updates after Codex upgrades. A browser alone cannot access this local state; the preview still runs a local Electron companion.
+The local helper reads window geometry and the owning process, never screen pixels or window titles. Codex navigation logs identify the open conversation; its ID resolves to a transcript in the local session index. Drops on unsupported apps or the desktop simply reposition the visible buddy. Ambiguous windows, sidebar drops, and missing navigation records do not upload anything. This uses undocumented local formats and may require updates after Codex upgrades. A browser alone cannot access this local state; the preview still runs a local Electron companion.
 
 A successful drop shows a screen-wide ripple, then connection/import status. The green Connected result appears after the initial transcript capture succeeds. The overlay ignores pointer input. Public website covers are extracted while the local collection page is open; a source may still appear as a text card if it blocks previews or supplies no cover. See `ARENA_REFERENCE.md` for media behavior and limits.
 
