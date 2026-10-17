@@ -4,7 +4,7 @@ A first draft of a shared home for ideas from human–AI conversations.
 
 ## Try it
 
-Open `Start Commonplace.command` on this Mac, then visit http://127.0.0.1:3100/?demo=1 for the example collection. The desktop companion opens alongside it. The Example link opens your own space. Local sign-in uses a development identity; hosted sign-in uses ChatGPT.
+Open `Start Commonplace.command` on this Mac, then visit http://127.0.0.1:3100/ for your local space. The desktop buddy opens alongside it. Open a conversation in a single Codex window and drag the desktop buddy over the conversation area to connect. Local sign-in uses a development identity. The optional sample collection is at `/?demo=1`.
 
 The collection starts with a picker, square blocks, an add button, and the buddy. Click a block for its contents and source. Click the buddy for connection, session, and account controls.
 
