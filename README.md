@@ -10,7 +10,7 @@ The collection starts with a picker, square blocks, an add button, and the buddy
 
 ## Connection routes
 
-- **Desktop:** open the companion, connect it to your space, then select a Codex or Claude Code conversation. Read once or follow new turns while the companion runs. It checks the selected transcript every 15 seconds; the webpage refreshes every four seconds.
+- **Desktop (macOS preview):** open one Codex window, open the conversation, then drag the buddy over the conversation area. It connects directly and follows new turns while the companion runs. No Accessibility or screen-recording permission is requested. It checks the selected transcript every 15 seconds; the webpage refreshes every four seconds.
 - **Coding agent:** copy the setup sentence from Connect. The current implementation imports a conversation once through a scoped API token. Automatic setup of a persistent local connector is planned; this draft does not claim an agent keeps monitoring after its turn ends.
 
 Both routes use the same device/subscription APIs. A device token is scoped to writes for its owner; pause stops ingestion and revocation disables the device. Server tokens are hashed; desktop credentials are encrypted using Electron safeStorage. Only explicitly selected transcripts are uploaded.
@@ -21,7 +21,7 @@ Collections, manual blocks, source passages, account sign-in, revocable connecti
 
 ## Unfinished
 
-Hosted AI extraction is not configured. The example thoughts are sample content, not a live extraction. Cursor is supported for agent-provided API imports, not automatic local discovery. Dragging the buddy onto an arbitrary window cannot identify a conversation yet; use the session picker. There is no signed desktop installer or mind map yet.
+Hosted AI extraction is not configured. The example collection is sample content, not a live extraction. Direct drops currently support Codex only. Inactive sidebar rows must be opened first. Claude Code and Cursor feasibility findings are in `COMPATIBILITY.md`; they are not yet connected to the drop handler. There is no signed desktop installer or mind map yet.
 
 The private hosted preview has an additional Sites authentication boundary. A device API token alone does not bypass it. Desktop hosted sign-in and unattended hosted syncing need further validation; local companion syncing is the tested development path.
 
@@ -46,3 +46,7 @@ npm run build
 ```
 
 Verification: protocol and collector tests; local API checks for import, replay, malformed URLs, device isolation, pause/resume, and revocation; browser collection/detail checks; native companion launch. Test API fixtures were removed afterward.
+
+## How the drop works
+
+The local helper reads window geometry and the owning process, never screen pixels or window titles. Codex navigation logs identify the open conversation; its ID resolves to a transcript in the local session index. Unsupported targets, ambiguous windows, sidebar drops, and missing navigation records fail without uploading. This uses undocumented local formats and may require updates after Codex upgrades. A browser alone cannot access this local state; the preview still runs a local Electron companion.

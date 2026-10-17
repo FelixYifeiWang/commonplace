@@ -14,7 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "test": "node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit",
-    "desktop": "electron desktop/main.mjs"
+    "desktop": "node desktop/build-native.mjs && electron desktop/main.mjs",
+    "desktop:build": "node desktop/build-native.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

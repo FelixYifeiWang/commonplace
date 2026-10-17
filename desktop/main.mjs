@@ -11,6 +11,11 @@ import {
   nativeImage,
 } from "electron";
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { resolveLocalTarget } from "./target.mjs";
+import { createDragController } from "./drag.mjs";
+const exec = promisify(execFile);
 import fs from "node:fs/promises";
 import { pathToFileURL, fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -21,7 +26,9 @@ let win,
   connection = null,
   subscriptions = [],
   cursors = {},
-  available = [],
+  dragController,
+  expanded = false,
+  targetTitle = "",
   busy = false,
   status = "waiting",
   lastError = "";
@@ -64,7 +71,7 @@ async function request(url, options) {
   return net.fetch(url, { ...options, credentials: "include" });
 }
 async function tick() {
-  if (!connection || busy) return;
+  if (!connection || busy || dragController?.isDragging()) return;
   busy = true;
   try {
     for (const subscription of subscriptions.filter(
@@ -95,6 +102,77 @@ async function tick() {
   } finally {
     busy = false;
   }
+}
+function setExpanded(value) {
+  expanded = value;
+  const bounds = win.getBounds();
+  const area = screen.getDisplayMatching(bounds).workArea;
+  const width = value ? 320 : 104,
+    height = value ? 330 : 112;
+  win.setBounds(
+    {
+      x: Math.max(area.x, Math.min(bounds.x, area.x + area.width - width)),
+      y: Math.max(area.y, Math.min(bounds.y, area.y + area.height - height)),
+      width,
+      height,
+    },
+    false,
+  );
+}
+async function subscribeSource(source) {
+  if (!connection) {
+    const response = await request(`${ORIGIN}/api/devices`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Desktop buddy" }),
+    });
+    if (
+      !response.ok ||
+      !response.headers.get("content-type")?.includes("application/json")
+    )
+      throw new Error("Sign in to your space, then drop again.");
+    const device = await response.json();
+    await pair({ origin: ORIGIN, token: device.token });
+  }
+  const response = await request(`${ORIGIN}/api/subscribe`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${connection.token}`,
+    },
+    body: JSON.stringify({
+      sessionId: source.sessionId,
+      title: source.title,
+      provider: source.provider,
+      mode: "follow",
+    }),
+  });
+  if (!response.headers.get("content-type")?.includes("application/json"))
+    throw new Error("Sign in to your space, then drop again.");
+  const result = await response.json();
+  if (!response.ok)
+    throw new Error(result.error || "Could not connect this conversation.");
+  const existing = subscriptions.find((s) => s.id === result.subscriptionId);
+  if (existing)
+    Object.assign(existing, {
+      paused: false,
+      done: false,
+      mode: "follow",
+      file: source.file,
+    });
+  else
+    subscriptions.push({
+      id: result.subscriptionId,
+      title: source.title,
+      provider: source.provider,
+      file: source.file,
+      mode: "follow",
+      paused: false,
+      done: false,
+    });
+  await persist();
+  // Start after the drop has restored the buddy so errors remain visible.
+  setTimeout(() => void tick(), 250);
 }
 async function handleProtocol(raw) {
   try {
@@ -154,12 +232,14 @@ if (!lock) {
       } else app.setAsDefaultProtocolClient("commonplace");
       const area = screen.getPrimaryDisplay().workArea;
       win = new BrowserWindow({
-        width: 360,
-        height: 570,
-        x: area.x + area.width - 384,
-        y: area.y + area.height - 594,
+        width: 104,
+        height: 112,
+        x: area.x + area.width - 128,
+        y: area.y + area.height - 136,
         frame: false,
         transparent: true,
+        backgroundColor: "#00000000",
+        hasShadow: false,
         resizable: false,
         alwaysOnTop: true,
         skipTaskbar: true,
@@ -184,6 +264,8 @@ if (!lock) {
       });
       register("companion:snapshot", () => ({
         connected: !!connection,
+        expanded,
+        targetTitle,
         subscriptions: subscriptions.map((s) => ({
           id: s.id,
           title: s.title,
@@ -199,54 +281,34 @@ if (!lock) {
         origin: ORIGIN,
       }));
       register("companion:pair", pair);
-      register("companion:discover", async () => {
-        available = await collector.discoverSessions();
-        return available.map((s) => ({
-          id: s.id,
-          title: s.title,
-          provider: s.provider,
-          updatedAt: s.updatedAt,
-          sessionId: s.sessionId,
-        }));
-      });
-      register("companion:subscribe", async ({ id, mode }) => {
-        if (!connection) throw new Error("Connect this computer first.");
-        const source = available.find((s) => s.id === id);
-        if (!source) throw new Error("Choose a session from the list.");
-        const response = await request(`${connection.origin}/api/subscribe`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${connection.token}`,
-          },
-          body: JSON.stringify({
-            sessionId: source.sessionId,
-            title: source.title,
-            provider: source.provider,
-            mode: mode === "once" ? "once" : "follow",
-          }),
-        });
-        if (!response.headers.get("content-type")?.includes("application/json"))
-          throw new Error(
-            "Sign in to the web space to complete the connection.",
+      dragController = createDragController({
+        window: win,
+        cursor: () => screen.getCursorScreenPoint(),
+        inspect: async (point) => {
+          const { stdout } = await exec(
+            path.join(__dirname, "native/bin/commonplace-target"),
+            [String(point.x), String(point.y)],
+            { timeout: 8000, maxBuffer: 64 * 1024 },
           );
-        const result = await response.json();
-        if (!response.ok)
-          throw new Error(result.error || "Could not subscribe.");
-        if (!subscriptions.some((s) => s.id === result.subscriptionId))
-          subscriptions.push({
-            id: result.subscriptionId,
-            title: source.title,
-            provider: source.provider,
-            file: source.file,
-            mode: mode === "once" ? "once" : "follow",
-            paused: false,
-            done: false,
-          });
-        await persist();
-        void tick();
-        return { ok: true };
+          return JSON.parse(stdout);
+        },
+        resolve: resolveLocalTarget,
+        subscribe: subscribeSource,
+        report: (value) => {
+          status = value.state;
+          if (value.error !== undefined) lastError = value.error;
+          if (value.target !== undefined) targetTitle = value.target;
+        },
       });
+      register("companion:drag-start", () => dragController.start());
+      register("companion:drag-end", async () => {
+        const result = await dragController.end();
+        if (result.click) setExpanded(!expanded);
+        else setExpanded(!result.connected);
+        return result;
+      });
+      register("companion:drag-cancel", () => dragController.cancel());
+      register("companion:toggle", () => setExpanded(!expanded));
       register("companion:pause", async (id) => {
         const source = subscriptions.find((s) => s.id === id);
         if (!source) throw new Error("Session not found.");
@@ -275,6 +337,7 @@ if (!lock) {
       });
       register("companion:open-space", () => shell.openExternal(ORIGIN));
       register("companion:hide", () => win.hide());
+      win.on("closed", () => dragController?.cancel());
       const authCheck = await net.fetch(`${ORIGIN}/api/workspace`, {
         redirect: "manual",
       });

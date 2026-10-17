@@ -37,9 +37,16 @@ export async function POST(request: Request) {
           409,
           "This subscription was disconnected. Create a new device connection to reconnect.",
         );
+      // A deliberate new drop resumes the same subscription instead of creating a duplicate.
+      if (body.mode === "follow") {
+        await db
+          .update(sessions)
+          .set({ mode: "follow", state: "reading" })
+          .where(eq(sessions.id, existing.id));
+      }
       return Response.json({
         subscriptionId: existing.id,
-        state: existing.state,
+        state: body.mode === "follow" ? "reading" : existing.state,
       });
     }
     let collectionId = body.collectionId;
@@ -62,38 +69,34 @@ export async function POST(request: Request) {
       collectionId = c?.id;
       if (!collectionId) {
         collectionId = crypto.randomUUID();
-        await db
-          .insert(collections)
-          .values({
-            id: collectionId,
-            ownerId: device.ownerId,
-            name: "Collected thoughts",
-            description: "Ideas from your conversations.",
-            createdAt: new Date().toISOString(),
-          });
+        await db.insert(collections).values({
+          id: collectionId,
+          ownerId: device.ownerId,
+          name: "Collected thoughts",
+          description: "Ideas from your conversations.",
+          createdAt: new Date().toISOString(),
+        });
       }
     }
     const id = crypto.randomUUID(),
       now = new Date().toISOString();
     await db.batch([
-      db
-        .insert(sessions)
-        .values({
-          id,
-          ownerId: device.ownerId,
-          deviceId: device.id,
-          collectionId,
-          title:
-            typeof body.title === "string"
-              ? body.title.slice(0, 120)
-              : `A session with ${body.provider}`,
-          provider: body.provider,
-          externalId: body.sessionId,
-          mode: body.mode === "once" ? "once" : "follow",
-          state: "reading",
-          tokenHash: await hash(newToken()),
-          createdAt: now,
-        }),
+      db.insert(sessions).values({
+        id,
+        ownerId: device.ownerId,
+        deviceId: device.id,
+        collectionId,
+        title:
+          typeof body.title === "string"
+            ? body.title.slice(0, 120)
+            : `A session with ${body.provider}`,
+        provider: body.provider,
+        externalId: body.sessionId,
+        mode: body.mode === "once" ? "once" : "follow",
+        state: "reading",
+        tokenHash: await hash(newToken()),
+        createdAt: now,
+      }),
       db
         .update(devices)
         .set({ lastSeen: now })

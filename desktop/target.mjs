@@ -1,0 +1,121 @@
+import { readdir, realpath } from "node:fs/promises";
+import { join, relative, isAbsolute } from "node:path";
+import { homedir } from "node:os";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { readOpenConversation } from "./activity.mjs";
+const exec = promisify(execFile);
+const normalized = (value) =>
+  String(value || "")
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .trim();
+
+export function resolveTarget(target, sessions) {
+  if (target.bundleId !== "com.openai.codex")
+    throw new Error(
+      "Drop onto a Codex conversation. Other apps are not supported yet.",
+    );
+  const labels = (target.labels || []).map(normalized).filter(Boolean);
+  const ids = new Set(
+    (target.urls || []).flatMap(
+      (value) =>
+        String(value).match(
+          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
+        ) || [],
+    ),
+  );
+  const identified = sessions.filter((s) => ids.has(s.sessionId));
+  if (identified.length > 1)
+    throw new Error(
+      "Ambiguous drop. Drop directly onto the conversation title.",
+    );
+  if (identified.length === 1) return identified[0];
+  const matched = sessions.filter((s) =>
+    [s.title, ...(s.aliases || [])].some((title) =>
+      labels.includes(normalized(title)),
+    ),
+  );
+  if (matched.length > 1)
+    throw new Error(
+      "Ambiguous title. These conversations have the same name. Rename one and drop again.",
+    );
+  if (matched.length === 1) return matched[0];
+  throw new Error(
+    "Could not identify this session. Drop directly onto its full title.",
+  );
+}
+
+export async function confineTranscript(file, codexHome) {
+  const canonical = await realpath(file);
+  for (const folder of ["sessions", "archived_sessions"]) {
+    let root;
+    try {
+      root = await realpath(join(codexHome, folder));
+    } catch (error) {
+      if (error.code === "ENOENT") continue;
+      throw error;
+    }
+    const local = relative(root, canonical);
+    if (
+      local &&
+      !local.startsWith("..") &&
+      !isAbsolute(local) &&
+      canonical.endsWith(".jsonl")
+    )
+      return canonical;
+  }
+  throw new Error(
+    "The selected transcript is outside the Codex session folder.",
+  );
+}
+
+export async function codexSessionMetadata(
+  codexHome = process.env.CODEX_HOME || join(homedir(), ".codex"),
+) {
+  const names = (await readdir(codexHome))
+    .filter((name) => /^state_\d+\.sqlite$/.test(name))
+    .sort((a, b) => Number(b.match(/\d+/)[0]) - Number(a.match(/\d+/)[0]));
+  if (!names.length)
+    throw new Error("Codex session index not found on this computer.");
+  const db = join(codexHome, names[0]);
+  const options = { timeout: 5000, maxBuffer: 8 * 1024 * 1024 };
+  const schema = JSON.parse(
+    (
+      await exec(
+        "/usr/bin/sqlite3",
+        ["-readonly", "-json", db, "PRAGMA table_info(threads);"],
+        options,
+      )
+    ).stdout,
+  );
+  const hasName = schema.some((column) => column.name === "name");
+  // Read only identifiers, titles, and transcript paths; never scan conversation bodies to guess a target.
+  const query = `SELECT id, title, rollout_path${hasName ? ", name" : ""} FROM threads WHERE rollout_path <> '';`;
+  const rows = JSON.parse(
+    (await exec("/usr/bin/sqlite3", ["-readonly", "-json", db, query], options))
+      .stdout || "[]",
+  );
+  return rows.map((row) => ({
+    sessionId: row.id,
+    title: row.name || row.title,
+    aliases: [row.title].filter(Boolean),
+    file: row.rollout_path,
+    provider: "Codex",
+  }));
+}
+
+export async function resolveLocalTarget(
+  target,
+  codexHome = process.env.CODEX_HOME || join(homedir(), ".codex"),
+) {
+  const sessionId = await readOpenConversation(target);
+  const selected = resolveTarget(
+    { bundleId: target.bundleId, urls: [sessionId] },
+    await codexSessionMetadata(codexHome),
+  );
+  return {
+    ...selected,
+    file: await confineTranscript(selected.file, codexHome),
+  };
+}

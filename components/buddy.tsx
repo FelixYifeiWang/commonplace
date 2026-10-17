@@ -12,13 +12,30 @@ export function Buddy({
       className={`buddy-creature ${small ? "small" : ""} state-${state}`}
       aria-hidden="true"
     >
-      <span className="buddy-body">
-        <i className="buddy-eye left" />
-        <i className="buddy-eye right" />
-        <i className="buddy-cheek left" />
-        <i className="buddy-cheek right" />
-      </span>
-      <span className="buddy-shadow" />
+      <svg className="nosy-face" viewBox="0 0 80 80" fill="none">
+        <path
+          className="nosy-outline"
+          d="M71 40C71 58 58 71 40 71C22 71 9 58 9 40C9 22 22 9 40 9C58 9 71 22 71 40Z"
+          fill="white"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        />
+        <g
+          className="nosy-features"
+          stroke="currentColor"
+          strokeWidth="3.3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path className="nosy-brow left" d="M20 29C23 25 28 24 32 26" />
+          <path className="nosy-brow right" d="M47 25C51 22 57 23 60 27" />
+          <g className="nosy-eyes" fill="currentColor" stroke="none">
+            <ellipse cx="27" cy="36" rx="2.3" ry="3" />
+            <ellipse cx="53" cy="34" rx="2.3" ry="3" />
+          </g>
+          <path className="nosy-nose" d="M39 30L34 49L45 49" />
+        </g>
+      </svg>
     </span>
   );
 }

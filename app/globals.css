@@ -3272,3 +3272,158 @@ p {
   color: #999;
   font-size: 10px;
 }
+/* Native buddy: only the character is visible until clicked. */
+body.desktop-buddy-page {
+  background: transparent !important;
+  overflow: hidden;
+}
+.native-buddy {
+  width: 104px;
+  min-height: 112px;
+  padding: 0;
+  user-select: none;
+}
+.native-buddy.expanded {
+  width: 320px;
+}
+.native-buddy-grab {
+  width: 104px;
+  height: 108px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  touch-action: none;
+  cursor: grab;
+  -webkit-app-region: no-drag;
+}
+.native-buddy-grab.dragging {
+  cursor: grabbing;
+}
+.native-buddy-grab .buddy-creature {
+  pointer-events: none;
+  transform: scale(0.9);
+}
+.native-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #678453;
+  border: 2px solid white;
+  position: absolute;
+  right: 22px;
+  bottom: 23px;
+}
+.native-status-dot.error {
+  background: #b56f55;
+}
+.native-buddy-controls {
+  position: relative;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+  color: #444;
+  padding: 20px;
+  margin: 0 10px 10px;
+  max-height: 210px;
+  overflow-y: auto;
+  box-shadow: 0 3px 12px #0000000a;
+}
+.native-buddy-controls p {
+  font-size: 12px;
+  line-height: 1.5;
+  padding-right: 10px;
+  margin-bottom: 12px;
+}
+.native-buddy-controls .native-error {
+  font-size: 11px;
+  color: #92513c;
+}
+.native-buddy-controls .text-button {
+  margin-top: 14px;
+  font-size: 11px;
+}
+.native-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.nosy-face {
+  width: 100%;
+  height: 100%;
+  color: #202020;
+  overflow: visible;
+}
+.nosy-features {
+  transform-origin: 40px 40px;
+}
+.nosy-eyes {
+  transform-origin: 40px 35px;
+  animation: nosy-blink 7s infinite;
+}
+.nosy-brow {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.buddy-creature.state-reading .nosy-features {
+  animation: nosy-look 2.4s ease-in-out infinite;
+}
+.buddy-creature.state-connecting .nosy-face {
+  animation: nosy-tilt 1.3s ease-in-out infinite;
+}
+.buddy-creature.state-collecting .nosy-brow {
+  animation: nosy-brows 1.6s ease-in-out infinite alternate;
+}
+.buddy-creature.state-paused .nosy-eyes {
+  transform: scaleY(0.25);
+  animation: none;
+}
+.buddy-creature.state-error .nosy-brow.left {
+  transform: rotate(-18deg);
+}
+.buddy-creature.state-error .nosy-brow.right {
+  transform: rotate(18deg);
+}
+@keyframes nosy-blink {
+  0%,
+  43%,
+  47%,
+  100% {
+    transform: scaleY(1);
+  }
+  45% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes nosy-look {
+  0%,
+  100% {
+    transform: translateX(-1px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+@keyframes nosy-tilt {
+  0%,
+  100% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(7deg);
+  }
+}
+@keyframes nosy-brows {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nosy-face,
+  .nosy-face * {
+    animation: none !important;
+  }
+}
