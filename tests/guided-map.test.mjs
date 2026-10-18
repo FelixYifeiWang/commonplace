@@ -1,19 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { guidedPositions, guidedCamera } from "../lib/guided-map.mjs";
+import { guidedBounds, guidedCamera } from "../lib/guided-map.mjs";
 
-test("overview positions are stable and keep cards apart for one to six nodes", () => {
-  for (let count = 1; count <= 6; count++) {
-    const positions = guidedPositions(count);
-    assert.deepEqual(positions, guidedPositions(count));
-    for (const p of positions) {
-      assert.ok(Math.abs(p.x) >= 180 || Math.abs(p.y) >= 160);
-      for (const q of positions) {
-        if (p === q) continue;
-        assert.ok(Math.abs(p.x - q.x) >= 210 || Math.abs(p.y - q.y) >= 190);
-      }
-    }
-  }
+test("focus bounds include the node, summary and every evidence box", () => {
+  const bounds = guidedBounds([
+    { x: 0, y: 0, w: 200, h: 150, cy: 50 },
+    { x: 250, y: 10, w: 200, h: 80, cy: 40 },
+    { x: 500, y: 200, w: 150, h: 240, cy: 50 },
+    { x: -1000, y: 0, w: 0, h: 0, cy: 0 },
+  ]);
+  assert.deepEqual(bounds, { x: -124, y: -74, width: 723, height: 488 });
+});
+test("bounds account for free-mode offsets and empty maps", () => {
+  assert.deepEqual(
+    guidedBounds([{ x: 0, y: 0, w: 100, h: 100, cy: 50, ox: 80, oy: 20 }]),
+    { x: 6, y: -54, width: 148, height: 148 },
+  );
+  assert.ok(Object.values(guidedBounds([])).every(Number.isFinite));
 });
 
 test("camera fits every edge with space reserved for controls", () => {

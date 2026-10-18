@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useEffect, useMemo, useRef } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import Image from "next/image";
 import type { Item } from "@/lib/types";
@@ -12,6 +12,8 @@ import {
 } from "@/lib/session-map.mjs";
 import type { MapNode, SessionDocument } from "@/lib/session-types";
 import { SheetMedia } from "./sheet-media";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { guidedBounds, guidedCamera } from "@/lib/guided-map.mjs";
 // The Gallery tab: do's session map, curated by the model (STORY_CANVAS.md, "Gallery").
 const screenshots = process.env.NEXT_PUBLIC_HOSTED !== "1";
 const LEVELS = ["Overview", "Details", "Messages"];
@@ -50,9 +52,11 @@ type Widget = {
 export function SessionMap({
   doc,
   items,
+  guided = false,
 }: {
   doc: SessionDocument;
   items: Item[];
+  guided?: boolean;
 }) {
   const stageRef = useRef<HTMLDivElement>(null),
     worldRef = useRef<HTMLDivElement>(null),
@@ -61,6 +65,8 @@ export function SessionMap({
     pctRef = useRef<HTMLElement>(null),
     dotsRef = useRef<HTMLSpanElement>(null),
     engine = useRef<Engine | null>(null);
+  const guidedFocus = useRef<{ nodeKey: string; detail?: string } | null>(null);
+  const [focusedNode, setFocusedNode] = useState(-1);
   const media = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const map = useMemo(
     () => visibleSessionMap(doc.map, items),
@@ -81,6 +87,8 @@ export function SessionMap({
     [doc],
   );
   useFonts(nodes);
+  const nodeKey = (n: MapNode) => `${n.itemId || n.url || ""}:${n.label}`;
+  const focused = nodes[focusedNode];
   // The story and items are polled every few seconds; lay out again only when their content changes,
   // so a refresh never undoes the viewer's zoom or drags.
   const docKey = JSON.stringify(map);
@@ -90,6 +98,7 @@ export function SessionMap({
       world = worldRef.current,
       svg = svgRef.current;
     if (!stage || !world || !svg) return;
+    const nodes: MapNode[] = JSON.parse(docKey).nodes.slice(0, 6);
     const W: Record<string, Widget> = {};
     world.querySelectorAll<HTMLElement>("[data-key]").forEach((el) => {
       const key = el.dataset.key!;
@@ -108,6 +117,7 @@ export function SessionMap({
         y: 0,
       };
     });
+    let glideTimer: ReturnType<typeof setTimeout> | undefined;
     let fit = 1,
       cx0 = 0,
       cy0 = 0,
@@ -222,14 +232,27 @@ export function SessionMap({
     }
     function paths() {
       const lines: { d: string; c: string }[] = [];
+      const selectedIndex = guidedFocus.current
+        ? nodes.findIndex((n) => nodeKey(n) === guidedFocus.current!.nodeKey)
+        : -1;
       for (let i = 0; i < count; i++) {
         const m = W["m" + i];
         if (!m || !W.core) continue;
-        lines.push({ d: radialPath(at(W.core), at(m)), c: "trunk" });
+        const highlight = guided && i === selectedIndex ? " is-current" : "";
+        lines.push({
+          d: radialPath(at(W.core), at(m)),
+          c: "trunk" + highlight,
+        });
         if (W["b" + i])
-          lines.push({ d: radialPath(at(m), center(W["b" + i])), c: "bl" });
+          lines.push({
+            d: radialPath(at(m), center(W["b" + i])),
+            c: "bl" + highlight,
+          });
         for (const key of detailsOf(i))
-          lines.push({ d: radialPath(at(m), center(W[key])), c: "det" });
+          lines.push({
+            d: radialPath(at(m), center(W[key])),
+            c: "det" + highlight,
+          });
       }
       return lines;
     }
@@ -244,7 +267,10 @@ export function SessionMap({
           .join("");
         svg!.classList.add("anim");
       } else
-        [...svg!.children].forEach((p, i) => p.setAttribute("d", lines[i].d));
+        [...svg!.children].forEach((p, i) => {
+          p.setAttribute("d", lines[i].d);
+          p.setAttribute("class", lines[i].c);
+        });
     }
     function view() {
       world!.style.transform = `translate(${stage!.clientWidth / 2 + px - cx0 * z}px,${(stage!.clientHeight - 60) / 2 + py - cy0 * z}px) scale(${z})`;
@@ -253,7 +279,7 @@ export function SessionMap({
       stage!.style.setProperty("--dx", `${stage!.clientWidth / 2}px`);
       stage!.style.setProperty("--dy", `${stage!.clientHeight / 2}px`);
       const rel = z / fit,
-        level = zoomLevel(rel);
+        level = guided ? (guidedFocus.current ? 2 : 0) : zoomLevel(rel);
       if (world!.dataset.lvl !== String(level)) {
         world!.dataset.lvl = String(level);
         draw(false);
@@ -275,25 +301,63 @@ export function SessionMap({
       z = nz;
       view();
     }
+    function startGlide() {
+      clearTimeout(glideTimer);
+      world!.classList.add("glide");
+      glideTimer = setTimeout(() => world!.classList.remove("glide"), 700);
+    }
+    function guidedFrame(key?: string, animate = true) {
+      const selected = guidedFocus.current;
+      const index = selected
+        ? nodes.findIndex((n) => nodeKey(n) === selected.nodeKey)
+        : -1;
+      if (index < 0) guidedFocus.current = null;
+      setFocusedNode(index);
+      // The exact same three layers as free mode: output, references, evidence.
+      world!.dataset.lvl = index < 0 ? "0" : "2";
+      if (index < 0) delete world!.dataset.focus;
+      else world!.dataset.focus = String(index);
+      Object.values(W).forEach((w) => {
+        w.el.classList.toggle("gm-current", w.node === index && index >= 0);
+      });
+      let group = Object.values(W).filter((w) =>
+        index < 0 ? !w.det : w.node === index,
+      );
+      if (key && W[key]) group = [W[key]];
+      const camera = guidedCamera(guidedBounds(group), {
+        width: stage!.clientWidth,
+        height: stage!.clientHeight,
+      });
+      if (animate) startGlide();
+      z = camera.scale;
+      px = camera.x - stage!.clientWidth / 2 + cx0 * z;
+      py = camera.y - (stage!.clientHeight - 60) / 2 + cy0 * z;
+      view();
+      draw(false);
+    }
     function glideTo(wx: number, wy: number, nz: number) {
       touched = true;
-      world!.classList.add("glide");
+      startGlide();
       z = nz;
       px = -(wx - cx0) * z;
       py = -(wy - cy0) * z;
       view();
-      setTimeout(() => world!.classList.remove("glide"), 650);
     }
     const local = (e: { clientX: number; clientY: number }) => {
       const r = stage!.getBoundingClientRect();
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
     const onWheel = (e: WheelEvent) => {
+      if (guided) return;
       e.preventDefault();
       const p = local(e);
       zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)), p.x, p.y);
     };
     const onDown = (e: PointerEvent) => {
+      if (guided || (e.target as Element).closest(".gm-navigation, .gm-zoom"))
+        return;
+      clearTimeout(glideTimer);
+      world!.classList.remove("glide");
       pts.set(e.pointerId, e);
       down = true;
       moved = false;
@@ -398,7 +462,10 @@ export function SessionMap({
             Math.min(1.7, Math.max(0.55, img.naturalWidth / img.naturalHeight)),
           ),
         );
-      if (!touched) {
+      if (guided) {
+        layout();
+        guidedFrame(guidedFocus.current?.detail, false);
+      } else if (!touched) {
         layout();
         z = fit;
         px = py = 0;
@@ -407,8 +474,13 @@ export function SessionMap({
       draw(false);
     };
     const resize = new ResizeObserver(() => {
-      measureFit();
-      view();
+      if (guided) {
+        layout();
+        guidedFrame(guidedFocus.current?.detail, false);
+      } else {
+        measureFit();
+        view();
+      }
     });
     stage.addEventListener("wheel", onWheel, { passive: false });
     stage.addEventListener("pointerdown", onDown);
@@ -420,7 +492,12 @@ export function SessionMap({
     resize.observe(stage);
     engine.current = {
       focusNode(i) {
-        if (moved) return;
+        if (moved || !nodes[i]) return;
+        if (guided) {
+          guidedFocus.current = { nodeKey: nodeKey(nodes[i]) };
+          guidedFrame();
+          return;
+        }
         const ps = Object.values(W)
           .filter((w) => w.node === i)
           .map(center);
@@ -432,6 +509,14 @@ export function SessionMap({
       },
       focusOn(key) {
         if (moved || !W[key]) return;
+        if (guided) {
+          const i = W[key].node;
+          if (i !== undefined && nodes[i]) {
+            guidedFocus.current = { nodeKey: nodeKey(nodes[i]), detail: key };
+            guidedFrame(key);
+          }
+          return;
+        }
         const p = center(W[key]);
         glideTo(p.x, p.y, fit * 2.8);
       },
@@ -439,6 +524,11 @@ export function SessionMap({
         zoomAt(f, stage.clientWidth / 2, stage.clientHeight / 2);
       },
       reset() {
+        if (guided) {
+          guidedFocus.current = null;
+          guidedFrame();
+          return;
+        }
         Object.values(W).forEach((w) => {
           w.ox = w.oy = 0;
           place(w);
@@ -454,7 +544,13 @@ export function SessionMap({
     z = fit;
     view();
     draw(true);
+    if (guided) guidedFrame(guidedFocus.current?.detail, false);
+    else {
+      delete world.dataset.focus;
+      Object.values(W).forEach((w) => w.el.classList.remove("gm-current"));
+    }
     return () => {
+      clearTimeout(glideTimer);
       stage.removeEventListener("wheel", onWheel);
       stage.removeEventListener("pointerdown", onDown);
       stage.removeEventListener("click", onClick, true);
@@ -465,11 +561,48 @@ export function SessionMap({
       resize.disconnect();
       engine.current = null;
     };
-  }, [docKey, mediaKey]);
+  }, [docKey, mediaKey, guided]);
   const { center } = map;
   return (
-    <section className="gm" aria-label="Gallery: session map">
-      <div className="gm-stage" ref={stageRef}>
+    <section
+      className={`gm${guided ? " gm-guided" : ""}`}
+      aria-label={guided ? "Guided session map" : "Gallery: session map"}
+    >
+      <div
+        className="gm-stage"
+        ref={stageRef}
+        tabIndex={guided ? 0 : undefined}
+        onKeyDown={
+          guided
+            ? (event) => {
+                if (
+                  event.altKey ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey
+                )
+                  return;
+                if (event.key === "Escape") engine.current?.reset();
+                if (
+                  (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+                  nodes.length
+                ) {
+                  event.preventDefault();
+                  const next =
+                    focusedNode < 0
+                      ? event.key === "ArrowRight"
+                        ? 0
+                        : nodes.length - 1
+                      : (focusedNode +
+                          (event.key === "ArrowRight" ? 1 : -1) +
+                          nodes.length) %
+                        nodes.length;
+                  engine.current?.focusNode(next);
+                }
+              }
+            : undefined
+        }
+      >
         <div className="gm-world" ref={worldRef} data-lvl="0">
           <svg className="gm-lines" ref={svgRef} aria-hidden="true" />
           <Target
@@ -477,6 +610,7 @@ export function SessionMap({
             className="gm-core"
             dataKey="core"
             label={center.label}
+            onActivate={() => engine.current?.reset()}
           >
             <span className="gm-box">
               <Ring />
@@ -492,7 +626,7 @@ export function SessionMap({
           {nodes.map((n, i) => (
             <Fragment key={`${i}-${n.label}`}>
               <Target
-                url={n.url}
+                url={guided ? null : n.url}
                 className={`gm-tile w-${n.weight}`}
                 dataKey={`m${i}`}
                 node={i}
@@ -552,38 +686,84 @@ export function SessionMap({
             </Fragment>
           ))}
         </div>
-        <div className="gm-zoom" title="Scroll to zoom, drag to move">
-          <button
-            type="button"
-            aria-label="Zoom out"
-            onClick={() => engine.current?.zoomBy(1 / 1.35)}
-          >
-            −
-          </button>
-          <span className="gm-dots" ref={dotsRef}>
-            <i />
-            <i />
-            <i />
-          </span>
-          <span className="gm-level">
-            <b ref={levelRef}>Overview</b> <em ref={pctRef}>100%</em>
-          </span>
-          <button
-            type="button"
-            aria-label="Zoom in"
-            onClick={() => engine.current?.zoomBy(1.35)}
-          >
-            +
-          </button>
-          <button
-            type="button"
-            aria-label="Reset layout"
-            title="Reset layout"
-            onClick={() => engine.current?.reset()}
-          >
-            ↺
-          </button>
-        </div>
+        {guided ? (
+          <nav className="gm-navigation" aria-label="Map navigation">
+            <button
+              type="button"
+              aria-label="Previous node"
+              onClick={() =>
+                engine.current?.focusNode(
+                  focusedNode < 0
+                    ? nodes.length - 1
+                    : (focusedNode - 1 + nodes.length) % nodes.length,
+                )
+              }
+            >
+              <ArrowLeft size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => engine.current?.reset()}
+              aria-label="Show map overview"
+            >
+              {focusedNode < 0
+                ? "Overview"
+                : `${focusedNode + 1} / ${nodes.length} · Overview`}
+            </button>
+            <button
+              type="button"
+              aria-label="Next node"
+              onClick={() =>
+                engine.current?.focusNode((focusedNode + 1) % nodes.length)
+              }
+            >
+              <ArrowRight size={15} />
+            </button>
+            {focused?.url && (
+              <a
+                href={focused.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open ${focused.label}`}
+              >
+                ↗
+              </a>
+            )}
+          </nav>
+        ) : (
+          <div className="gm-zoom" title="Scroll to zoom, drag to move">
+            <button
+              type="button"
+              aria-label="Zoom out"
+              onClick={() => engine.current?.zoomBy(1 / 1.35)}
+            >
+              −
+            </button>
+            <span className="gm-dots" ref={dotsRef}>
+              <i />
+              <i />
+              <i />
+            </span>
+            <span className="gm-level">
+              <b ref={levelRef}>Overview</b> <em ref={pctRef}>100%</em>
+            </span>
+            <button
+              type="button"
+              aria-label="Zoom in"
+              onClick={() => engine.current?.zoomBy(1.35)}
+            >
+              +
+            </button>
+            <button
+              type="button"
+              aria-label="Reset layout"
+              title="Reset layout"
+              onClick={() => engine.current?.reset()}
+            >
+              ↺
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -636,20 +816,6 @@ function pictureOf(item: Item) {
   if (item.kind === "image" && (item.fileKey || item.imageUrl))
     return { fit: "fit", src: "" };
   return pictureFor(item, { screenshots });
-}
-export function MapMediaPreview({
-  item,
-  fallback = null,
-}: {
-  item: Item;
-  fallback?: ReactNode;
-}) {
-  const picture = pictureOf(item);
-  return picture ? (
-    <Picture item={item} fit={picture.fit} src={picture.src} />
-  ) : (
-    fallback
-  );
 }
 function Picture({ item, fit, src }: { item: Item; fit: string; src: string }) {
   return (

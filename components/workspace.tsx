@@ -39,6 +39,10 @@ import { OpenBuddy } from "./open-buddy";
 import { SetupDialog } from "./setup-dialog";
 import { RecentlyDeleted } from "./recently-deleted";
 import { itemAvailable } from "@/lib/item-retention.mjs";
+import {
+  readWorkspaceNavigation,
+  workspaceNavigationUrl,
+} from "@/lib/workspace-navigation.mjs";
 
 const EMPTY: WorkspaceData = {
   collections: [],
@@ -113,6 +117,36 @@ export default function Workspace({
   // Dev mode reveals the item grid and guided map for this workspace visit.
   const [view, setView] = useState<"gallery" | "map" | "story">("map");
   const [devMode, setDevMode] = useState(false);
+  const [navigationReady, setNavigationReady] = useState(false);
+  useEffect(() => {
+    const restore = () => {
+      const state = readWorkspaceNavigation(window.location.href, demo);
+      setSelected(state.selected);
+      setScreen(state.screen as "collection" | "trash" | "settings");
+      setView(state.view as "gallery" | "map" | "story");
+      setDevMode(state.devMode);
+      setNavigationReady(true);
+    };
+    restore();
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, [demo]);
+  useEffect(() => {
+    if (!navigationReady) return;
+    const url = workspaceNavigationUrl(window.location.href, {
+      selected,
+      screen,
+      view,
+      devMode,
+    });
+    if (
+      url !==
+      window.location.pathname + window.location.search + window.location.hash
+    ) {
+      window.history.replaceState(window.history.state, "", url);
+    }
+  }, [navigationReady, selected, screen, view, devMode]);
+
   useEffect(() => {
     const toggleDevMode = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
@@ -145,6 +179,11 @@ export default function Workspace({
     const revision = favoriteRevision.current;
     try {
       const result = await api<WorkspaceData>("/api/workspace");
+      setSelected((id) =>
+        id === "all" || result.collections.some((c) => c.id === id)
+          ? id
+          : "all",
+      );
       setData((current) =>
         overlayFavorites(
           revision === favoriteRevision.current
@@ -175,6 +214,11 @@ export default function Workspace({
       .then((result) => {
         if (!cancelled) {
           setData(overlayFavorites(result, favoritePending.current));
+          setSelected((id) =>
+            id === "all" || result.collections.some((c) => c.id === id)
+              ? id
+              : "all",
+          );
           setError("");
         }
       })
@@ -608,7 +652,7 @@ export default function Workspace({
             {!demo && ready && data.user && (
               <OpenBuddy onSetup={() => openModal("setup")} />
             )}
-            {(screen !== "collection" || selected === "all") && (
+            {devMode && (screen !== "collection" || selected === "all") && (
               <button
                 className="button new-collection"
                 onClick={() => openModal("collection")}
@@ -629,7 +673,7 @@ export default function Workspace({
               : undefined
           }
         >
-          {!ready ? (
+          {!ready || !navigationReady ? (
             <div className="loading-state">
               <Loader2 className="spin" size={18} aria-label="Loading" />
             </div>
@@ -653,14 +697,20 @@ export default function Workspace({
               {screen === "collection" && !collections.length && !demo && (
                 <div className="welcome first-collection">
                   <h1>Your first collection</h1>
-                  <p>Add things yourself, or connect a session with Nox.</p>
+                  <p>
+                    {devMode
+                      ? "Add things yourself, or connect a session with Nox."
+                      : "Connect a session with Nox to begin."}
+                  </p>
                   <div className="first-collection-actions">
-                    <button
-                      className="button primary"
-                      onClick={() => openModal("collection")}
-                    >
-                      Create collection
-                    </button>
+                    {devMode && (
+                      <button
+                        className="button primary"
+                        onClick={() => openModal("collection")}
+                      >
+                        Create collection
+                      </button>
+                    )}
                     {hasBuddy ? (
                       <OpenBuddy onSetup={() => openModal("setup")} />
                     ) : (

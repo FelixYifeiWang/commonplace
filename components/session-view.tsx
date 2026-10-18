@@ -95,9 +95,13 @@ export function SessionView({
   const session = demo ? SAMPLE_SESSION : story?.session;
   const working = story?.enabled && story.pending && story.status !== "error";
   const problem = error || story?.error;
+  const hasView =
+    mode === "gallery"
+      ? !!session?.map?.nodes?.length
+      : !!session?.steps.length || !!story?.beats.length;
   return (
     <section
-      className={`session-view session-${mode}`}
+      className={`session-view session-${mode}${hasView ? "" : " session-waiting"}`}
       aria-label={mode === "gallery" ? "Collection map" : "Collection story"}
     >
       <div className="session-feedback" aria-live="polite">
@@ -119,7 +123,7 @@ export function SessionView({
       </div>
       {session && mode === "gallery" && session.map?.nodes?.length ? (
         devMode ? (
-          <DevSessionMap doc={session} items={items} onOpen={onOpen} />
+          <DevSessionMap doc={session} items={items} />
         ) : (
           <SessionMap doc={session} items={items} />
         )

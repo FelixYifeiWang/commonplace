@@ -1,13 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import {
-  Check,
-  ChevronDown,
-  LayoutGrid,
-  Search,
-  Star,
-  Trash2,
-} from "lucide-react";
+import { ChevronDown, LayoutGrid, Search, Star, Trash2 } from "lucide-react";
 import type { Collection } from "@/lib/types";
 export function CollectionPicker({
   collections,
@@ -87,24 +80,38 @@ export function CollectionPicker({
             />
           </label>
           <div className="collection-menu-overview">
-            <button className="channel-menu-all" onClick={() => choose("all")}>
+            <button
+              className="channel-menu-all"
+              aria-current={
+                selected === "all" && screen === "collection"
+                  ? "page"
+                  : undefined
+              }
+              onClick={() => choose("all")}
+            >
               <LayoutGrid size={14} />
               <span>All collections</span>
-              {selected === "all" && screen === "collection" && (
-                <Check size={13} />
-              )}
             </button>
           </div>
           <div className="channel-menu-list">
             {collections
               .filter((c) => c.name.toLowerCase().includes(query.toLowerCase()))
               .map((c) => (
-                <div className="channel-menu-row" key={c.id}>
-                  <button onClick={() => choose(c.id)} title={c.name}>
+                <div
+                  className="channel-menu-row"
+                  data-selected={selected === c.id && screen === "collection"}
+                  key={c.id}
+                >
+                  <button
+                    onClick={() => choose(c.id)}
+                    title={c.name}
+                    aria-current={
+                      selected === c.id && screen === "collection"
+                        ? "page"
+                        : undefined
+                    }
+                  >
                     <span>{c.name}</span>
-                    {selected === c.id && screen === "collection" && (
-                      <Check size={13} />
-                    )}
                   </button>
                   <button
                     className="channel-favorite"

@@ -7774,243 +7774,80 @@ a.gm-detail b::after {
   }
 }
 
-/* Dev mode: composed reference clusters, navigated by a bounded camera. */
+/* Dev mode uses the same map and its three content layers, with a guided camera. */
 .dev-map {
   position: relative;
 }
-.guided-stage {
-  position: relative;
-  height: calc(100dvh - 130px);
-  min-height: 420px;
-  overflow: hidden;
-  isolation: isolate;
-  background: radial-gradient(circle, #dedede 0.65px, transparent 0.8px)
-    center / 24px 24px;
+.gm-guided .gm-stage {
+  cursor: default;
+  touch-action: pan-y;
 }
-.guided-stage:focus-visible {
-  outline: 1px solid #aaa;
-  outline-offset: -2px;
+.gm-guided .gm-stage:active {
+  cursor: default;
 }
-.guided-world {
-  position: absolute;
-  top: 0;
-  left: 0;
-  transform-origin: 0 0;
+.gm-guided .gm-world.glide {
   transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
 }
-.guided-map :is(button, a),
-.map-navigation-toggle {
-  font: inherit;
-  color: inherit;
-  text-decoration: none;
-}
-.guided-map button {
-  border: 0;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-}
-.guided-lines {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: visible;
-  pointer-events: none;
-}
-.guided-lines path {
-  fill: none;
-  stroke: #d6d6d6;
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
+.gm-guided .gm-world [data-node] {
   transition: opacity 350ms;
 }
-.guided-core {
-  position: absolute;
-  width: 150px;
-  left: -75px;
-  top: -50px;
-  display: grid;
-  justify-items: center;
-  gap: 20px;
-  font-size: 14px !important;
-  line-height: 1.4;
-  text-align: center;
-}
-.guided-orbit {
-  width: 66px;
-  height: 66px;
-  border: 3px dotted #888;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 0 12px #fff;
-}
-.guided-node {
-  position: absolute;
-  width: 180px;
-  transform: translate(-50%, -82px);
-  display: grid;
-  gap: 14px;
-  text-align: center;
-  transition: opacity 350ms;
-}
-.guided-node b {
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-.guided-preview {
-  display: grid;
-  place-items: center;
-  position: relative;
-  width: 100%;
-  height: 146px;
-  overflow: hidden;
-  container-type: inline-size;
-  border-radius: 3px;
-  background: #f8f8f8;
-  transition: box-shadow 180ms;
-}
-.guided-node:hover .guided-preview {
-  box-shadow: 0 0 0 1px #aaa;
-}
-.guided-preview .gm-pic {
-  display: block;
-  width: 100%;
-  height: 100%;
-  padding: 10px;
-}
-.guided-preview .gm-sheet {
-  display: none;
-}
-.guided-preview .gm-page img {
-  border-radius: 1px;
-  box-shadow: none;
-}
-.guided-words {
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  padding: 0 16px;
-  font-family: Georgia, serif;
-  font-size: 18px;
-  line-height: 1.5;
-  color: #595959;
-}
-.is-focused .guided-node,
-.is-focused .guided-core {
-  opacity: 0.07;
-  pointer-events: none;
-}
-.is-focused .guided-lines {
+.gm-guided .gm-world[data-focus] [data-node]:not(.gm-current) {
   opacity: 0.16;
 }
-.guided-focus {
-  position: absolute;
-  padding: 8px;
-  background: rgb(255 255 255 / 0.97);
-  border-radius: 8px;
-  animation: guided-focus-in 400ms ease both;
+.gm-guided .gm-world[data-focus] .gm-core {
+  opacity: 0.45;
 }
-.guided-focus-heading {
-  display: grid;
-  grid-template-columns: 190px 1fr;
-  gap: 28px;
-  align-items: center;
+.gm-guided .gm-world[data-focus] .gm-core:hover {
+  opacity: 1;
 }
-.guided-focus-heading .guided-preview {
-  height: 180px;
+.gm-guided .gm-world[data-focus] .gm-lines path {
+  opacity: 0.18;
 }
-.guided-focus h2 {
-  margin: 0 0 10px;
-  font-size: 22px;
-  line-height: 1.2;
-  font-weight: 500;
-  letter-spacing: -0.04em;
+.gm-guided .gm-world[data-focus] .gm-lines path.is-current {
+  opacity: 1;
+  stroke: #aaa;
 }
-.guided-focus p {
-  margin: 0;
-  color: #666;
-  font-size: 14px;
-  line-height: 1.6;
-}
-.guided-focus-heading :is(button, a) {
-  display: inline-block;
-  margin-top: 16px;
-  font-size: 12px;
-  color: #777;
-}
-.guided-focus-heading :is(button, a):hover {
-  color: #111;
-}
-.guided-references {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-  margin-top: 40px;
-  padding-top: 24px;
-  border-top: 1px solid #e8e8e8;
-}
-.guided-references > :is(button, a, div) {
-  min-width: 0;
-  text-align: left;
-}
-.guided-references .guided-preview {
-  height: 116px;
-  margin-bottom: 12px;
-}
-.guided-references b {
-  display: block;
-  font-size: 12px;
-  line-height: 1.5;
-  font-weight: 500;
-}
-.guided-references .guided-words {
-  font-size: 14px;
-}
-.guided-references :is(button, a):hover .guided-preview {
-  box-shadow: 0 0 0 1px #aaa;
-}
-.guided-navigation,
+.gm-navigation,
 .map-navigation-toggle {
   position: absolute;
   bottom: 20px;
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   background: rgb(255 255 255 / 0.96);
   border: 1px solid #e9e9e9;
   border-radius: 30px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.03);
 }
-.guided-navigation {
+.gm-navigation {
   left: 50%;
   transform: translateX(-50%);
   padding: 5px;
 }
-.guided-navigation button {
+.gm-navigation :is(button, a) {
   display: grid;
   place-items: center;
   min-width: 32px;
   height: 32px;
   border-radius: 20px;
   color: #777;
+  font-size: 12px;
+  text-decoration: none;
 }
-.guided-navigation button:hover {
+.gm-navigation :is(button, a):hover {
   background: #f5f5f5;
   color: #111;
 }
-.guided-navigation .guided-overview {
-  padding: 0 10px;
-  min-width: 108px;
-  font-size: 12px;
+.gm-navigation button:nth-child(2) {
+  padding: 0 8px;
+  min-width: 100px;
   white-space: nowrap;
 }
 .map-navigation-toggle {
   right: 20px;
   padding: 10px 14px;
+  gap: 8px;
   font-size: 12px;
   cursor: pointer;
   color: #666;
@@ -8019,61 +7856,122 @@ a.gm-detail b::after {
   border-color: #aaa;
   color: #111;
 }
-.is-compact .guided-focus-heading {
-  grid-template-columns: 112px 1fr;
-  gap: 16px;
-}
-.is-compact .guided-focus-heading .guided-preview {
-  height: 140px;
-}
-.is-compact .guided-focus h2 {
-  font-size: 18px;
-}
-.is-compact .guided-focus p {
-  font-size: 13px;
-}
-.is-compact .guided-references {
-  gap: 16px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 24px;
-}
-.is-compact .guided-preview .guided-words {
-  font-size: 14px;
-}
-@keyframes guided-focus-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 @media (max-width: 600px) {
-  .guided-stage {
-    height: calc(100dvh - 150px);
-  }
-  .guided-navigation {
-    left: 12px;
+  .gm-navigation {
+    left: 8px;
     transform: none;
     gap: 0;
   }
-  .guided-navigation .guided-overview {
+  .gm-navigation button:nth-child(2) {
     min-width: 88px;
-    padding: 0 5px;
+    padding: 0 4px;
   }
   .map-navigation-toggle {
-    right: 12px;
+    right: 8px;
     padding: 10px;
   }
   .dev-map .gm-zoom {
-    left: 12px;
+    left: 8px;
     transform: none;
   }
 }
+@media (max-width: 380px) {
+  .map-navigation-toggle {
+    font-size: 0;
+    gap: 0;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .guided-map *,
-  .guided-world {
-    transition: none !important;
-    animation: none !important;
+  .gm-guided .gm-world.glide {
+    transition: none;
+  }
+}
+
+/* Keep the full tab group centered, with equal visual weight for every label. */
+.minimal-header .channel-view-switch {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  width: max-content;
+  left: 50%;
+  right: auto;
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+}
+.channel-view-switch button {
+  min-width: 65px;
+  text-align: center;
+}
+@media (max-width: 680px) {
+  .minimal-header .channel-view-switch {
+    top: auto;
+    bottom: 10px;
+    transform: translateX(-50%);
+  }
+}
+
+/* Selected rows fill the menu; actions only reserve space when visible. */
+.channel-menu-row {
+  position: relative;
+}
+.channel-menu-row[data-selected="true"],
+.channel-menu-all[aria-current="page"] {
+  background: #f2f2f2;
+  border-radius: 5px;
+}
+.channel-menu-row > button:first-child {
+  width: 100%;
+}
+.channel-menu-row > button:first-child[aria-current="page"] {
+  font-weight: 500;
+}
+.channel-menu-row .channel-favorite,
+.channel-menu-row .channel-delete {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  pointer-events: none;
+}
+.channel-menu-row .channel-favorite {
+  right: 32px;
+}
+.channel-menu-row .channel-delete {
+  right: 4px;
+}
+.channel-menu-row:is(:hover, :focus-within)
+  :is(.channel-favorite, .channel-delete) {
+  pointer-events: auto;
+}
+.channel-menu-row:is(:hover, :focus-within) > button:first-child {
+  padding-right: 66px;
+}
+.channel-menu-all > svg {
+  margin-left: 0;
+}
+@media (hover: none) {
+  .channel-menu-row > button:first-child {
+    padding-right: 66px;
+  }
+  .channel-menu-row :is(.channel-favorite, .channel-delete) {
+    pointer-events: auto;
+  }
+}
+
+/* Map and Story share one loading frame, regardless of their ready-state layout. */
+.workspace main:has(.session-waiting) {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.session-waiting .session-feedback {
+  display: none;
+}
+.session-waiting .session-await {
+  min-height: calc(100dvh - 103px);
+}
+@media (max-width: 700px) {
+  .session-waiting .session-await {
+    min-height: calc(100dvh - 139px);
   }
 }
