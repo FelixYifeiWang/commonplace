@@ -4,7 +4,7 @@ import { setupInstructions } from "../lib/setup-instructions.mjs";
 test("setup gives a separate first-collection step and cannot authorize capture", () => {
   const text = setupInstructions("https://space.example");
   assert.match(text, /Do not read, import or subscribe/);
-  assert.match(text, /choose Connect a session/);
+  assert.match(text, /Choose Connect a session/);
   assert.doesNotMatch(text, /—/);
 });
 test("connection instructions explicitly target the chosen conversation", () => {

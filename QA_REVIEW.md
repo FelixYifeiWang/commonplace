@@ -67,3 +67,10 @@ QA cleanup limitation: CLI attempts exposed missing paired OIDC/store configurat
 - 114 tests, ESLint, typecheck and the local API integration passed. The API test confirms setup does not access a transcript, then separately checks initial and ongoing capture for all three providers. Temporary fixtures were removed.
 
 - Production build and hosted checks passed for both setup and connection instructions, release checksums and pairing. Published to https://commonplace-pearl.vercel.app.
+
+## Markdown setup instructions and short copy
+
+- The user reports that buddy setup and launch now work on their Mac.
+- New setup prompts contain only `Set up <private setup.md link>`. `/setup.md` serves the full Markdown instructions, including the rule against collecting the setup conversation. Existing setup links remain supported.
+- Instructions prescribe a short success reply with one next step. Codex gets buddy Connect guidance; other agents get the session-prompt route. No project recommendations, recap or em dash.
+- 115 tests, lint, typecheck and local API checks passed. New Markdown links are accepted and redacted before ingestion; setup still creates no session. Local Markdown content type and response were checked.

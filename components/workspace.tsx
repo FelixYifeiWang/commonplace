@@ -248,11 +248,12 @@ export default function Workspace({
         : await api<{ link: string }>("/api/setup", "POST");
       const setupOnly = modal === "setup";
       const link = setup
-        ? setup.link.replace("/setup#", setupOnly ? "/setup#" : "/connect#")
+        ? setup.link.replace(
+            /\/setup(?:\.md)?#/,
+            setupOnly ? "/setup.md#" : "/connect#",
+          )
         : "[your private link]";
-      const sentence = setupOnly
-        ? `Set up ${link}. Launch the buddy, then help me choose my first session. Do not collect this conversation.`
-        : `Connect ${link}. Save this conversation as a collection and keep it updated.`;
+      const sentence = setupOnly ? `Set up ${link}` : `Connect ${link}`;
       await navigator.clipboard.writeText(sentence);
       setCopied(true);
       setToast(

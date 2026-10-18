@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       user.userId,
     );
     return Response.json(
-      { link: new URL("/setup", request.url).href + "#" + code, expiresAt },
+      { link: new URL("/setup.md", request.url).href + "#" + code, expiresAt },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {

@@ -185,3 +185,14 @@ test("a success marker cannot hide a missing Electron executable", async (t) => 
   );
   await assert.rejects(verifyRuntime(root), { code: "ENOENT" });
 });
+
+test("Markdown setup links pair without selecting a session", () => {
+  for (const path of ["/setup.md", "/SKILL.md"]) {
+    const link = "https://space.example" + path + "#" + "a".repeat(64);
+    assert.equal(parseSetupLink(link).action, "setup");
+    assert.equal(
+      redactSetupLinks("Set up " + link),
+      "Set up [private setup link]",
+    );
+  }
+});

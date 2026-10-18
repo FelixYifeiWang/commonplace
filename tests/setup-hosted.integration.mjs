@@ -14,7 +14,7 @@ const hash = (value) => createHash("sha256").update(value).digest("hex");
 const codes = [],
   devices = [];
 try {
-  for (const path of ["/setup", "/SKILL.md", "/connect"]) {
+  for (const path of ["/setup", "/setup.md", "/SKILL.md", "/connect"]) {
     const r = await fetch(base + path);
     assert.equal(r.status, 200);
     assert.match(
@@ -55,6 +55,7 @@ try {
     const setup = await r.json(),
       link = new URL(setup.link);
     assert.equal(link.origin, base);
+    assert.equal(link.pathname, "/setup.md");
     assert.match(link.hash, /^#[a-f0-9]{64}$/);
     const code = link.hash.slice(1);
     codes.push(code);

@@ -71,7 +71,7 @@ try {
   console.log("Setup paired without reading or creating a session.");
   for (const provider of ["Codex", "Claude Code", "Cursor"]) {
     const setup = await api("/api/setup", {});
-    setup.link = setup.link.replace("/setup#", "/connect#");
+    setup.link = setup.link.replace(/\/setup(?:\.md)?#/, "/connect#");
     const code = new URL(setup.link).hash.slice(1);
     codes.push(code);
     const sid = crypto.randomUUID(),

@@ -39,7 +39,7 @@ export function parseSetupLink(link) {
       )) ||
     url.username ||
     url.password ||
-    !["/setup", "/connect"].includes(url.pathname) ||
+    !["/setup", "/setup.md", "/SKILL.md", "/connect"].includes(url.pathname) ||
     url.search ||
     !/^#[a-f0-9]{64}$/.test(url.hash)
   )

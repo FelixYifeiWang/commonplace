@@ -161,7 +161,7 @@ export async function findSetupSession(
 }
 export function redactSetupLinks(text) {
   return text.replace(
-    /(https?:\/\/[^\s<>"']+\/(?:setup|connect|agent))#[a-f0-9]{64}\b/gi,
+    /(https?:\/\/[^\s<>"']+\/(?:setup(?:\.md)?|SKILL\.md|connect|agent))#[a-f0-9]{64}\b/gi,
     "[private setup link]",
   );
 }
