@@ -68,3 +68,63 @@ test("pinching keeps the stationary finger on the same idea", async () => {
     Math.abs((fixed.y - v.y) / v.zoom - (fixed.y - next.y) / next.zoom) < 1e-8,
   );
 });
+
+test("a dragged group stays under the pointer and pushes what it touches", () => {
+  const nodes = Array.from({ length: 6 }, () => ({ weight: "normal" }));
+  const base = mapLayout(nodes);
+  const target = base.find((b) => b.id === "node-1");
+  const start = base.find((b) => b.id === "node-0");
+  const offsets = { 0: { x: target.x - start.x, y: target.y - start.y } };
+  const boxes = mapLayout(nodes, { offsets, pinned: 0 });
+  const held = boxes.find((b) => b.id === "node-0");
+  assert.deepEqual([held.x, held.y], [target.x, target.y]);
+  assert.deepEqual([boxes[0].x, boxes[0].y], [0, 0]);
+  for (const box of boxes)
+    if (box !== held && box.id !== "center")
+      assert.equal(overlaps(held, box), false, box.id);
+});
+
+test("dragging through a neighbor moves it continuously, without jumps", async () => {
+  const nodes = Array.from({ length: 6 }, () => ({ weight: "normal" }));
+  const base = mapLayout(nodes);
+  const start = base.find((b) => b.id === "node-0");
+  const target = base.find((b) => b.id === "node-1");
+  const { dragOffsets } = await import("../lib/map-layout.mjs");
+  let previous = null,
+    offsets = {};
+  // Go well past the neighbor's starting point, as a real drag would.
+  for (let k = 0; k <= 90; k++) {
+    const t = k / 60;
+    offsets = dragOffsets(
+      nodes,
+      {
+        ...offsets,
+        0: { x: (target.x - start.x) * t, y: (target.y - start.y) * t },
+      },
+      0,
+    );
+    const neighbor = mapLayout(nodes, { offsets, pinned: 0 }).find(
+      (b) => b.id === "node-1",
+    );
+    if (previous)
+      assert.ok(
+        Math.hypot(neighbor.x - previous.x, neighbor.y - previous.y) < 24,
+        `step ${k}`,
+      );
+    previous = neighbor;
+  }
+});
+
+test("edges meet tile centers, with captions on the far side", async () => {
+  const { tileCenter, captionAbove } = await import("../lib/map-layout.mjs");
+  const boxes = mapLayout(
+    Array.from({ length: 3 }, () => ({ weight: "major" })),
+  );
+  const [center, top, lowerRight] = boxes;
+  assert.deepEqual(tileCenter(center), { x: 0, y: 0 });
+  assert.equal(captionAbove(top), true);
+  assert.equal(captionAbove(lowerRight), false);
+  // Major tiles are 190 tall in a 290 box: the caption takes the other 100.
+  assert.equal(tileCenter(top).y, top.y + 50);
+  assert.equal(tileCenter(lowerRight).y, lowerRight.y - 50);
+});
