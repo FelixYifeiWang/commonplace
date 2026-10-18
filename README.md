@@ -8,7 +8,7 @@ See [the morning test guide](MORNING_TEST.md) for controls, verified flows and c
 
 Open [Newron](https://newron.app) and sign in with Google. Choose Set up Nox to connect this hosted space to your Mac. Open a conversation, move Nox over it, click it, then click Connect. Dragging only moves Nox. Test on Vercel by default; use localhost only when explicitly requested. Local and hosted collections are separate.
 
-Each collection has three views: **Gallery** for saved media, **Map** for connections, and **Story** for decisions and their sources. Gallery opens by default. In Map, drag the background to pan and scroll or pinch to zoom. Cmd/Ctrl+Shift+G toggles Gallery and Map. Nox only appears on the desktop. The collection menu includes connection and account controls.
+The default collection views are **Gallery** (the free map) and **Story**. Press **Cmd/Ctrl+Shift+G** to toggle Dev mode: **Gallery**, **Map**, and **Story**, opening the saved-media grid first. In Dev mode, Map uses a guided camera. Click a node or use the arrow keys to explore its references; Escape or Overview returns to the full map. **Free move** at the bottom right restores dragging and zooming; **Guided** switches back. Press the shortcut again to leave Dev mode. Nox only appears on the desktop. Connections are in Settings.
 
 ## Connection routes
 

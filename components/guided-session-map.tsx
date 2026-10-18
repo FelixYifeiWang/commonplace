@@ -56,7 +56,7 @@ function GuidedSessionMap({
     [items],
   );
   // A source's identity survives polling and reordering. Losing it returns to overview.
-  const identity = (n: MapDetail) => n.itemId || n.url || n.label;
+  const identity = (n: MapDetail) => `${n.itemId || n.url || ""}:${n.label}`;
   const [selected, setSelected] = useState<string | null>(null);
   const index = nodes.findIndex((n) => identity(n) === selected);
   const active = nodes[index];
