@@ -7720,140 +7720,39 @@ a.gm-detail b::after {
   }
 }
 
-/* ---------- Glass Surface (adapted from React Bits; see components/glass-surface.tsx for the license) ---------- */
-.glass-surface {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  transition: opacity 0.26s ease-out;
-}
-.glass-surface__filter {
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  z-index: -1;
-}
-.glass-surface__content {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: inherit;
-  position: relative;
-  z-index: 1;
-}
-.glass-surface--svg {
-  background: hsl(0 0% 100% / var(--glass-frost, 0));
-  backdrop-filter: var(--filter-id, url(#glass-filter))
-    saturate(var(--glass-saturation, 1));
-  box-shadow:
-    0 0 2px 1px color-mix(in oklch, black, transparent 85%) inset,
-    0 0 10px 4px color-mix(in oklch, black, transparent 90%) inset,
-    0px 4px 16px rgba(17, 17, 26, 0.05),
-    0px 8px 24px rgba(17, 17, 26, 0.05),
-    0px 4px 16px rgba(17, 17, 26, 0.05) inset,
-    0px 8px 24px rgba(17, 17, 26, 0.05) inset;
-}
-.glass-surface--fallback {
-  background: hsl(0 0% 100% / calc(0.12 + var(--glass-frost, 0) * 0.5));
-  -webkit-backdrop-filter: blur(12px)
-    saturate(calc(var(--glass-saturation, 1) * 1.4)) brightness(1.04);
-  backdrop-filter: blur(12px) saturate(calc(var(--glass-saturation, 1) * 1.4))
-    brightness(1.04);
-  box-shadow:
-    inset 0 1px 0 0 hsl(0 0% 100% / 0.85),
-    inset 0 -1px 0 0 hsl(0 0% 100% / 0.35),
-    0 0 2px 1px color-mix(in oklch, black, transparent 88%) inset,
-    0 0 12px 3px color-mix(in oklch, white, transparent 72%) inset,
-    0px 4px 16px rgba(17, 17, 26, 0.06),
-    0px 8px 24px rgba(17, 17, 26, 0.06);
-}
-.glass-surface__sheen,
-.glass-surface__rim {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-}
-.glass-surface__sheen {
-  background: linear-gradient(
-    135deg,
-    hsl(0 0% 100% / 0.42) 0%,
-    transparent 42%,
-    transparent 64%,
-    hsl(0 0% 100% / 0.18) 100%
-  );
-}
-.glass-surface__rim {
-  padding: 3px;
-  background: linear-gradient(
-    150deg,
-    hsl(0 0% 100% / 0.7),
-    hsl(0 0% 100% / 0.1) 45%,
-    hsl(0 0% 100% / 0.08) 60%,
-    hsl(0 0% 100% / 0.42)
-  );
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box exclude,
-    linear-gradient(#000 0 0);
-}
-
-/* ---------- Nox: a flat glass bubble with a neuron inside (components/nox.tsx) ---------- */
+/* ---------- Nox: a flat glass lens with a neuron inside (components/nox.tsx) ---------- */
 .nox {
   position: relative;
   display: inline-block;
   flex-shrink: 0;
-  isolation: isolate;
   border-radius: 50%;
+  /* React Bits' glass, WebGL mode: soft drop shadows under the lens. */
+  box-shadow:
+    0px 4px 16px rgba(17, 17, 26, 0.05),
+    0px 8px 24px rgba(17, 17, 26, 0.05),
+    0px 16px 56px rgba(17, 17, 26, 0.05);
 }
-/* The neuron sits behind the glass, so the glass refracts it at the rim. */
+/* The neuron, already bent by the lens shader, clipped to the circle. */
 .nox-neuron {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
-  pointer-events: none;
-}
-.nox-glass {
-  position: absolute !important;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-/* Flat glass: a crisp light rim over a dark hairline, a soft lift, and a small highlight on the upper left.
-   No inner shading, so it reads as a pane of glass on light and dark desktops alike. */
-.nox .glass-surface--svg,
-.nox .glass-surface--fallback {
-  box-shadow:
-    inset 0 1px 0 0 hsl(0 0% 100% / 0.75),
-    inset 0 0 0 1px hsl(0 0% 100% / 0.4),
-    inset 0 0 0 1.5px rgb(17 17 26 / 0.12),
-    0 6px 14px -6px rgb(17 17 26 / 0.28);
-}
-.nox::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 2;
   border-radius: 50%;
   pointer-events: none;
-  background: radial-gradient(
-    46% 26% at 34% 14%,
-    hsl(0 0% 100% / 0.26) 0%,
-    hsl(0 0% 100% / 0.04) 70%,
-    transparent 100%
-  );
+}
+/* The glass frame, after React Bits' frame and the reference lens: a crisp hairline edge, a soft light crescent
+   on the upper left where light catches the glass, and a barely-there frost. No outline, no dark ring. */
+.nox-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: hsl(0 0% 100% / 0.05);
+  box-shadow:
+    0 0 1px 0.5px color-mix(in oklch, black, transparent 82%) inset,
+    5px 5px 9px -5px hsl(0 0% 100% / 0.75) inset,
+    -4px -4px 8px -6px hsl(0 0% 100% / 0.3) inset;
 }
 /* On the desktop: a small lift on hover, a little more while dragging, and a ring for keyboard focus. */
 .native-buddy-grab .nox {

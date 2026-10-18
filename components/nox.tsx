@@ -3,10 +3,9 @@ import { useEffect, useRef } from "react";
 import type { SessionState } from "@/lib/types";
 import { createNeuron } from "@/lib/nox-neuron";
 import type { NeuronMood } from "@/lib/nox-neuron";
-import { GlassSurface } from "./glass-surface";
 
-// Nox (formerly the buddy): a flat glass bubble with a neuron inside. The neuron sits behind the glass, so the
-// glass refracts it at the rim the way it would refract anything behind a lens.
+// Nox (formerly the buddy): a flat glass lens with a neuron inside. The neuron is drawn through React Bits'
+// glass shader (lib/glass-lens.ts), which bends it near the rim; the frame is React Bits' glass frame.
 const MOOD: Record<SessionState, NeuronMood> = {
   waiting: "rest",
   following: "rest",
@@ -55,22 +54,7 @@ export function Nox({
       aria-hidden="true"
     >
       <canvas ref={canvas} className="nox-neuron" width={size} height={size} />
-      <GlassSurface
-        className="nox-glass"
-        width={size}
-        height={size}
-        borderRadius={size / 2}
-        borderWidth={0.09}
-        brightness={52}
-        opacity={0.9}
-        blur={6}
-        backgroundOpacity={0.05}
-        saturation={1.15}
-        distortionScale={-36}
-        redOffset={0}
-        greenOffset={4}
-        blueOffset={8}
-      />
+      <span className="nox-frame" />
     </span>
   );
 }

@@ -1,7 +1,10 @@
-// Nox's neuron: a tetrahedron whose edges are pulled in toward its centre, drawn as fibre bundles with knobs at
-// the corners and a small nucleus. While Nox works, signals travel along the fibres and each corner flashes as one
-// arrives and fires the next. At rest nothing animates and no frames are drawn.
+// Nox's neuron: a tetrahedron whose edges bow toward its centre, drawn like the sketch: flat ink strokes (each edge
+// a bundle of three), dots at the corners, faint flat membranes and a small nucleus. It is a 3D model drawn without
+// light or shading under an orthographic camera, so it turns in space but always reads as a 2D drawing.
+// It is seen through a glass lens (lib/glass-lens.ts) that bends it near the rim. While Nox works, signals travel
+// along the strokes and each corner flashes as one lands and fires the next. At rest nothing is drawn.
 import * as THREE from "three";
+import { createLens } from "./glass-lens";
 
 export type NeuronMood = "rest" | "working" | "muted" | "alert";
 const INK: Record<NeuronMood, number> = {
@@ -12,6 +15,9 @@ const INK: Record<NeuronMood, number> = {
 };
 // How far each edge bows toward the centre (0 is a straight edge).
 const SHRINK = 0.55;
+// Half the visible width in model units: the corners reach the lens's bending band, like the sketch's
+// corners reach toward its circle.
+const VIEW = 1.42;
 const CORNERS = [
   new THREE.Vector3(1, 1, 1),
   new THREE.Vector3(1, -1, -1),
@@ -38,7 +44,7 @@ const control = (a: THREE.Vector3, b: THREE.Vector3) =>
     .add(b)
     .multiplyScalar(0.5 * (1 - SHRINK));
 
-// A face is a quadratic Bezier triangle on the three bowed edges, so the membrane meets every fibre exactly.
+// A face is a quadratic Bezier triangle on the three bowed edges, so the membrane meets every stroke exactly.
 function membrane(a: number, b: number, c: number, steps = 10) {
   const [A, B, C] = [CORNERS[a], CORNERS[b], CORNERS[c]];
   const [AB, BC, CA] = [control(A, B), control(B, C), control(C, A)];
@@ -74,61 +80,58 @@ function membrane(a: number, b: number, c: number, steps = 10) {
     new THREE.Float32BufferAttribute(points, 3),
   );
   geometry.setIndex(index);
-  geometry.computeVertexNormals();
   return geometry;
 }
 
 type Pulse = { edge: number; from: number; t: number; mesh: THREE.Mesh };
 
 export function createNeuron(canvas: HTMLCanvasElement, size: number) {
+  const ratio = Math.min(2, window.devicePixelRatio || 1);
   const renderer = new THREE.WebGLRenderer({
     canvas,
     alpha: true,
-    antialias: true,
+    antialias: false,
     powerPreference: "low-power",
   });
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.setPixelRatio(ratio);
   renderer.setSize(size, size, false);
   renderer.setClearColor(0x000000, 0);
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
-  // Far enough that the neuron keeps clear glass around it; the rim refracts only empty glass.
-  camera.position.set(0, 0, 6.6);
-  scene.add(new THREE.AmbientLight(0xffffff, 1.1));
-  const key = new THREE.DirectionalLight(0xffffff, 1.6);
-  key.position.set(2, 3, 4);
-  scene.add(key);
+  // Orthographic: no perspective, so strokes keep one width and the drawing stays flat as it turns.
+  const camera = new THREE.OrthographicCamera(
+    -VIEW,
+    VIEW,
+    VIEW,
+    -VIEW,
+    0.1,
+    10,
+  );
+  camera.position.set(0, 0, 5);
 
   const ink = new THREE.Color(INK.rest);
+  const lighter = () => ink.clone().lerp(new THREE.Color(0xffffff), 0.45);
   const neuron = new THREE.Group();
   // The resting pose matches the sketch: corners at the upper left, the right and the lower left, and the fourth
-  // inside toward the lower right, leaning toward you.
+  // inside toward the lower right.
   const pose = new THREE.Euler(1.02, 2.86, -0.4);
   neuron.rotation.copy(pose);
   scene.add(neuron);
 
-  // Membranes are a lighter wash of the ink, so the faces read as a faint body, not a solid.
-  const membraneMaterial = new THREE.MeshStandardMaterial({
-    color: ink.clone().lerp(new THREE.Color(0xffffff), 0.6),
+  // Flat, unlit materials: colour only, like ink on paper.
+  const membraneMaterial = new THREE.MeshBasicMaterial({
+    color: ink,
     transparent: true,
-    opacity: 0.05,
+    opacity: 0.09,
     side: THREE.DoubleSide,
     depthWrite: false,
-    roughness: 0.6,
   });
   for (const [a, b, c] of FACES)
     neuron.add(new THREE.Mesh(membrane(a, b, c), membraneMaterial));
 
-  // Each edge is a bundle of three fibres that part in the middle and meet at the corners.
+  // Each edge is a bundle of three strokes that part in the middle and meet at the corners, like pen strokes.
   const curves: THREE.QuadraticBezierCurve3[] = [];
-  const fibreMaterials = EDGES.map(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: ink,
-        emissive: ink,
-        emissiveIntensity: 0.15,
-        roughness: 0.45,
-      }),
+  const strokeMaterials = EDGES.map(
+    () => new THREE.MeshBasicMaterial({ color: ink }),
   );
   EDGES.forEach(([a, b], e) => {
     const A = CORNERS[a],
@@ -139,61 +142,42 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
       .subVectors(B, A)
       .cross(mid)
       .normalize()
-      .multiplyScalar(0.055);
+      .multiplyScalar(0.05);
     for (const s of [-1, 0, 1]) {
       const curve = new THREE.QuadraticBezierCurve3(
         A,
-        mid
-          .clone()
-          .addScaledVector(side, s)
-          .multiplyScalar(1 + s * 0.04),
+        mid.clone().addScaledVector(side, s),
         B,
       );
       neuron.add(
         new THREE.Mesh(
-          new THREE.TubeGeometry(curve, 40, s ? 0.009 : 0.014, 6, false),
-          fibreMaterials[e],
+          new THREE.TubeGeometry(curve, 48, s ? 0.016 : 0.024, 6, false),
+          strokeMaterials[e],
         ),
       );
     }
   });
 
-  // Knobs at the corners (where signals arrive) and a nucleus at the centre.
-  const knobMaterials = CORNERS.map(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: ink,
-        emissive: ink,
-        emissiveIntensity: 0.2,
-        roughness: 0.35,
-      }),
+  // Dots at the corners (where signals arrive) and a nucleus at the centre.
+  const dotMaterials = CORNERS.map(
+    () => new THREE.MeshBasicMaterial({ color: ink }),
   );
-  const knobs = CORNERS.map((corner, i) => {
-    const knob = new THREE.Mesh(
-      new THREE.SphereGeometry(0.075, 20, 14),
-      knobMaterials[i],
+  const dots = CORNERS.map((corner, i) => {
+    const dot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 20, 14),
+      dotMaterials[i],
     );
-    knob.position.copy(corner);
-    neuron.add(knob);
-    return knob;
+    dot.position.copy(corner);
+    neuron.add(dot);
+    return dot;
   });
-  const nucleus = new THREE.Mesh(
-    new THREE.SphereGeometry(0.05, 16, 12),
-    new THREE.MeshStandardMaterial({
-      color: ink,
-      emissive: ink,
-      emissiveIntensity: 0.3,
-      roughness: 0.4,
-    }),
+  const nucleusMaterial = new THREE.MeshBasicMaterial({ color: ink });
+  neuron.add(
+    new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 12), nucleusMaterial),
   );
-  neuron.add(nucleus);
 
-  const pulseGeometry = new THREE.SphereGeometry(0.045, 12, 8);
-  const pulseMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0.95,
-  });
+  const pulseGeometry = new THREE.SphereGeometry(0.04, 12, 8);
+  const pulseMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const pulses: Pulse[] = [];
   const flash = CORNERS.map(() => 0);
   const fire = (corner: number, except = -1) => {
@@ -203,6 +187,7 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
     for (const edge of options.sort(() => Math.random() - 0.5).slice(0, 2)) {
       if (pulses.length >= 5) return;
       const mesh = new THREE.Mesh(pulseGeometry, pulseMaterial);
+      mesh.renderOrder = 2;
       neuron.add(mesh);
       pulses.push({ edge, from: corner, t: 0, mesh });
     }
@@ -215,16 +200,28 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
   const reducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
   ).matches;
+  const lens = createLens(
+    size,
+    Math.round(size * ratio),
+    {
+      borderWidth: 0.28,
+      brightness: 50,
+      opacity: 0.93,
+      blur: 6,
+      distortionScale: -18,
+      redOffset: 0,
+      greenOffset: 4,
+      blueOffset: 8,
+      saturation: 1,
+    },
+    () => wake(),
+  );
 
   const paint = (color: number) => {
     ink.setHex(color);
-    membraneMaterial.color.copy(ink).lerp(new THREE.Color(0xffffff), 0.6);
-    for (const m of [...fibreMaterials, ...knobMaterials]) {
+    membraneMaterial.color.copy(ink);
+    for (const m of [...strokeMaterials, ...dotMaterials, nucleusMaterial])
       m.color.copy(ink);
-      m.emissive.copy(ink);
-    }
-    (nucleus.material as THREE.MeshStandardMaterial).color.copy(ink);
-    (nucleus.material as THREE.MeshStandardMaterial).emissive.copy(ink);
   };
 
   const step = (now: number) => {
@@ -243,10 +240,11 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
       pulse.t += dt / 0.7;
       const [a, b] = EDGES[pulse.edge];
       const forward = pulse.from === a;
-      const point = curves[pulse.edge].getPoint(
-        forward ? Math.min(1, pulse.t) : 1 - Math.min(1, pulse.t),
+      pulse.mesh.position.copy(
+        curves[pulse.edge].getPoint(
+          forward ? Math.min(1, pulse.t) : 1 - Math.min(1, pulse.t),
+        ),
       );
-      pulse.mesh.position.copy(point);
       if (pulse.t >= 1) {
         const to = forward ? b : a;
         flash[to] = 1;
@@ -255,23 +253,31 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
         if (working) fire(to, pulse.edge);
       }
     }
-    // A corner swells and glows as a signal lands, then settles; a fibre glows while a signal runs along it.
-    knobs.forEach((knob, i) => {
+    // A corner swells and lightens as a signal lands, then settles; a stroke lightens while a signal runs on it.
+    const light = lighter();
+    dots.forEach((dot, i) => {
       flash[i] = Math.max(0, flash[i] - dt * 2.2);
-      knob.scale.setScalar(1 + flash[i] * 0.55);
-      knobMaterials[i].emissiveIntensity = 0.2 + flash[i] * 1.4;
+      dot.scale.setScalar(1 + flash[i] * 0.7);
+      dotMaterials[i].color.copy(ink).lerp(light, flash[i]);
     });
-    fibreMaterials.forEach((m, e) => {
+    strokeMaterials.forEach((m, e) => {
       const live = pulses.some((p) => p.edge === e);
-      m.emissiveIntensity += ((live ? 0.75 : 0.15) - m.emissiveIntensity) * 0.2;
+      m.color.lerp(live ? light : ink, 0.2);
     });
-    renderer.render(scene, camera);
+
+    if (lens.ready) {
+      renderer.setRenderTarget(lens.target);
+      renderer.clear();
+      renderer.render(scene, camera);
+      lens.draw(renderer);
+    }
 
     const settling =
       Math.abs(gaze.tx - gaze.x) > 0.001 ||
       Math.abs(gaze.ty - gaze.y) > 0.001 ||
       pulses.length > 0 ||
-      flash.some((f) => f > 0.01);
+      flash.some((f) => f > 0.01) ||
+      strokeMaterials.some((m) => Math.abs(m.color.r - ink.r) > 0.002);
     if (working || settling) wake();
     else last = 0;
   };
@@ -297,10 +303,10 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();
-          const material = object.material as THREE.Material;
-          material.dispose();
+          (object.material as THREE.Material).dispose();
         }
       });
+      lens.dispose();
       renderer.dispose();
     },
   };
