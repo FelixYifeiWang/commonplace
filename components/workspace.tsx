@@ -672,6 +672,16 @@ export default function Workspace({
                         Connect a computer
                       </button>
                     </div>
+                    {hasBuddy && (
+                      <button
+                        className="text-button"
+                        onClick={() => {
+                          window.location.href = `commonplace://show?origin=${encodeURIComponent(window.location.origin)}`;
+                        }}
+                      >
+                        Show buddy
+                      </button>
+                    )}
                     <p className="section-description">
                       One connection per computer. Your companion remembers it
                       for next time.

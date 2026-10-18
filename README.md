@@ -107,3 +107,11 @@ The per-space installation lives in `~/Library/Application Support/Commonplace/<
 Setup does not create the first collection. It launches the buddy and gives a short next step. Connection prompts remain separate and work across local Codex, Claude Code and Cursor JSONL formats.
 
 Electron 44.9.0 has an on-demand binary installer. After `npm ci`, the installer runs Electron's official `install.js` and verifies the executable, plist and framework before registering a LaunchAgent. A reported macOS App Management denial during extraction remains unresolved on the affected Mac. The app does not change permissions or instruct users to grant broad App Management access as normal onboarding. A signed, notarized distribution remains future work; do not claim permission-free installation.
+
+### Buddy movement and visibility
+
+Dragging preserves the grab offset. Native mouse events move and release the window before renderer dispatch, so renderer delays cannot extend a drag. Capture loss and focus changes keep the latest position; only Escape cancels back to the start. Connect fades into reserved space above the face without resizing the window.
+
+Right-click the buddy for **Hide buddy** or **Quit and stop syncing**. Hide keeps subscriptions running. The Commonplace menu-bar icon restores it. **Settings → Show buddy** opens the registered desktop link, subject to browser permission to open external apps.
+
+Native checks: two off-center drags moved by exactly the pointer delta, release coordinates matched the saved position, Connect kept the face fixed, and Hide removed the window. Browser automation blocks the desktop URI, so the website restore path was not end-to-end verified here.
