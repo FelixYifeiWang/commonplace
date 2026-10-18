@@ -10,13 +10,16 @@ export function accountsEnabled() {
     process.env.BETTER_AUTH_SECRET,
   );
 }
+export function authOrigin() {
+  return new URL(process.env.BETTER_AUTH_URL || "https://newron.app").origin;
+}
 function createAuth() {
   if (!accountsEnabled()) throw new Error("Google sign-in is not configured.");
   const database = env.DB;
   if (!database) throw new Error("The account database is not configured.");
   return betterAuth({
     appName: "Newron",
-    baseURL: process.env.BETTER_AUTH_URL || "https://newron.app",
+    baseURL: authOrigin(),
     trustedOrigins: [
       "https://newron.app",
       "https://commonplace-pearl.vercel.app",
