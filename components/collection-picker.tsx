@@ -36,7 +36,7 @@ export function CollectionPicker({
       ? "Connections"
       : screen === "settings"
         ? "Settings"
-        : collections.find((c) => c.id === selected)?.name || "All items";
+        : collections.find((c) => c.id === selected)?.name || "Collections";
   function choose(id: string) {
     onChoose(id);
     setOpen(false);
@@ -81,7 +81,7 @@ export function CollectionPicker({
           </label>
           <div className="channel-menu-list">
             <button className="channel-menu-all" onClick={() => choose("all")}>
-              All items
+              Collections
               {selected === "all" && screen === "collection" && (
                 <Check size={13} />
               )}

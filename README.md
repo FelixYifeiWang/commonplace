@@ -6,7 +6,7 @@ A first draft of a shared home for ideas from human–AI conversations.
 
 Open `Start Commonplace.command` on this Mac, then visit http://127.0.0.1:3100/ for your local space. The desktop buddy opens alongside it. Open a conversation in a single Codex window and move the desktop buddy over the conversation area, click it, then click Connect. Dragging only moves the buddy. Local sign-in uses a development identity. The optional sample collection is at `/?demo=1`.
 
-The collection starts with a picker, square blocks, and an add button. Click a block for its contents and source. The buddy only appears on the desktop. The collection menu includes connection and account controls.
+Each collection opens as a map. Drag the background to pan, scroll or pinch to zoom, and zoom in for details. Story shows the decisions alongside their sources. Cmd/Ctrl+Shift+G toggles the original block gallery. The buddy only appears on the desktop. The collection menu includes connection and account controls.
 
 ## Connection routes
 
@@ -18,11 +18,11 @@ Both routes use the same device/subscription APIs. A device token is scoped to w
 
 ## What this draft does
 
-Collections, manual blocks, source passages, account sign-in, revocable connections, session controls, duplicate-resistant imports, JSONL parsing, and a floating Electron companion. Each connected session gets a collection named after it, and All items combines every collection. Captured URLs become reference blocks with locally rendered page screenshots, cover fallbacks and media viewers. The default grid stacks pages by website; click a stack to expand inline, then click its cover to fold. Media keeps its proportions inside aligned cells. Search and type/source filters work inside stacks. Select blocks to delete with Undo; sync preserves deletion markers. The first empty tile accepts text, links and dropped/pasted files. The searchable collection picker can delete and disconnect channels. Sign-in and callback URLs are excluded. Each channel also has a Story view: brief narrative moments with labeled connections to saved media, generated from its transcript and gallery.
+Collections, manual blocks, source passages, account sign-in, revocable connections, session controls, duplicate-resistant imports, JSONL parsing, and a floating Electron companion. Each connected session gets a collection named after it, and the home view shows every collection. Captured URLs become reference blocks with locally rendered page screenshots, cover fallbacks and media viewers. The hidden block gallery stacks pages by website; click a stack to expand inline, then click its cover to fold. Media keeps its proportions inside aligned cells. Search and type/source filters work inside stacks. Select blocks to delete with Undo; sync preserves deletion markers. The first empty tile accepts text, links and dropped/pasted files. The searchable collection picker can delete and disconnect channels. Sign-in and callback URLs are excluded. Each channel has a Gallery map and a Story view with up to five concise decisions. Both are grounded in the conversation and saved sources. Website pages keep their own backgrounds; still images are fitted or cut out when browser image access permits. The saved originals stay untouched.
 
 ## Unfinished
 
-The example collection is sample content, not a live extraction. Clicking the desktop buddy to identify an open window currently supports Codex and Claude Code in the Claude desktop app. Inactive sidebar rows must be opened first. The setup-prompt route supports local Codex, Claude Code and Cursor JSONL transcripts; see `COMPATIBILITY.md`. There is no signed desktop installer or freely editable mind map yet.
+The example collection is sample content, not a live extraction. Clicking the desktop buddy to identify an open window currently supports Codex and Claude Code in the Claude desktop app. Inactive sidebar rows must be opened first. The setup-prompt route supports local Codex, Claude Code and Cursor JSONL transcripts; see `COMPATIBILITY.md`. Map nodes can be moved, but their text and relationships are generated. There is no signed desktop installer yet.
 
 The older Sites preview has an additional Sites authentication boundary. The Vercel deployment uses its own private access code. Desktop hosted sign-in and unattended hosted syncing still need an end-to-end companion check; local companion syncing is the tested development path.
 
@@ -65,13 +65,13 @@ The `drizzle/0002_yellow_freak.sql` migration separates existing sessions into n
 
 ## Channel stories
 
-Choose a channel, then **Story**. New transcript turns and gallery edits queue a continuation automatically; opening the Story tab is not required. Keep `npm run local` running. The buddy must also run for subscribed session capture.
+Choose a channel, then **Gallery** or **Story**. The map is the default; the original grid is available with Cmd/Ctrl+Shift+G. New transcript turns and gallery edits queue a continuation automatically; opening the Story tab is not required. Keep `npm run local` running. The buddy must also run for subscribed session capture.
 
 Set `OPENAI_API_KEY` in the ignored `.env.local` file. The local worker reads it for each job and uses `gpt-6-luna` via the OpenAI Responses API with provider storage disabled. The key stays server-side. Session text and media metadata are sent to OpenAI after credential redaction; images themselves are not sent. Reference arrows describe relationships supported by the transcript, rather than inferring visual details from thumbnails.
 
-Migration `0005_lucky_frightful_four.sql` adds durable story checkpoints, append-only moments and queue triggers. Changes coalesce briefly before generation. Earlier moments remain unchanged; updates received during generation stay queued. Deleted media disappears from diagrams without altering earlier prose. Deleted channels stop processing. A failed generation preserves its checkpoint and can be retried from Story.
+Migration `0005_lucky_frightful_four.sql` adds durable checkpoints and queue triggers. Migration `0007_session_views.sql` adds the combined Story and Gallery document while retaining legacy moments. New batches receive the current document and its verified evidence. Existing choices and wording are retained unless later input changes them; long histories are condensed to at most five steps. Updates received during generation stay queued. Deleted media disappears without rewriting the narrative or returning during sync. Failed generation preserves the last view and cursor, then waits for Retry or new content rather than retrying endlessly.
 
-Run `node tests/story.integration.mjs` against the local server with a valid key to test real generation, continuation and deletion. It makes paid API requests for its own temporary collection, verifies earlier moments are unchanged, then removes its fixtures.
+Run `node tests/story.integration.mjs` against the local server with a valid key to test real generation, continuation and deletion. It makes paid API requests for its own temporary collection, checks retained context, new decisions and deletion replay, then removes its fixtures.
 
 ## Vercel deployment
 
@@ -106,7 +106,7 @@ The per-space installation lives in `~/Library/Application Support/Commonplace/<
 
 Setup does not create the first collection. It launches the buddy and gives a short next step. Connection prompts remain separate and work across local Codex, Claude Code and Cursor JSONL formats.
 
-Electron 44.9.0 has an on-demand binary installer. After `npm ci`, the installer runs Electron's official `install.js` and verifies the executable, plist and framework before registering a LaunchAgent. A reported macOS App Management denial during extraction remains unresolved on the affected Mac. The app does not change permissions or instruct users to grant broad App Management access as normal onboarding. A signed, notarized distribution remains future work; do not claim permission-free installation.
+Electron 44.9.0 has an on-demand binary installer. After `npm ci`, the installer runs Electron's official `install.js` and verifies the executable, plist and framework before registering a LaunchAgent. If macOS denies extraction, setup stops before registering an incomplete launch service. The app does not change permissions or instruct users to grant broad App Management access as normal onboarding. A signed, notarized distribution remains future work; do not claim permission-free installation.
 
 ### Buddy movement and visibility
 

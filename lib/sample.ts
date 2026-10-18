@@ -64,3 +64,106 @@ export const SAMPLE: WorkspaceData = {
     },
   ] as Item[],
 };
+
+// Curated example, never presented as an imported conversation.
+export const SAMPLE_SESSION: import("./session-types").SessionDocument = {
+  steps: [
+    {
+      title: "Leave room to think",
+      text: "I started with a room that felt calm. Plenty of space between objects, warm surfaces, and nothing competing for attention. I wanted the workspace to feel that way too.",
+      canvas: {
+        layout: "reference",
+        items: [{ itemId: "i2", role: "reference", label: "Room to think" }],
+        quote: null,
+      },
+      evidence: [
+        { sourceId: "example", quote: "Plenty of space between objects." },
+      ],
+    },
+    {
+      title: "Keep the connections",
+      text: "Are.na gave me the starting point: collect things without forcing them into folders. The relationships should grow as I work, with each source keeping its own character.",
+      canvas: {
+        layout: "reference",
+        items: [
+          { itemId: "i1", role: "reference", label: "Are.na" },
+          { itemId: "i5", role: "reference", label: "Room to grow" },
+        ],
+        quote: null,
+      },
+      evidence: [
+        {
+          sourceId: "example",
+          quote: "Collect things without forcing them into folders.",
+        },
+      ],
+    },
+  ],
+  map: {
+    center: { label: "A space for ideas", itemId: null, url: null },
+    nodes: [
+      {
+        label: "Breathing room",
+        kind: "principle",
+        weight: "major",
+        summary: "Space between objects gives each idea room.",
+        itemId: "i2",
+        url: null,
+        font: null,
+        evidence: {
+          sourceId: "example",
+          quote: "Plenty of space between objects.",
+        },
+        details: [
+          {
+            label: "Quiet surfaces",
+            itemId: null,
+            url: null,
+            evidence: {
+              sourceId: "example",
+              quote: "Warm surfaces, nothing competing for attention.",
+            },
+          },
+        ],
+      },
+      {
+        label: "Are.na",
+        kind: "reference",
+        weight: "normal",
+        summary: "Keep sources intact and let connections grow.",
+        itemId: "i1",
+        url: "https://www.are.na/",
+        font: null,
+        evidence: {
+          sourceId: "example",
+          quote: "Collect things without forcing them into folders.",
+        },
+        details: [],
+      },
+      {
+        label: "Organic connections",
+        kind: "idea",
+        weight: "normal",
+        summary: "Relationships emerge while you work.",
+        itemId: "i5",
+        url: null,
+        font: null,
+        evidence: {
+          sourceId: "example",
+          quote: "The relationships should grow as I work.",
+        },
+        details: [
+          {
+            label: "Keep each source",
+            itemId: null,
+            url: null,
+            evidence: {
+              sourceId: "example",
+              quote: "Each source keeps its own character.",
+            },
+          },
+        ],
+      },
+    ],
+  },
+};

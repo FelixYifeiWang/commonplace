@@ -29,7 +29,8 @@ import { MediaDetail } from "./media-card";
 import { CollectionPicker } from "./collection-picker";
 import { parseBlockInput } from "@/lib/gallery.mjs";
 import { Gallery } from "./gallery";
-import { StoryView } from "./story-view";
+import { SessionView } from "./session-view";
+import { MediaCard } from "./media-card";
 import { AddBlock } from "./add-block";
 import { Modal } from "./modal";
 
@@ -104,6 +105,23 @@ export default function Workspace({
     [toast, setToast] = useState(""),
     [copied, setCopied] = useState(false),
     [modalError, setModalError] = useState("");
+  const [gridMode, setGridMode] = useState(false);
+  useEffect(() => {
+    const toggle = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        event.key.toLowerCase() === "g" &&
+        !target.closest("input,textarea,[contenteditable=true]")
+      ) {
+        event.preventDefault();
+        setGridMode((value) => !value);
+      }
+    };
+    window.addEventListener("keydown", toggle);
+    return () => window.removeEventListener("keydown", toggle);
+  }, []);
   const [view, setView] = useState<"gallery" | "story">("gallery");
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const [droppedText, setDroppedText] = useState("");
@@ -491,13 +509,19 @@ export default function Workspace({
             >
               <button
                 aria-pressed={view === "gallery"}
-                onClick={() => setView("gallery")}
+                onClick={() => {
+                  setView("gallery");
+                  setGridMode(false);
+                }}
               >
                 Gallery
               </button>
               <button
                 aria-pressed={view === "story"}
-                onClick={() => setView("story")}
+                onClick={() => {
+                  setView("story");
+                  setGridMode(false);
+                }}
               >
                 Story
               </button>
@@ -519,7 +543,16 @@ export default function Workspace({
             <Plus size={20} strokeWidth={1.3} />
           </button>
         </header>
-        <main>
+        <main
+          className={
+            screen === "collection" &&
+            !gridMode &&
+            view === "gallery" &&
+            selected !== "all"
+              ? "map-main"
+              : undefined
+          }
+        >
           {!ready ? (
             <div className="loading-state">
               <Loader2 className="spin" size={18} aria-label="Loading" />
@@ -558,34 +591,75 @@ export default function Workspace({
                   </button>
                 </div>
               )}
+              {screen === "collection" && gridMode && (
+                <Gallery
+                  key={selected}
+                  items={visibleItems}
+                  onOpen={setDetail}
+                  onDelete={deleteBlocks}
+                  canAdd={collections.length > 0}
+                  onQuickAdd={(text) =>
+                    saveBlock({
+                      ...parseBlockInput(text),
+                      collectionId:
+                        selected === "all" ? collections[0]?.id : selected,
+                    })
+                  }
+                  onAdd={addFromGallery}
+                />
+              )}
+              {screen === "collection" && !gridMode && selected !== "all" && (
+                <SessionView
+                  key={selected}
+                  collectionId={selected}
+                  name={
+                    collections.find((c) => c.id === selected)?.name ||
+                    "Untitled"
+                  }
+                  mode={view}
+                  items={visibleItems}
+                  onOpen={setDetail}
+                  demo={demo}
+                />
+              )}
               {screen === "collection" &&
-                (view === "gallery" || selected === "all") && (
-                  <Gallery
-                    key={selected}
-                    items={visibleItems}
-                    onOpen={setDetail}
-                    onDelete={deleteBlocks}
-                    canAdd={collections.length > 0}
-                    onQuickAdd={(text) =>
-                      saveBlock({
-                        ...parseBlockInput(text),
-                        collectionId:
-                          selected === "all" ? collections[0]?.id : selected,
-                      })
-                    }
-                    onAdd={addFromGallery}
-                  />
-                )}
-              {screen === "collection" &&
-                view === "story" &&
-                selected !== "all" && (
-                  <StoryView
-                    key={selected}
-                    collectionId={selected}
-                    items={visibleItems}
-                    onOpen={setDetail}
-                    demo={demo}
-                  />
+                !gridMode &&
+                selected === "all" &&
+                collections.length > 0 && (
+                  <div className="collection-overview">
+                    {collections.map((collection) => {
+                      const covers = data.items
+                        .filter(
+                          (item) =>
+                            item.collectionId === collection.id &&
+                            (item.imageUrl ||
+                              (item.fileKey && item.kind === "image")),
+                        )
+                        .slice(0, 3);
+                      return (
+                        <button
+                          className="collection-cover"
+                          key={collection.id}
+                          onClick={() => chooseCollection(collection.id)}
+                        >
+                          <span className="collection-cover-sheet soft-sheet">
+                            {covers.length ? (
+                              covers.map((item) => (
+                                <span key={item.id}>
+                                  <MediaCard item={item} screenshots={false} />
+                                </span>
+                              ))
+                            ) : (
+                              <span className="collection-cover-empty">
+                                {collection.name.slice(0, 1)}
+                              </span>
+                            )}
+                          </span>
+                          <span>{collection.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               {screen === "sessions" && (
                 <>

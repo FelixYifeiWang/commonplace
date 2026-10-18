@@ -6,16 +6,17 @@ import { uploadPresigned } from "@vercel/blob/client";
 const base = process.env.COMMONPLACE_TEST_URL;
 if (!base?.startsWith("https://") || !process.env.COMMONPLACE_ACCESS_CODE)
   throw new Error("Set a hosted test URL and access code.");
-let cookie, id;
+let cookie, id, device, subscription;
 const db = connect({
   url: process.env.TURSO_DATABASE_URL,
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
-async function call(path, method = "GET", body) {
+async function call(path, method = "GET", body, token) {
   const response = await fetch(base + path, {
     method,
     headers: {
       Cookie: cookie,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       Origin: base,
       "Content-Type": "application/json",
     },
@@ -24,7 +25,7 @@ async function call(path, method = "GET", body) {
   assert.ok(response.ok, `${method} ${path}: ${response.status}`);
   return response.json();
 }
-async function ready(minimum = 1) {
+async function ready() {
   const deadline = Date.now() + 180000;
   while (Date.now() < deadline) {
     // Observe the queue directly so this check cannot accidentally start generation.
@@ -38,7 +39,7 @@ async function ready(minimum = 1) {
       state.revision === state.processed_revision
     ) {
       const story = await call("/api/stories?collectionId=" + id);
-      if (story.beats.length >= minimum) return story;
+      if (story.session?.steps.length) return story;
     }
     await new Promise((resolve) => setTimeout(resolve, 3000));
   }
@@ -76,29 +77,68 @@ try {
   const initial = await call("/api/workspace");
   assert.ok(Array.isArray(initial.collections));
   console.log("Private sign-in and forged-header isolation passed.");
-  const created = await call("/api/collections", "POST", {
-    name: "QA hosted deployment " + Date.now(),
+  device = await call("/api/devices", "POST", {
+    name: "Hosted view QA fixture",
   });
-  id = created.id;
-  await call("/api/items", "POST", {
-    collectionId: id,
-    kind: "note",
-    title: "Initial direction",
-    body: "We chose a quiet portfolio: one serif headline, then three project cards. No slogan. The sketch set the layout.",
-  });
+  subscription = await call(
+    "/api/subscribe",
+    "POST",
+    {
+      sessionId: crypto.randomUUID(),
+      title: "QA hosted deployment " + Date.now(),
+      provider: "Codex",
+      mode: "follow",
+    },
+    device.token,
+  );
+  id = subscription.collectionId;
+  await call(
+    "/api/capture",
+    "POST",
+    {
+      subscriptionId: subscription.subscriptionId,
+      turns: [
+        {
+          id: "first-choice",
+          role: "user",
+          text: "I chose a quiet portfolio: one serif headline, then three project cards. No slogan. Use https://www.are.na/ as the reference for generous spacing and original image proportions. I want a warm white background.",
+        },
+      ],
+    },
+    device.token,
+  );
   const first = await ready();
-  assert.ok(first.beats.every((beat) => beat.model === "gpt-6-luna"));
-  console.log("Hosted GPT-6 Luna generated the first story.");
-  await call("/api/items", "POST", {
-    collectionId: id,
-    kind: "note",
-    title: "Motion decision",
-    body: "After trying fast motion, we slowed card transitions to 600 milliseconds and replaced the blue accent with warm ochre. The serif headline stays.",
-  });
-  const second = await ready(first.beats.length + 1);
-  assert.deepEqual(second.beats.slice(0, first.beats.length), first.beats);
+  assert.equal(
+    (
+      await db.get("SELECT session_model FROM stories WHERE collection_id=?", [
+        id,
+      ])
+    ).session_model,
+    "gpt-6-luna",
+  );
+  assert.ok(first.session.map.nodes.length);
+  console.log("Hosted GPT-6 Luna generated grounded Story and Gallery views.");
+  await call(
+    "/api/capture",
+    "POST",
+    {
+      subscriptionId: subscription.subscriptionId,
+      turns: [
+        {
+          id: "motion-choice",
+          role: "user",
+          text: "After trying fast motion, I slowed card transitions to 600 milliseconds and replaced the blue accent with warm ochre. The serif headline and generous spacing stay.",
+        },
+      ],
+    },
+    device.token,
+  );
+  const second = await ready();
+  assert.match(JSON.stringify(second.session), /600|ochre/i);
+  assert.match(JSON.stringify(second.session), /serif|spacing|Are.na/i);
+  assert.ok(second.session.steps.length <= 5);
   console.log(
-    "Hosted continuation appended without rewriting earlier moments.",
+    "Hosted continuation incorporates the new decision and keeps the earlier direction.",
   );
   const ticket = await call("/api/uploads", "POST");
   assert.equal(ticket.mode, "blob");
@@ -145,6 +185,11 @@ try {
   if (id) {
     await db.batch(
       [
+        {
+          sql: "DELETE FROM turns WHERE session_id=?",
+          args: [subscription?.subscriptionId || ""],
+        },
+        { sql: "DELETE FROM sessions WHERE collection_id=?", args: [id] },
         { sql: "DELETE FROM story_beats WHERE collection_id=?", args: [id] },
         { sql: "DELETE FROM stories WHERE collection_id=?", args: [id] },
         { sql: "DELETE FROM items WHERE collection_id=?", args: [id] },
@@ -154,5 +199,6 @@ try {
     );
     console.log("Removed only hosted QA database fixtures.");
   }
-  db.close();
+  if (device) await db.run("DELETE FROM devices WHERE id=?", [device.id]);
+  await db.close();
 }

@@ -419,3 +419,25 @@ test("an exact quote assigned to the wrong source is corrected only when unambig
     /evidence/,
   );
 });
+
+test("duplicate labels and pictures are reduced to one grounded representation", () => {
+  const value = valid();
+  value.map.nodes.push(structuredClone(value.map.nodes[0]));
+  value.map.nodes[2].itemId = value.map.nodes[0].itemId;
+  const clean = normalizeSession(value, input);
+  assert.equal(clean.map.nodes.length, 3);
+  assert.equal(clean.map.nodes[2].itemId, null);
+  assert.doesNotThrow(() => validateSession(clean, input));
+});
+
+test("evidence can quote rendered Markdown without copying emphasis delimiters", () => {
+  const source = structuredClone(input);
+  source.transcript[0].text = source.transcript[0].text.replace(
+    "Strictly follow this",
+    "**Strictly follow** this",
+  );
+  assert.doesNotThrow(() => validateSession(valid(), source));
+  const wrong = valid();
+  wrong.steps[0].evidence[0].quote = "Loosely follow this as a lofi wireframe";
+  assert.throws(() => validateSession(wrong, source), /evidence/);
+});

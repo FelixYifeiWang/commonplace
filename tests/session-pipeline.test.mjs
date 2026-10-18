@@ -219,7 +219,9 @@ test("the session call uses strict structured output, no tools and no provider s
           steps: [],
           map: {
             center: { label: "x", itemId: null, url: null },
-            nodes: Array(7).fill({}),
+            nodes: Array.from({ length: 7 }, (_, index) => ({
+              label: `Invalid ${index}`,
+            })),
           },
         });
       },
@@ -246,7 +248,9 @@ test("a response that fails validation is retried once, then rejected", async ()
           steps: [],
           map: {
             center: { label: "x", itemId: null, url: null },
-            nodes: Array(7).fill({}),
+            nodes: Array.from({ length: 7 }, (_, index) => ({
+              label: `Invalid ${index}`,
+            })),
           },
         });
       },
@@ -267,7 +271,9 @@ test("the retry tells the model which rule the first attempt broke", async () =>
           steps: [],
           map: {
             center: { label: "x", itemId: null, url: null },
-            nodes: Array(7).fill({}),
+            nodes: Array.from({ length: 7 }, (_, index) => ({
+              label: `Invalid ${index}`,
+            })),
           },
         });
       },
@@ -415,4 +421,52 @@ test("a split turn retains earlier evidence when its next chunk arrives", async 
     1,
   );
   assert.equal(result.needsModel, true);
+});
+
+test("setup credentials and sign-in URLs never enter the map's link catalog", async () => {
+  const { redactStoryText, sessionURLs } = await import("../lib/story.mjs");
+  const key = "a".repeat(64);
+  const text = redactStoryText(
+    `Set up https://commonplace.example/setup.md#${key}. Then visit https://auth.openai.com/log-in`,
+  );
+  assert.ok(!text.includes(key));
+  assert.deepEqual(
+    sessionURLs({
+      media: [],
+      transcript: [
+        {
+          text: "https://auth.openai.com/log-in https://example.com/?token=private https://example.com/article",
+        },
+      ],
+    }),
+    ["https://example.com/article"],
+  );
+});
+
+test("historical emphasis does not lose evidence beyond the context excerpt", async () => {
+  const quote = "Keep the chosen serif.";
+  const result = await prepareSessionBatch({
+    ...job,
+    current: {
+      steps: [
+        {
+          evidence: [{ sourceId: "old-long", quote }],
+          canvas: { items: [], quote: null },
+        },
+      ],
+      map: { nodes: [] },
+    },
+    history: [
+      {
+        id: "old-long",
+        role: "user",
+        body: "Context. ".repeat(900) + "Keep the **chosen** serif.",
+      },
+    ],
+  });
+  assert.ok(
+    result.input.transcript
+      .find((t) => t.id === "old-long")
+      .text.includes(quote),
+  );
 });
