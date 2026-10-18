@@ -12,6 +12,7 @@ import type { SessionDocument } from "@/lib/session-types";
 type StoryState = {
   session: SessionDocument | null;
   preview?: boolean;
+  previewSession?: SessionDocument | null;
   pending: boolean;
   enabled: boolean;
   status: string;
@@ -93,7 +94,14 @@ export function SessionView({
       setRetrying(false);
     }
   };
-  const session = demo ? SAMPLE_SESSION : story?.session;
+  const generated = demo ? SAMPLE_SESSION : story?.session;
+  const missingView =
+    mode === "gallery"
+      ? !generated?.map?.nodes?.length
+      : !generated?.steps.length && !story?.beats.length;
+  const usePreview = !demo && missingView && !!story?.previewSession;
+  const session = usePreview ? story?.previewSession : generated;
+  const showingSources = story?.preview || usePreview;
   const working = story?.enabled && story.pending && story.status !== "error";
   const problem = error || story?.error;
   const hasView =
@@ -111,7 +119,7 @@ export function SessionView({
           <span className="session-notice">
             <i aria-hidden="true" />
             <span>
-              {story?.preview
+              {showingSources
                 ? "Showing your sources."
                 : "Update paused. Your last version is here."}
             </span>
@@ -122,9 +130,9 @@ export function SessionView({
         ) : working && session ? (
           <span className="session-updating">
             <i />
-            {story?.preview ? "Organizing your sources…" : "Updating"}
+            {showingSources ? "Organizing your sources…" : "Updating"}
           </span>
-        ) : story?.preview ? (
+        ) : showingSources ? (
           <span className="session-updating">From your session</span>
         ) : null}
       </div>

@@ -548,3 +548,35 @@ test("an expired generation cannot publish a partial result", async () => {
     sqlite.close();
   }
 });
+
+test("a missing generated view gets a source fallback without altering the saved document", async () => {
+  const { sqlite, store, add } = fixture();
+  try {
+    add();
+    const job = await store.claim();
+    const empty = {
+      steps: [],
+      map: { center: { label: "Quiet", itemId: null, url: null }, nodes: [] },
+    };
+    await store.completeSession(
+      job,
+      await prepareStoryBatch(job),
+      empty,
+      "gpt-6-luna",
+    );
+    const state = await store.get("c", "u");
+    assert.deepEqual(state.session, empty);
+    assert.ok(
+      state.previewSession.steps.length &&
+        state.previewSession.map.nodes.length,
+    );
+    assert.deepEqual(
+      JSON.parse(
+        sqlite.prepare("SELECT session_json FROM stories").get().session_json,
+      ),
+      empty,
+    );
+  } finally {
+    sqlite.close();
+  }
+});
