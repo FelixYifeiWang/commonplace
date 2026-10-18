@@ -216,14 +216,17 @@ test("collapsed hover ignores empty control space and accepts the face", () => {
   assert.equal(buddyHoverRegion({ x: 52, y: 100 }, false), true);
   assert.equal(buddyHoverRegion({ x: 105, y: 100 }, true), false);
 });
-test("the closer Connect button never becomes a drag handle", () => {
-  const f = nativeFixture();
-  f.send("mouseDown", 452, 312);
-  f.send("mouseMove", 700, 500);
-  f.send("mouseUp", 700, 500, []);
-  assert.deepEqual(f.results, []);
-  assert.equal(f.window.getBounds().x, 400);
+test("the separate Connect panel stays above the visible face", () => {
+  const face = { x: 452, y: 358 };
+  const panel = buddyControlsBounds(face, 0, {
+    x: 0,
+    y: 0,
+    width: 1440,
+    height: 900,
+  });
+  assert.ok(panel.y + panel.height <= face.y - 40);
 });
+
 test("keyboard activation stays open until the pointer enters or controls are dismissed", () => {
   let now = 0;
   const changes = [];
@@ -255,4 +258,51 @@ test("reference panel expands without moving the face and stays within the displ
   }
   assert.equal(buddyControlsBounds({ x: 50, y: 60 }, 5, area).x, 0);
   assert.ok(buddyControlsBounds({ x: 50, y: 60 }, 5, area).y >= 100);
+});
+
+test("the entire rendered grab button, including its upper padding, starts a drag", () => {
+  const f = nativeFixture();
+  f.send("mouseDown", 434, 316);
+  f.send("mouseMove", 484, 291);
+  f.send("mouseUp", 484, 291, []);
+  assert.deepEqual(f.window.getBounds(), {
+    x: 450,
+    y: 225,
+    width: 104,
+    height: 166,
+  });
+});
+
+test("native events without optional global coordinates still preserve the grab offset", () => {
+  const f = nativeFixture();
+  const send = (type, x, y) =>
+    handleBuddyMouse(
+      f.drag,
+      { type, button: "left", x, y, modifiers: ["leftButtonDown"] },
+      f.window.getBounds(),
+      (r) => f.results.push(r),
+    );
+  send("mouseDown", 34, 98);
+  send("mouseMove", 84, 73);
+  send("mouseUp", 34, 98);
+  assert.deepEqual(f.window.getBounds(), {
+    x: 450,
+    y: 225,
+    width: 104,
+    height: 166,
+  });
+});
+
+import { createBuddyHitTest } from "../desktop/drag.mjs";
+test("native hit testing recovers on face entry and keeps active drags interactive", () => {
+  const ignored = [];
+  const hitTest = createBuddyHitTest({
+    setIgnoreMouseEvents: (value) => ignored.push(value),
+  });
+  hitTest.update({ x: 20, y: 10 });
+  hitTest.update({ x: 34, y: 66 });
+  hitTest.update({ x: 1000, y: -500 }, true);
+  hitTest.update({ x: 1000, y: -500 });
+  hitTest.update({ x: 34, y: 98 });
+  assert.deepEqual(ignored, [true, false, true, false]);
 });

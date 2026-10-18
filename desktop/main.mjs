@@ -27,6 +27,7 @@ import {
   buddyControlsBounds,
   insideBuddyControls,
   handleBuddyMouse,
+  createBuddyHitTest,
 } from "./drag.mjs";
 const exec = promisify(execFile);
 import fs from "node:fs/promises";
@@ -699,16 +700,16 @@ if (!lock) {
           }
         },
       });
+      const hitTest = createBuddyHitTest(win);
       const hoverTimer = setInterval(() => {
-        if (
-          win.isDestroyed() ||
-          !win.isVisible() ||
-          connecting ||
-          dragController.isDragging()
-        )
-          return;
+        if (win.isDestroyed() || !win.isVisible()) return;
         const cursor = screen.getCursorScreenPoint(),
           bounds = win.getBounds();
+        hitTest.update(
+          { x: cursor.x - bounds.x, y: cursor.y - bounds.y },
+          dragController.isDragging(),
+        );
+        if (connecting || dragController.isDragging()) return;
         hoverController.update(
           buddyHoverRegion(
             { x: cursor.x - bounds.x, y: cursor.y - bounds.y },
@@ -729,13 +730,8 @@ if (!lock) {
         if (result.moved) void persist();
       };
       win.webContents.on("before-mouse-event", (_event, mouse) => {
-        handleBuddyMouse(
-          dragController,
-          mouse,
-          win.getBounds(),
-          finishDrag,
-          !connecting,
-        );
+        hitTest.update({ x: mouse.x, y: mouse.y }, dragController.isDragging());
+        handleBuddyMouse(dragController, mouse, win.getBounds(), finishDrag);
       });
       win.webContents.on("before-input-event", (_event, input) => {
         if (input.type === "keyDown" && input.key === "Escape") {
@@ -755,10 +751,9 @@ if (!lock) {
       register("companion:drag-end", () => ({ click: false }));
       register("companion:drag-cancel", () => {});
       register("companion:toggle", () => hoverController.show());
-      register("companion:hit-test", (interactive) => {
-        if (!dragController.isDragging())
-          win.setIgnoreMouseEvents(!interactive, { forward: true });
-      });
+      // Older hosted pages send asynchronous hover messages. Native hit testing
+      // deliberately ignores them so stale messages cannot disable the face.
+      register("companion:hit-test", () => {});
       register("companion:context-menu", () => {
         dragController.cancel();
         notifyBuddy();

@@ -79,17 +79,13 @@ export function handleBuddyMouse(
   onFinish,
   enabled = true,
 ) {
-  const point = { x: mouse.globalX, y: mouse.globalY };
+  const point = {
+    x: Number.isFinite(mouse.globalX) ? mouse.globalX : bounds.x + mouse.x,
+    y: Number.isFinite(mouse.globalY) ? mouse.globalY : bounds.y + mouse.y,
+  };
   if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
   if (mouse.type === "mouseDown" && mouse.button === "left") {
-    if (
-      !enabled ||
-      mouse.x < 0 ||
-      mouse.x > 104 ||
-      mouse.y < 74 ||
-      mouse.y > 166
-    )
-      return;
+    if (!enabled || !buddyGrabRegion({ x: mouse.x, y: mouse.y })) return;
     drag.start({ offset: { x: point.x - bounds.x, y: point.y - bounds.y } });
   } else if (mouse.type === "mouseUp" && mouse.button === "left") {
     if (drag.isDragging()) onFinish(drag.end(point));
@@ -180,4 +176,22 @@ export function insideBuddyControls(point, face, panel) {
     point.y >= Math.min(panel.y, face.y - 30) - 6 &&
     point.y <= Math.max(panel.y + panel.height, face.y + 42) + 6
   );
+}
+
+// Match the renderer's 104 × 108 button at --buddy-offset: 54px.
+export function buddyGrabRegion(point) {
+  return point.x >= 0 && point.x <= 104 && point.y >= 54 && point.y <= 162;
+}
+// Native cursor state owns click-through. Delayed renderer leave messages must
+// never make the face unclickable, and connection work must not lock movement.
+export function createBuddyHitTest(window) {
+  let ignored = null;
+  return {
+    update(point, dragging = false) {
+      const next = !dragging && !buddyGrabRegion(point);
+      if (next === ignored) return;
+      ignored = next;
+      window.setIgnoreMouseEvents(next, { forward: true });
+    },
+  };
 }

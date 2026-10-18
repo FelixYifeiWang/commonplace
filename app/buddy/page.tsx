@@ -123,7 +123,7 @@ export default function Companion() {
         aria-label="Move buddy. Hover or click to connect."
         title={error || "Move buddy. Click to connect."}
         onPointerDown={(e) => {
-          if (e.button !== 0 || snapshot?.connecting) return;
+          if (e.button !== 0) return;
           e.preventDefault();
           e.currentTarget.setPointerCapture(e.pointerId);
           pointer.current = e.pointerId;
