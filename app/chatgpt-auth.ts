@@ -1,3 +1,4 @@
+import { accountsEnabled, accountUser } from "@/lib/account-auth";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { verifySession, SESSION_COOKIE } from "@/lib/hosted-auth.mjs";
@@ -21,6 +22,7 @@ const CALLBACK_PATH = "/callback";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   if (process.env.COMMONPLACE_HOSTED === "1" || process.env.VERCEL === "1") {
+    if (accountsEnabled()) return accountUser();
     const token = (await cookies()).get(SESSION_COOKIE)?.value;
     const userId = verifySession(token, process.env.COMMONPLACE_SESSION_SECRET);
     return userId

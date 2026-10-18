@@ -2,6 +2,12 @@ import type { NextConfig } from "next";
 import path from "node:path";
 const nextConfig: NextConfig = {
   env: {
+    NEXT_PUBLIC_ACCOUNTS_ENABLED:
+      process.env.GOOGLE_CLIENT_ID &&
+      process.env.GOOGLE_CLIENT_SECRET &&
+      process.env.BETTER_AUTH_SECRET
+        ? "1"
+        : "0",
     NEXT_PUBLIC_HOSTED:
       process.env.COMMONPLACE_HOSTED === "1" || process.env.VERCEL === "1"
         ? "1"

@@ -120,7 +120,7 @@ export function SessionView({
   return (
     <section
       className={`session-view session-${mode}`}
-      aria-label={mode === "gallery" ? "Channel map" : "Channel story"}
+      aria-label={mode === "gallery" ? "Collection map" : "Collection story"}
     >
       <div className="session-feedback" aria-live="polite">
         {problem ? (

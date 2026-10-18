@@ -32,6 +32,7 @@ import { Gallery } from "./gallery";
 import { SessionView } from "./session-view";
 import { MediaCard } from "./media-card";
 import { AddBlock } from "./add-block";
+import { AccountControls, AccountTransition } from "./account-controls";
 import { Modal } from "./modal";
 
 const EMPTY: WorkspaceData = {
@@ -105,7 +106,7 @@ export default function Workspace({
     [toast, setToast] = useState(""),
     [copied, setCopied] = useState(false),
     [modalError, setModalError] = useState("");
-  const [gridMode, setGridMode] = useState(false);
+  const [view, setView] = useState<"gallery" | "map" | "story">("gallery");
   useEffect(() => {
     const toggle = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
@@ -116,13 +117,12 @@ export default function Workspace({
         !target.closest("input,textarea,[contenteditable=true]")
       ) {
         event.preventDefault();
-        setGridMode((value) => !value);
+        setView((value) => (value === "gallery" ? "map" : "gallery"));
       }
     };
     window.addEventListener("keydown", toggle);
     return () => window.removeEventListener("keydown", toggle);
   }, []);
-  const [view, setView] = useState<"gallery" | "story">("gallery");
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const [droppedText, setDroppedText] = useState("");
   const [undo, setUndo] = useState<{
@@ -199,7 +199,9 @@ export default function Workspace({
         previewBusy.current = false;
       });
   }, [data.items, demo, refresh]);
-  const collections = data.collections;
+  const collections = [...data.collections].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  );
   const hasBuddy = data.devices.some((device) => !device.revoked);
   const connectionLabel = hasBuddy ? "Connect a session" : "Set up buddy";
   const allItems =
@@ -368,9 +370,9 @@ export default function Workspace({
       }));
       if (selected === id) chooseCollection("all");
       setUndo({ kind: "collection", ids: [id], previous });
-      setToast("Channel deleted · disconnected");
+      setToast("Collection deleted · disconnected");
     } catch (e) {
-      setToast(e instanceof Error ? e.message : "Could not delete channel.");
+      setToast(e instanceof Error ? e.message : "Could not delete collection.");
     }
   }
   async function undoDelete() {
@@ -392,7 +394,7 @@ export default function Workspace({
       }
       setToast(
         undo.kind === "collection"
-          ? "Channel restored · disconnected"
+          ? "Collection restored · disconnected"
           : "Blocks restored",
       );
       setUndo(null);
@@ -505,26 +507,17 @@ export default function Workspace({
             <div
               className="channel-view-switch"
               role="group"
-              aria-label="Channel view"
+              aria-label="Collection view"
             >
-              <button
-                aria-pressed={view === "gallery"}
-                onClick={() => {
-                  setView("gallery");
-                  setGridMode(false);
-                }}
-              >
-                Gallery
-              </button>
-              <button
-                aria-pressed={view === "story"}
-                onClick={() => {
-                  setView("story");
-                  setGridMode(false);
-                }}
-              >
-                Story
-              </button>
+              {(["gallery", "map", "story"] as const).map((option) => (
+                <button
+                  key={option}
+                  aria-pressed={view === option}
+                  onClick={() => setView(option)}
+                >
+                  {option[0].toUpperCase() + option.slice(1)}
+                </button>
+              ))}
             </div>
           )}
           {demo && (
@@ -543,12 +536,12 @@ export default function Workspace({
             <Plus size={20} strokeWidth={1.3} />
           </button>
         </header>
+        {!demo &&
+          process.env.NEXT_PUBLIC_ACCOUNTS_ENABLED === "1" &&
+          data.user && <AccountTransition onLinked={refresh} />}
         <main
           className={
-            screen === "collection" &&
-            !gridMode &&
-            view === "gallery" &&
-            selected !== "all"
+            screen === "collection" && view === "map" && selected !== "all"
               ? "map-main"
               : undefined
           }
@@ -559,13 +552,9 @@ export default function Workspace({
             </div>
           ) : error && !data.user ? (
             <div className="welcome">
-              <a
-                className="button primary"
-                href="/signin-with-chatgpt?return_to=%2F"
-                target="_top"
-              >
+              <a className="button primary" href="/sign-in" target="_top">
                 {process.env.NEXT_PUBLIC_HOSTED === "1"
-                  ? "Open space"
+                  ? "Sign in"
                   : "Continue with ChatGPT"}{" "}
                 <ArrowRight size={15} />
               </a>
@@ -591,39 +580,42 @@ export default function Workspace({
                   </button>
                 </div>
               )}
-              {screen === "collection" && gridMode && (
-                <Gallery
-                  key={selected}
-                  items={visibleItems}
-                  onOpen={setDetail}
-                  onDelete={deleteBlocks}
-                  canAdd={collections.length > 0}
-                  onQuickAdd={(text) =>
-                    saveBlock({
-                      ...parseBlockInput(text),
-                      collectionId:
-                        selected === "all" ? collections[0]?.id : selected,
-                    })
-                  }
-                  onAdd={addFromGallery}
-                />
-              )}
-              {screen === "collection" && !gridMode && selected !== "all" && (
-                <SessionView
-                  key={selected}
-                  collectionId={selected}
-                  name={
-                    collections.find((c) => c.id === selected)?.name ||
-                    "Untitled"
-                  }
-                  mode={view}
-                  items={visibleItems}
-                  onOpen={setDetail}
-                  demo={demo}
-                />
-              )}
               {screen === "collection" &&
-                !gridMode &&
+                view === "gallery" &&
+                selected !== "all" && (
+                  <Gallery
+                    key={selected}
+                    items={visibleItems}
+                    onOpen={setDetail}
+                    onDelete={deleteBlocks}
+                    canAdd={collections.length > 0}
+                    onQuickAdd={(text) =>
+                      saveBlock({
+                        ...parseBlockInput(text),
+                        collectionId:
+                          selected === "all" ? collections[0]?.id : selected,
+                      })
+                    }
+                    onAdd={addFromGallery}
+                  />
+                )}
+              {screen === "collection" &&
+                view !== "gallery" &&
+                selected !== "all" && (
+                  <SessionView
+                    key={selected}
+                    collectionId={selected}
+                    name={
+                      collections.find((c) => c.id === selected)?.name ||
+                      "Untitled"
+                    }
+                    mode={view === "map" ? "gallery" : "story"}
+                    items={visibleItems}
+                    onOpen={setDetail}
+                    demo={demo}
+                  />
+                )}
+              {screen === "collection" &&
                 selected === "all" &&
                 collections.length > 0 && (
                   <div className="collection-overview">
@@ -637,26 +629,41 @@ export default function Workspace({
                         )
                         .slice(0, 3);
                       return (
-                        <button
-                          className="collection-cover"
+                        <div
+                          className="collection-overview-card"
                           key={collection.id}
-                          onClick={() => chooseCollection(collection.id)}
                         >
-                          <span className="collection-cover-sheet soft-sheet">
-                            {covers.length ? (
-                              covers.map((item) => (
-                                <span key={item.id}>
-                                  <MediaCard item={item} screenshots={false} />
+                          <button
+                            className="collection-cover"
+                            onClick={() => chooseCollection(collection.id)}
+                          >
+                            <span className="collection-cover-sheet soft-sheet">
+                              {covers.length ? (
+                                covers.map((item) => (
+                                  <span key={item.id}>
+                                    <MediaCard
+                                      item={item}
+                                      screenshots={false}
+                                    />
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="collection-cover-empty">
+                                  {collection.name.slice(0, 1)}
                                 </span>
-                              ))
-                            ) : (
-                              <span className="collection-cover-empty">
-                                {collection.name.slice(0, 1)}
-                              </span>
-                            )}
-                          </span>
-                          <span>{collection.name}</span>
-                        </button>
+                              )}
+                            </span>
+                            <span>{collection.name}</span>
+                          </button>
+                          <button
+                            className="collection-overview-delete"
+                            aria-label={`Delete ${collection.name}`}
+                            title="Delete and disconnect collection"
+                            onClick={() => void deleteCollection(collection.id)}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -720,7 +727,10 @@ export default function Workspace({
                             : data.user?.email}
                         </p>
                       </div>
-                      {demo ? (
+                      {!demo &&
+                      process.env.NEXT_PUBLIC_ACCOUNTS_ENABLED === "1" ? (
+                        <AccountControls />
+                      ) : demo ? (
                         <Link className="button subtle" href="/">
                           Open my space
                         </Link>

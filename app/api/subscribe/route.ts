@@ -38,9 +38,9 @@ export async function POST(request: Request) {
         .select()
         .from(collections)
         .where(eq(collections.id, existing.collectionId));
-      if (!collection) throw new HttpError(404, "Channel not found.");
+      if (!collection) throw new HttpError(404, "Collection not found.");
       if (collection.deletedAt && body.mode !== "follow")
-        throw new HttpError(409, "Reconnect this channel to restore it.");
+        throw new HttpError(409, "Reconnect this collection to restore it.");
       // An explicit Connect resumes the existing channel without reimporting deleted blocks.
       if (body.mode === "follow") {
         await db.batch([

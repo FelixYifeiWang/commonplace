@@ -5880,3 +5880,131 @@ body.desktop-feedback-page {
 .session-map {
   overflow: clip;
 }
+
+/* All collections is navigation; individual collections belong below it. */
+.collection-menu-overview {
+  padding: 3px 0 7px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid #efeee9;
+}
+.collection-menu-overview .channel-menu-all {
+  color: #777b70;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.collection-menu-overview .channel-menu-all:hover {
+  background: #f4f4ee;
+}
+.collection-menu-overview .channel-menu-all > svg {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+.collection-menu-overview .channel-menu-all > span {
+  flex: 1;
+}
+.collection-overview-card {
+  position: relative;
+  min-width: 0;
+}
+.collection-overview-card .collection-cover {
+  width: 100%;
+}
+.collection-overview-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: #fffffff0;
+  border: 1px solid #e8e8e3;
+  border-radius: 50%;
+  color: #777b70;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.collection-overview-card:hover .collection-overview-delete,
+.collection-overview-card:focus-within .collection-overview-delete {
+  opacity: 1;
+}
+.collection-overview-delete:hover {
+  color: #a64f40;
+  background: #fff;
+}
+.collection-overview-delete:focus-visible {
+  outline: 2px solid #777f67;
+  outline-offset: 3px;
+}
+@media (hover: none) {
+  .collection-overview-delete {
+    opacity: 1;
+  }
+}
+.account-signin {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+}
+.account-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.account-controls > span {
+  font-size: 12px;
+  color: #777b70;
+  overflow-wrap: anywhere;
+}
+.account-transition {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 24px;
+  font-size: 12px;
+  background: #f5f5f0;
+  flex-wrap: wrap;
+}
+.account-transition > span {
+  color: #777b70;
+}
+.account-signin-card {
+  width: min(100%, 320px);
+  text-align: center;
+}
+.account-signin-card h1 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 32px;
+  margin-bottom: 32px;
+}
+.google-signin-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  border: 1px solid #dedfd8;
+  background: #fff;
+  border-radius: 6px;
+  padding: 13px 18px;
+  font-size: 14px;
+}
+.google-signin-button:hover {
+  background: #f7f7f3;
+}
+.google-signin-button:focus-visible {
+  outline: 2px solid #777f67;
+  outline-offset: 3px;
+}
+
+.account-signin-card p[role="alert"] {
+  font-size: 12px;
+  color: #a64f40;
+  margin-top: 16px;
+}

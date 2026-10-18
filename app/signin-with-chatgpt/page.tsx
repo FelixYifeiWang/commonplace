@@ -1,3 +1,4 @@
+import { accountsEnabled } from "@/lib/account-auth";
 import { redirect } from "next/navigation";
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 export default async function SignIn({
@@ -5,6 +6,7 @@ export default async function SignIn({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  if (accountsEnabled()) redirect("/sign-in");
   if (await getChatGPTUser()) redirect("/");
   const { error } = await searchParams;
   return (

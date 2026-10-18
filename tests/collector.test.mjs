@@ -186,6 +186,9 @@ test("a followed project does not read unchanged transcripts again", async (t) =
     active = join(dir, "active.jsonl");
   await writeFile(done, line("a", "Finished session"));
   await writeFile(active, line("b", "Active session"));
+  // Files can share a timestamp on CI filesystems; make the intended order explicit.
+  await utimes(done, 1, 1);
+  await utimes(active, 2, 2);
   const sent = [];
   const args = {
     connection: { origin: "https://example.test", token: "test-only" },

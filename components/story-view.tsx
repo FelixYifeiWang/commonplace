@@ -89,7 +89,7 @@ export function StoryView({
   const writing = story?.enabled && story.pending && story.status !== "error";
   const problem = error || story?.error;
   return (
-    <section className="story-view" aria-label="Channel story">
+    <section className="story-view" aria-label="Collection story">
       <div className="story-toolbar">
         <span>
           {story?.beats.length

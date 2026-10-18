@@ -129,3 +129,11 @@ export const pairingCodes = sqliteTable("pairing_codes", {
   expiresAt: integer("expires_at").notNull(),
   claimId: text("claim_id"),
 });
+
+export const accountSpaces = sqliteTable("account_spaces", {
+  authId: text("auth_id").primaryKey(),
+  ownerId: text("owner_id").notNull().unique(),
+  createdAt: text("created_at").notNull(),
+});
+
+export * from "./auth-schema";

@@ -1,6 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Plus, Search, Trash2 } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  LayoutGrid,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import type { Collection } from "@/lib/types";
 export function CollectionPicker({
   collections,
@@ -79,13 +86,16 @@ export function CollectionPicker({
               onChange={(e) => setQuery(e.target.value)}
             />
           </label>
-          <div className="channel-menu-list">
+          <div className="collection-menu-overview">
             <button className="channel-menu-all" onClick={() => choose("all")}>
-              Collections
+              <LayoutGrid size={14} />
+              <span>All collections</span>
               {selected === "all" && screen === "collection" && (
                 <Check size={13} />
               )}
             </button>
+          </div>
+          <div className="channel-menu-list">
             {collections
               .filter((c) => c.name.toLowerCase().includes(query.toLowerCase()))
               .map((c) => (
@@ -98,7 +108,7 @@ export function CollectionPicker({
                   </button>
                   <button
                     className="channel-delete"
-                    title="Delete and disconnect channel"
+                    title="Delete and disconnect collection"
                     aria-label={`Delete ${c.name}`}
                     onClick={() => {
                       setOpen(false);

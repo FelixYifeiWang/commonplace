@@ -6,21 +6,21 @@ A first draft of a shared home for ideas from human–AI conversations.
 
 See [the morning test guide](MORNING_TEST.md) for controls, verified flows and current limits.
 
-Open `Start Commonplace.command` on this Mac, then visit http://127.0.0.1:3100/ for your local space. The desktop buddy opens alongside it. Open a conversation in a single Codex window and move the desktop buddy over the conversation area, click it, then click Connect. Dragging only moves the buddy. Local sign-in uses a development identity. The optional sample collection is at `/?demo=1`.
+Open [Commonplace](https://commonplace-pearl.vercel.app). Google sign-in is available once OAuth credentials are configured; until then the existing access-code login remains. Choose Set up buddy to connect this hosted space to your Mac. Open a conversation, move the buddy over it, click it, then click Connect. Dragging only moves the buddy. Test on Vercel by default; use localhost only when explicitly requested. Local and hosted collections are separate.
 
-Each collection opens as a map. Drag the background to pan, scroll or pinch to zoom, and zoom in for details. Story shows the decisions alongside their sources. Cmd/Ctrl+Shift+G toggles the original block gallery. The buddy only appears on the desktop. The collection menu includes connection and account controls.
+Each collection has three views: **Gallery** for saved media, **Map** for connections, and **Story** for decisions and their sources. Gallery opens by default. In Map, drag the background to pan and scroll or pinch to zoom. Cmd/Ctrl+Shift+G toggles Gallery and Map. The buddy only appears on the desktop. The collection menu includes connection and account controls.
 
 ## Connection routes
 
 - **Desktop (macOS preview):** open one Codex window, open the conversation, then move the buddy over the conversation area, click it and choose Connect. It connects and follows new turns while the companion runs. No Accessibility or screen-recording permission is requested. It checks the selected transcript every 15 seconds; the webpage refreshes every four seconds.
-- **Claude Code (macOS preview):** the same buddy connects the session focused in the Claude desktop app's Code tab, with one Claude window open. To follow a whole project folder instead, including sessions started there later, run `npm run desktop -- --follow-claude-project=/full/path/to/folder`. The folder becomes one channel. Every transcript Claude Code stores for that folder is uploaded, so name only folders you want collected. Claude Code in a terminal cannot be targeted by the buddy.
+- **Claude Code (macOS preview):** the same buddy connects the session focused in the Claude desktop app's Code tab, with one Claude window open. To follow a whole project folder instead, including sessions started there later, run `npm run desktop -- --follow-claude-project=/full/path/to/folder`. The folder becomes one collection. Every transcript Claude Code stores for that folder is uploaded, so name only folders you want collected. Claude Code in a terminal cannot be targeted by the buddy.
 - **Agent setup:** choose Set up buddy and paste the prompt into any local coding agent. Setup pairs and launches the buddy without reading the setup conversation or creating a collection. Then choose Connect a session and paste that separate prompt into a conversation worth saving. Codex and Claude Code in the Claude desktop app can also connect through the buddy's Connect control over an open conversation. macOS 13+, Node.js 22.13+ and npm are required. A prebuilt helper avoids Xcode; cloud agents cannot install a laptop buddy.
 
 Both routes use the same device/subscription APIs. A device token is scoped to writes for its owner; pause stops ingestion and revocation disables the device. Server tokens are hashed; desktop credentials are encrypted using Electron safeStorage. Only explicitly selected transcripts are uploaded.
 
 ## What this draft does
 
-Collections, manual blocks, source passages, account sign-in, revocable connections, session controls, duplicate-resistant imports, JSONL parsing, and a floating Electron companion. Each connected session gets a collection named after it, and the home view shows every collection. Captured URLs become reference blocks with locally rendered page screenshots, cover fallbacks and media viewers. The hidden block gallery stacks pages by website; click a stack to expand inline, then click its cover to fold. Media keeps its proportions inside aligned cells. Search and type/source filters work inside stacks. Select blocks to delete with Undo; sync preserves deletion markers. The first empty tile accepts text, links and dropped/pasted files. The searchable collection picker can delete and disconnect channels. Sign-in and callback URLs are excluded. Each channel has a Gallery map and a Story view with up to five concise decisions. Both are grounded in the conversation and saved sources. Website pages keep their own backgrounds; still images are fitted or cut out when browser image access permits. The saved originals stay untouched.
+Collections, manual blocks, source passages, account sign-in, revocable connections, session controls, duplicate-resistant imports, JSONL parsing, and a floating Electron companion. Each connected session gets a collection named after it, and the home view shows every collection. Captured URLs become reference blocks with locally rendered page screenshots, cover fallbacks and media viewers. The block gallery stacks pages by website; click a stack to expand inline, then click its cover to fold. Media keeps its proportions inside aligned cells. Search and type/source filters work inside stacks. Select blocks to delete with Undo; sync preserves deletion markers. The first empty tile accepts text, links and dropped/pasted files. The searchable collection picker can delete and disconnect collections. Sign-in and callback URLs are excluded. Each collection has a Map and a Story view with up to five concise decisions. Both are grounded in the conversation and saved sources. Website pages keep their own backgrounds; still images are fitted or cut out when browser image access permits. The saved originals stay untouched.
 
 ## Unfinished
 
@@ -28,7 +28,7 @@ Images pasted into coding sessions and screenshots of generated local websites a
 
 The example collection is sample content, not a live extraction. Clicking the desktop buddy to identify an open window currently supports Codex and Claude Code in the Claude desktop app. Inactive sidebar rows must be opened first. The setup-prompt route supports local Codex, Claude Code and Cursor JSONL transcripts; see `COMPATIBILITY.md`. Map nodes can be moved, but their text and relationships are generated. There is no signed desktop installer yet.
 
-The older Sites preview has an additional Sites authentication boundary. The Vercel deployment uses its own private access code. Desktop hosted sign-in and unattended hosted syncing still need an end-to-end companion check; local companion syncing is the tested development path.
+The older Sites preview has an additional Sites authentication boundary. Vercel uses Google OAuth and database-backed Better Auth sessions. New Google accounts have isolated spaces. Existing prototype users can choose Open existing space when their browser still holds its signed access-code cookie; this preserves existing files and buddy connections.
 
 ## Development
 
@@ -65,11 +65,11 @@ The local helper reads window geometry and the owning process, never screen pixe
 
 An explicit connection shows a screen-wide ripple, then connection/import status. The green Connected result appears after the initial transcript capture succeeds. The overlay ignores pointer input. Public webpage screenshots and covers are captured while the local collection page is open; a source may still appear as a text card if it blocks previews or supplies no cover. The mouthless buddy has a single connection control, cursor-aware eyes and reduced-motion support. Expanding its control preserves its face position, including at the bottom of a display. See `ARENA_REFERENCE.md` for media behavior and limits.
 
-The `drizzle/0002_yellow_freak.sql` migration separates existing sessions into named collections and preserves their blocks. The `drizzle/0003_tough_gladiator.sql` migration adds named groups and local file references without changing existing blocks. The `drizzle/0004_pretty_sally_floyd.sql` migration adds reversible deletion markers. Channel deletion revokes capture; Undo restores the channel but leaves it disconnected. Explicitly connecting again restores and resumes that channel while preserving deleted-block markers. Apply only migrations not already present on an existing database. Run `node tests/local-api.integration.mjs` against the local preview for collection, grouping and media checks; it removes its own temporary fixtures.
+The `drizzle/0002_yellow_freak.sql` migration separates existing sessions into named collections and preserves their blocks. The `drizzle/0003_tough_gladiator.sql` migration adds named groups and local file references without changing existing blocks. The `drizzle/0004_pretty_sally_floyd.sql` migration adds reversible deletion markers. Collection deletion revokes capture; Undo restores the collection but leaves it disconnected. Explicitly connecting again restores and resumes that collection while preserving deleted-block markers. Apply only migrations not already present on an existing database. Run `node tests/local-api.integration.mjs` against the local preview for collection, grouping and media checks; it removes its own temporary fixtures.
 
-## Channel stories
+## Collection stories
 
-Choose a channel, then **Gallery** or **Story**. The map is the default; the original grid is available with Cmd/Ctrl+Shift+G. New transcript turns and gallery edits queue a continuation automatically; opening the Story tab is not required. Keep `npm run local` running. The buddy must also run for subscribed session capture.
+Choose a collection, then **Gallery**, **Map** or **Story**. New transcript turns and gallery edits queue a continuation automatically; opening Story is not required. Keep the buddy running for subscribed session capture.
 
 Set `OPENAI_API_KEY` in the ignored `.env.local` file. The local worker reads it for each job and uses `gpt-6-luna` via the OpenAI Responses API with provider storage disabled. The key stays server-side. Session text and media metadata are sent to OpenAI after credential redaction; images themselves are not sent. Reference arrows describe relationships supported by the transcript, rather than inferring visual details from thumbnails.
 
@@ -81,12 +81,13 @@ Run `node tests/story.integration.mjs` against the local server with a valid key
 
 The hosted app uses Next.js, Turso SQLite and private Vercel Blob. Local Vinext/D1 and the desktop companion remain available without migrating or uploading existing laptop data. The hosted space starts empty.
 
-Production configuration (server-side): `COMMONPLACE_HOSTED=1`, `OPENAI_API_KEY`, `COMMONPLACE_ACCESS_CODE`, `COMMONPLACE_SESSION_SECRET`, `CRON_SECRET`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BLOB_STORE_ID` and `BLOB_WEBHOOK_PUBLIC_KEY`. Generate strong random access/session/cron secrets and keep them outside Git. The current private prototype has one shared owner space protected by an access code; it is not a multi-user account system.
+Production configuration (server-side): `COMMONPLACE_HOSTED=1`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=https://commonplace-pearl.vercel.app`, `OPENAI_API_KEY`, `CRON_SECRET`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BLOB_STORE_ID` and `BLOB_WEBHOOK_PUBLIC_KEY`. Keep secrets outside Git. The Google Web client callback is `https://commonplace-pearl.vercel.app/api/auth/callback/google`; only basic profile and email are requested. Retain `COMMONPLACE_SESSION_SECRET` and the old access code only for prototype ownership recovery. Once Google OAuth is configured, legacy cookies alone do not authenticate API requests.
+
+Migrations 0008 and 0009 add account ownership mappings and Better Auth tables. Claims never rewrite saved record ownership, and an account with its own collections or devices cannot switch spaces. New users start empty.
 
 ```sh
 # With hosted database credentials loaded securely into the environment:
 npm run db:migrate:hosted
-COMMONPLACE_HOSTED=1 npm run build:vercel
 vercel deploy --prod
 ```
 
@@ -96,7 +97,7 @@ Hosted website cards use metadata covers. The native browser screenshot renderer
 
 Vercel Hobby and Turso Starter were selected for the prototype; OpenAI requests consume paid API credits. No paid infrastructure plan is required for this deployment. Monitor each provider's free quotas before scaling.
 
-`tests/hosted.integration.mjs` is an explicit live check using `COMMONPLACE_TEST_URL`, the access code, and hosted database credentials from the environment. It verifies authentication, automatic GPT-6 Luna continuation, direct private uploads, downloads, byte ranges and deletion, then removes only its database fixtures. It makes paid model calls; remove its reported Blob fixture with the Vercel CLI afterward.
+`tests/hosted.integration.mjs` is a legacy access-code check for deployments without Google OAuth. It uses `COMMONPLACE_TEST_URL`, the access code, and hosted database credentials from the environment. It verifies authentication, automatic GPT-6 Luna continuation, direct private uploads, downloads, byte ranges and deletion, then removes only its database fixtures. It makes paid model calls; remove its reported Blob fixture with the Vercel CLI afterward.
 
 ## One-prompt setup internals
 
