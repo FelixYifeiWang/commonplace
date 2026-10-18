@@ -5751,8 +5751,9 @@ body.desktop-feedback-page {
 .map-condensed .map-caption .map-output {
   display: block;
   margin-top: 3px;
-  /* Scales against the map zoom like node names, so it stays legible. */
-  font-size: clamp(11px, calc(10px / var(--map-zoom, 1)), 24px);
+  /* Scales against the map zoom like node names: at least 10px on screen
+     from the minimum zoom (0.35) up. */
+  font-size: clamp(11px, calc(10px / var(--map-zoom, 1)), 32px);
   color: #9c9c9c;
 }
 .map-caption {
