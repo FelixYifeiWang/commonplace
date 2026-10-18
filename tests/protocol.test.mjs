@@ -6,6 +6,7 @@ import {
   parseTranscript,
   validateIngest,
   safeUrl,
+  trimUrl,
 } from "../lib/protocol.mjs";
 
 test("only web URLs can become clickable sources", () => {
@@ -91,4 +92,13 @@ test("a partial final JSONL line is ignored until the next read", () => {
     ).length,
     1,
   );
+});
+test("a link wrapped in Markdown bold keeps its real address", () => {
+  assert.equal(
+    trimUrl("https://www.eileen-z.com**"),
+    "https://www.eileen-z.com",
+  );
+});
+test("a link ending a sentence drops the full stop", () => {
+  assert.equal(trimUrl("https://example.com/a."), "https://example.com/a");
 });
