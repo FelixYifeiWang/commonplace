@@ -7975,3 +7975,95 @@ a.gm-detail b::after {
     min-height: calc(100dvh - 139px);
   }
 }
+
+/* A small desktop handoff, using the app's own mark and a single action row. */
+.modal.nox-launch-dialog {
+  width: min(380px, calc(100vw - 32px));
+  padding: 26px;
+  border: 1px solid #e8e8e8;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 48px rgb(0 0 0 / 0.1);
+  overflow: visible;
+}
+.nox-launch-dialog::backdrop {
+  background: rgb(0 0 0 / 0.16);
+  backdrop-filter: blur(6px);
+}
+.nox-launch-dialog .modal-head {
+  margin: 0 0 6px 64px;
+  min-height: 24px;
+}
+.nox-launch-dialog .modal-head h2 {
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  color: #222;
+  line-height: 1.4;
+}
+.nox-launch-dialog .modal-head .icon-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 5px;
+  color: #aaa;
+  border-radius: 6px;
+}
+.nox-launch-dialog .modal-head .icon-button:hover {
+  background: #f5f5f5;
+  color: #444;
+}
+.nox-launch-dialog .modal-head .icon-button svg {
+  width: 15px;
+  height: 15px;
+}
+.nox-launch-mark {
+  position: absolute;
+  left: 26px;
+  top: 28px;
+  display: block;
+  width: 48px;
+  height: 48px;
+  pointer-events: none;
+}
+.nox-launch-description {
+  margin: 0 0 0 64px;
+  max-width: 220px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #858585;
+  text-align: left;
+}
+.nox-launch-actions {
+  margin-top: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.nox-launch-actions .text-button {
+  padding: 8px 0;
+  font-size: 12px;
+  color: #858585;
+}
+.nox-launch-actions .text-button:hover {
+  color: #222;
+}
+.nox-launch-actions .button.primary {
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: none;
+  background: #252525;
+  gap: 7px;
+}
+.nox-launch-actions .button.primary:hover {
+  background: #444;
+}
+.nox-launch-actions .button.primary:focus-visible {
+  outline: 2px solid #999;
+  outline-offset: 3px;
+}

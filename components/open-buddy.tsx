@@ -1,7 +1,13 @@
 "use client";
 import { buddyLink } from "@/lib/brand.mjs";
 import { useState } from "react";
+import dynamic from "next/dynamic";
+import { ArrowUpRight } from "lucide-react";
 import { Modal } from "./modal";
+
+const Nox = dynamic(() => import("./nox").then((module) => module.Nox), {
+  ssr: false,
+});
 
 export function OpenBuddy({ onSetup }: { onSetup: () => void }) {
   const [open, setOpen] = useState(false);
@@ -21,14 +27,18 @@ export function OpenBuddy({ onSetup }: { onSetup: () => void }) {
         Open Nox
       </button>
       {open && (
-        <Modal title="Open Nox" onClose={() => setOpen(false)}>
-          <p className="modal-description">
-            Allow your browser to open Newron.
+        <Modal
+          title="Open Nox"
+          className="nox-launch-dialog"
+          onClose={() => setOpen(false)}
+        >
+          <span className="nox-launch-mark">
+            <Nox size={48} />
+          </span>
+          <p className="nox-launch-description">
+            Allow your browser to open the desktop app.
           </p>
-          <div className="buddy-launch-actions">
-            <button className="button primary" onClick={launch}>
-              Open again
-            </button>
+          <div className="nox-launch-actions">
             <button
               className="text-button"
               onClick={() => {
@@ -36,7 +46,10 @@ export function OpenBuddy({ onSetup }: { onSetup: () => void }) {
                 onSetup();
               }}
             >
-              Nothing opened? Set up Nox
+              Set up Nox
+            </button>
+            <button className="button primary" onClick={launch}>
+              Try again <ArrowUpRight size={14} aria-hidden="true" />
             </button>
           </div>
         </Modal>
