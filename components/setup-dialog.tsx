@@ -102,7 +102,7 @@ export function SetupDialog({
         <>
           <p className="setup-description">
             {mode === "setup"
-              ? "Open a conversation in Codex or Claude desktop. Move Nox over it, click it, then Connect."
+              ? "Open a project conversation in Codex or Claude desktop. Move Nox over it, then choose Connect."
               : "Your collection will update as you work."}
           </p>
           <button className="button primary full" onClick={onClose}>
@@ -121,7 +121,7 @@ export function SetupDialog({
         <>
           <p className="setup-description">
             {mode === "setup"
-              ? "Copy this prompt into Codex, Claude Code, or Cursor. Your agent will install and open Nox."
+              ? "Nox connects your working sessions to Newron. Copy this prompt into Codex, Claude Code, or Cursor to install it."
               : "Paste this prompt into the conversation you want to save."}
           </p>
           <button

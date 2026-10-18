@@ -473,3 +473,78 @@ test("deleted media opens during the buffer but not after it expires", () => {
   assert.equal(itemAvailable({ deletedAt: null }, now), true);
   assert.equal(daysToRestore(new Date(now - 86400000).toISOString(), now), 29);
 });
+
+test("first failure keeps an owner-scoped source preview without advancing the checkpoint", async () => {
+  const { sqlite, store, add } = fixture();
+  try {
+    add();
+    const job = await store.claim();
+    await store.fail(job, "Provider unavailable");
+    const state = await store.get("c", "u");
+    assert.equal(state.preview, true);
+    assert.equal(state.session.map.nodes[0].itemId, "i");
+    assert.equal(
+      sqlite.prepare("SELECT processed_revision FROM stories").get()
+        .processed_revision,
+      0,
+    );
+    assert.equal(await store.get("c", "another-owner"), null);
+  } finally {
+    sqlite.close();
+  }
+});
+test("verified partial output survives failure but never replaces a previous completed version", async () => {
+  const { sqlite, store, add, advance } = fixture();
+  try {
+    add();
+    let job = await store.claim();
+    const partial = {
+      steps: [beat],
+      map: { center: { label: "Quiet", itemId: null, url: null }, nodes: [] },
+    };
+    const error = Object.assign(
+      new Error("Couldn’t verify the sources. Try again."),
+      { diagnostic: "Source validation: Invalid canvas.", partial },
+    );
+    await store.fail(job, error);
+    assert.deepEqual((await store.get("c", "u")).session, partial);
+    assert.equal(
+      sqlite.prepare("SELECT error FROM stories").get().error,
+      "Source validation: Invalid canvas.",
+    );
+    assert.equal(
+      (await store.get("c", "u")).error,
+      "Couldn’t verify the sources. Try again.",
+    );
+    advance(20000);
+    add("next");
+    job = await store.claim();
+    await store.fail(
+      job,
+      Object.assign(new Error("failed"), {
+        partial: { ...partial, steps: [] },
+      }),
+    );
+    assert.deepEqual((await store.get("c", "u")).session, partial);
+  } finally {
+    sqlite.close();
+  }
+});
+test("an expired generation cannot publish a partial result", async () => {
+  const { sqlite, store, add, advance } = fixture();
+  try {
+    add();
+    const job = await store.claim();
+    advance(180001);
+    await store.fail(
+      job,
+      Object.assign(new Error("failed"), { partial: { steps: [beat] } }),
+    );
+    assert.equal(
+      sqlite.prepare("SELECT session_json FROM stories").get().session_json,
+      null,
+    );
+  } finally {
+    sqlite.close();
+  }
+});

@@ -26,7 +26,7 @@ export async function drainStories() {
       await store.fail(
         job,
         error instanceof Error
-          ? error.message
+          ? error
           : "Story unavailable. Retry to continue.",
       );
     }

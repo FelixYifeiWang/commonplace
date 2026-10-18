@@ -11,6 +11,7 @@ import type { SessionDocument } from "@/lib/session-types";
 
 type StoryState = {
   session: SessionDocument | null;
+  preview?: boolean;
   pending: boolean;
   enabled: boolean;
   status: string;
@@ -109,7 +110,11 @@ export function SessionView({
           // The last good view stays below; say so, so it isn't mistaken for new.
           <span className="session-notice">
             <i aria-hidden="true" />
-            <span>{problem} Showing the last version.</span>
+            <span>
+              {story?.preview
+                ? "Showing your sources."
+                : "Update paused. Your last version is here."}
+            </span>
             <button onClick={() => void retry()} disabled={retrying}>
               {retrying ? "Retrying…" : "Retry"}
             </button>
@@ -117,8 +122,10 @@ export function SessionView({
         ) : working && session ? (
           <span className="session-updating">
             <i />
-            {session ? "Updating" : "Reading the session"}
+            {story?.preview ? "Organizing your sources…" : "Updating"}
           </span>
+        ) : story?.preview ? (
+          <span className="session-updating">From your session</span>
         ) : null}
       </div>
       {session && mode === "gallery" && session.map?.nodes?.length ? (

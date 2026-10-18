@@ -698,7 +698,7 @@ export default function Workspace({
                   <p>
                     {devMode
                       ? "Add things yourself, or connect a session with Nox."
-                      : "Connect a session with Nox to begin."}
+                      : "Nox is your desktop companion. Connect a working session to collect ideas as you go."}
                   </p>
                   <div className="first-collection-actions">
                     {devMode && (

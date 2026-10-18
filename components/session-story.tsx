@@ -25,7 +25,9 @@ export function SessionStory({
   const media = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   // Each step rises in once as it scrolls into view; steps added by a later update join in.
   const root = useRef<HTMLDivElement>(null);
-  const count = document.steps.length;
+  const stepKeys = document.steps
+    .map((step, i) => `${i}-${step.title}`)
+    .join("\n");
   useEffect(() => {
     const steps = root.current?.querySelectorAll<HTMLElement>(
       ".sv-step:not([data-in])",
@@ -49,7 +51,7 @@ export function SessionStory({
     );
     steps.forEach((step) => observer.observe(step));
     return () => observer.disconnect();
-  }, [count]);
+  }, [stepKeys]);
   return (
     <div className="sv sv-rise" ref={root}>
       <div className="sv-dots" aria-hidden="true" />

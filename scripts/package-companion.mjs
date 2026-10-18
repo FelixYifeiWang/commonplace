@@ -21,6 +21,7 @@ for (const file of [
   "claude.mjs",
   "connect.mjs",
   "drag.mjs",
+  "visibility.mjs",
   "setup-session.mjs",
   "setup-inbox.mjs",
 ])

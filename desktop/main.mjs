@@ -13,6 +13,7 @@ import {
   clipboard,
 } from "electron";
 import path from "node:path";
+import { createVisibilityPolicy } from "./visibility.mjs";
 import { pointerDirection } from "../lib/nox-motion.mjs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -31,6 +32,10 @@ import {
   createBuddyHitTest,
 } from "./drag.mjs";
 const exec = promisify(execFile);
+const visibility = createVisibilityPolicy();
+let visibilityRevision = 0,
+  visibilityFade,
+  desiredVisible = true;
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { pathToFileURL, fileURLToPath } from "node:url";
@@ -64,7 +69,7 @@ async function processSetup() {
       report: showDropFeedback,
       request,
     });
-    if (result?.ok && result.action === "setup") win?.show();
+    if (result?.ok && result.action === "setup") showBuddy();
   } catch (error) {
     lastError = error.message;
     status = "error";
@@ -213,7 +218,12 @@ function notifyBuddy() {
     win.webContents.send("companion:state", buddySnapshot());
 }
 function showBuddy() {
+  visibility.reveal();
+  desiredVisible = true;
+  visibilityRevision++;
+  clearInterval(visibilityFade);
   if (!win || win.isDestroyed()) return;
+  win.setOpacity(1);
   const b = win.getBounds(),
     area = screen.getDisplayMatching(b).workArea;
   if (!win.isVisible())
@@ -230,12 +240,49 @@ function showBuddy() {
   notifyBuddy();
 }
 function hideBuddy() {
+  visibility.hide();
+  desiredVisible = false;
+  visibilityRevision++;
+  clearInterval(visibilityFade);
   hoverController?.reset();
   dragController?.cancel();
   candidateRevision++;
   setExpanded(false);
   win?.hide();
   void persist();
+}
+function applyVisibility(visible) {
+  if (!win || win.isDestroyed()) return;
+  clearInterval(visibilityFade);
+  if (visible) {
+    if (!win.isVisible()) {
+      win.setOpacity(0);
+      win.showInactive();
+    }
+  } else {
+    candidateRevision++;
+    candidate = null;
+    hoverController?.reset();
+    setExpanded(false);
+  }
+  const start = win.getOpacity(),
+    goal = visible ? 1 : 0,
+    began = Date.now();
+  visibilityFade = setInterval(() => {
+    if (win.isDestroyed()) return clearInterval(visibilityFade);
+    // Never hide a drag that began while fading out.
+    if (dragController?.isDragging() || connecting) {
+      win.setOpacity(1);
+      clearInterval(visibilityFade);
+      return;
+    }
+    const progress = Math.min(1, (Date.now() - began) / 180);
+    win.setOpacity(start + (goal - start) * progress);
+    if (progress === 1) {
+      clearInterval(visibilityFade);
+      if (!visible) win.hide();
+    }
+  }, 16);
 }
 function buddyMenu() {
   return Menu.buildFromTemplate([
@@ -527,11 +574,11 @@ async function handleProtocol(raw) {
       origin: url.searchParams.get("origin"),
       token: url.hash.slice(1),
     });
-    win?.show();
+    showBuddy();
     win?.focus();
   } catch (error) {
     lastError = error.message;
-    win?.show();
+    showBuddy();
   }
 }
 const lock = app.requestSingleInstanceLock();
@@ -543,7 +590,7 @@ if (!lock) {
     if (link) void handleProtocol(link);
     const folder = projectArg(argv);
     if (folder) void followClaudeProject(folder);
-    win?.show();
+    showBuddy();
   });
   app.on("open-url", (event, url) => {
     event.preventDefault();
@@ -707,6 +754,10 @@ if (!lock) {
         polling: false,
         cursor: () => screen.getCursorScreenPoint(),
         onMoveStart: () => {
+          visibilityRevision++;
+          visibility.update({ supported: null, interacting: true });
+          clearInterval(visibilityFade);
+          win.setOpacity(1);
           hoverController?.reset();
           candidateRevision++;
           setExpanded(false);
@@ -753,7 +804,46 @@ if (!lock) {
               )),
         );
       }, 33);
-      win.once("closed", () => clearInterval(hoverTimer));
+      let inspectingVisibility = false;
+      const visibilityTimer = setInterval(async () => {
+        if (win.isDestroyed() || inspectingVisibility || visibility.isManual())
+          return;
+        const interacting = connecting || dragController.isDragging();
+        const revision = visibilityRevision;
+        let supported = null;
+        inspectingVisibility = true;
+        try {
+          if (!interacting) {
+            const target = await inspectPoint(anchorPoint());
+            supported = !target.error && SUPPORTED_APPS.has(target.bundleId);
+            if (supported) {
+              try {
+                await resolveLocalTarget(target);
+              } catch {
+                supported = false;
+              }
+            }
+          }
+          if (revision !== visibilityRevision || win.isDestroyed()) return;
+          const visible = visibility.update({
+            supported,
+            interacting: connecting || dragController.isDragging(),
+          });
+          if (visible !== desiredVisible || (visible && !win.isVisible())) {
+            desiredVisible = visible;
+            applyVisibility(visible);
+          }
+        } catch {
+          // OS inspection may briefly be unavailable while switching desktops.
+        } finally {
+          inspectingVisibility = false;
+        }
+      }, 1000);
+      win.once("closed", () => {
+        clearInterval(hoverTimer);
+        clearInterval(visibilityTimer);
+        clearInterval(visibilityFade);
+      });
       const finishDrag = (result) => {
         notifyBuddy();
         if (result.click) hoverController.show();
@@ -880,7 +970,7 @@ if (!lock) {
       await controlsWindow.loadURL(`${ORIGIN}/buddy/controls`);
       controlsReady = true;
       await win.loadURL(`${ORIGIN}/buddy`);
-      win.show();
+      showBuddy();
       const icon = nativeImage.createFromPath(
         path.join(assetsDir, "nox-tray.png"),
       );

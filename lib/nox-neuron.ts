@@ -4,7 +4,7 @@
 // It is seen through a glass lens (lib/glass-lens.ts) that bends it near the rim. While Nox works, signals travel
 // along the strokes and each corner flashes as one lands and fires the next. At rest nothing is drawn.
 import * as THREE from "three";
-import { followGaze } from "./nox-motion.mjs";
+import { followGaze, silhouetteCenter } from "./nox-motion.mjs";
 import { createLens } from "./glass-lens";
 
 export type NeuronMood = "rest" | "working" | "muted" | "alert";
@@ -119,6 +119,7 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
   const pointerTilt = new THREE.Group();
   pointerTilt.add(neuron);
   scene.add(pointerTilt);
+  const projectedCorners = CORNERS.map((point) => point.clone());
 
   // Flat, unlit materials: colour only, like ink on paper.
   const membraneMaterial = new THREE.MeshBasicMaterial({
@@ -240,8 +241,15 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
       : followGaze(spin, 0, dt);
     // Tilt around screen axes, outside the model's resting rotation.
     pointerTilt.rotation.set(gaze.y, gaze.x, 0);
-    pointerTilt.position.set(gaze.x * 0.35, -gaze.y * 0.35, 0);
     neuron.rotation.set(pose.x, pose.y + spin, pose.z);
+    projectedCorners.forEach((point, i) =>
+      point
+        .copy(CORNERS[i])
+        .applyEuler(neuron.rotation)
+        .applyEuler(pointerTilt.rotation),
+    );
+    const center = silhouetteCenter(projectedCorners);
+    pointerTilt.position.set(-center.x, -center.y, 0);
 
     if (working && pulses.length === 0)
       fire(Math.floor(Math.random() * CORNERS.length));

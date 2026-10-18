@@ -234,7 +234,15 @@ test("the session call uses strict structured output, no tools and no provider s
   assert.deepEqual(step.canvas.properties.items.items.properties.itemId.enum, [
     "m1",
   ]);
-  assert.deepEqual(step.evidence.items.properties.sourceId.enum, ["t1", "m1"]);
+  assert.equal(step.evidence.items.$ref, "#/$defs/evidence");
+  assert.ok(
+    body.text.format.schema.$defs.evidence.properties.excerptId.enum.length >=
+      2,
+  );
+  assert.equal(
+    body.text.format.schema.$defs.evidence.properties.quote,
+    undefined,
+  );
 });
 
 test("a response that fails validation is retried once, then rejected", async () => {
