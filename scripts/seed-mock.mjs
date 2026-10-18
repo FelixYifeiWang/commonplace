@@ -157,7 +157,7 @@ const portfolio = {
             { itemId: i.grid, role: "option", label: "Dense grid" },
             { itemId: i.column, role: "picked", label: "Single column" },
           ],
-          quote: null,
+          words: null,
         },
         evidence: [
           { sourceId: t[2], quote: "The grid felt like a stock photo site." },
@@ -169,7 +169,7 @@ const portfolio = {
         canvas: {
           layout: "reference",
           items: [{ itemId: i.arena, role: "reference", label: "Are.na" }],
-          quote: null,
+          words: null,
         },
         evidence: [
           {
@@ -188,7 +188,7 @@ const portfolio = {
             { itemId: i.pencil, role: "before", label: "Pencil sketch" },
             { itemId: i.built, role: "after", label: "Project page" },
           ],
-          quote: null,
+          words: null,
         },
         evidence: [
           {
@@ -211,7 +211,7 @@ const portfolio = {
             { itemId: i.parallax, role: "attempt", label: "Parallax hero" },
             { itemId: i.heroFinal, role: "result", label: "Static hero kept" },
           ],
-          quote: null,
+          words: null,
         },
         evidence: [
           {
@@ -224,11 +224,17 @@ const portfolio = {
         title: "Colour only on links",
         text: "I set one rule for the whole site. A single accent colour, used only on links, and nothing else gets colour. Motion stays plain too.",
         canvas: {
-          layout: "quote",
+          layout: "words",
           items: [],
-          quote: {
-            sourceId: t[11],
-            text: "Motion should be 200 ms ease-out everywhere. Nothing bounces.",
+          words: {
+            form: "line",
+            rows: [
+              {
+                label: "You",
+                sourceId: t[11],
+                text: "Motion should be 200 ms ease-out everywhere. Nothing bounces.",
+              },
+            ],
           },
         },
         evidence: [
@@ -417,7 +423,7 @@ const recipes = {
             { itemId: i.carousel, role: "before", label: "三屏轮播" },
             { itemId: i.single, role: "after", label: "单屏引导" },
           ],
-          quote: null,
+          words: null,
         },
         evidence: [
           { sourceId: t[0], quote: "引导页不要三屏轮播了，用户根本不看。" },
@@ -431,7 +437,7 @@ const recipes = {
           items: [
             { itemId: i.notion, role: "reference", label: "Notion 空状态" },
           ],
-          quote: null,
+          words: null,
         },
         evidence: [{ sourceId: t[2], quote: "文字要短，语气像朋友。" }],
       },
@@ -439,9 +445,14 @@ const recipes = {
         title: "晚一点再要通知权限",
         text: "第一次打开就弹权限太打扰了。我决定等用户收藏了第一道菜，真正有理由提醒时再问。",
         canvas: {
-          layout: "quote",
+          layout: "words",
           items: [],
-          quote: { sourceId: t[5], text: "第一次打开时不要弹通知权限" },
+          words: {
+            form: "line",
+            rows: [
+              { label: "", sourceId: t[5], text: "第一次打开时不要弹通知权限" },
+            ],
+          },
         },
         evidence: [{ sourceId: t[5], quote: "等用户收藏第一道菜以后再问。" }],
       },
@@ -526,11 +537,17 @@ const naming = {
         title: "Plural nouns for every route",
         text: "Before adding more endpoints I set the naming rule. Routes are plural nouns, and an action only gets a verb when it is not plain create, read, update or delete.",
         canvas: {
-          layout: "quote",
+          layout: "words",
           items: [],
-          quote: {
-            sourceId: t[0],
-            text: "So /invoices/42/send, never /sendInvoice.",
+          words: {
+            form: "line",
+            rows: [
+              {
+                label: "You",
+                sourceId: t[0],
+                text: "So /invoices/42/send, never /sendInvoice.",
+              },
+            ],
           },
         },
         evidence: [{ sourceId: t[0], quote: "every route is a plural noun" }],

@@ -282,6 +282,8 @@ export function SessionMap({
     function view() {
       world!.style.transform = `translate(${stage!.clientWidth / 2 + px - cx0 * z}px,${(stage!.clientHeight - 60) / 2 + py - cy0 * z}px) scale(${z})`;
       // The dot grid is fixed to the stage: panning and dragging leave it still; zooming changes its spacing.
+      // The zoom is exposed so labels can counter-scale and stay readable when zoomed out.
+      world!.style.setProperty("--gz", String(z));
       stage!.style.setProperty("--ds", `${14 * (z / fit)}px`);
       stage!.style.setProperty("--dx", `${stage!.clientWidth / 2}px`);
       stage!.style.setProperty("--dy", `${stage!.clientHeight / 2}px`);

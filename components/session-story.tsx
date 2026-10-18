@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import Image from "next/image";
 import type { Item } from "@/lib/types";
@@ -23,8 +23,35 @@ export function SessionStory({
   onOpen: (item: Item) => void;
 }) {
   const media = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  // Each step rises in once as it scrolls into view; steps added by a later update join in.
+  const root = useRef<HTMLDivElement>(null);
+  const count = document.steps.length;
+  useEffect(() => {
+    const steps = root.current?.querySelectorAll<HTMLElement>(
+      ".sv-step:not([data-in])",
+    );
+    if (!steps?.length) return;
+    // A step that comes into view also reveals every step above it, so jumping past one never leaves it hidden.
+    const all = [...root.current!.querySelectorAll<HTMLElement>(".sv-step")];
+    const observer = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          for (const step of all.slice(
+            0,
+            all.indexOf(entry.target as HTMLElement) + 1,
+          )) {
+            step.dataset.in = "";
+            observer.unobserve(step);
+          }
+        }),
+      { threshold: 0.15 },
+    );
+    steps.forEach((step) => observer.observe(step));
+    return () => observer.disconnect();
+  }, [count]);
   return (
-    <div className="sv">
+    <div className="sv sv-rise" ref={root}>
       <div className="sv-dots" aria-hidden="true" />
       {document.steps.map((step, i) => (
         <article className="sv-step" key={`${i}-${step.title}`}>

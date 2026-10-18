@@ -46,6 +46,7 @@ Each step is two columns on a white page. The page reads as one story, from step
   2. the title
   3. one short paragraph of about 30 words, in the human's own voice. Write it in the first person ("sketched six ways…", "didn't love it"), casually, in short sentences, reusing the human's own phrases where possible. It should sound like them telling a friend, not like an article. No bullet points.
 - **Right:** the canvas.
+- **Motion:** each step rises in as it scrolls into view, the words first and the canvas 90 ms later; a step you jump past is revealed with the one you land on. Pictures on a canvas lift slightly on hover, and a dropped attempt in a detour gets a dashed outline. Switching views fades the new one in over 280 ms. Reduced motion turns all of it off.
 
 On a narrow screen the canvas goes below the paragraph.
 
@@ -260,6 +261,8 @@ The Gallery is not the Story. It keeps what is worth reusing from the session: t
   - Dragging the background pans.
   - A drag never counts as a click.
   - ↺ resets the layout.
+  - Tiles panned past the edge of the map fade out over its last 32px instead of being cut off.
+  - The center's name counter-scales, so it stays at least about 10px on screen when zoomed out.
 - **Lines:** each line ends on the part of its target that is visible at every zoom (a detail's picture or label), measured live and redrawn when the zoom level changes.
 - **Layout:**
   - Tiles sit at even angles.

@@ -5789,6 +5789,8 @@ body.desktop-feedback-page {
 .session-view > .session-map,
 .session-view > .session-story-thread,
 .session-view > .session-await,
+.session-view > .gm,
+.session-view > .sv > .sv-step,
 .gallery {
   animation: session-view-in 280ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
 }
@@ -8093,5 +8095,72 @@ a[href].gm-detail b::after {
     width: 26px;
     min-width: 26px;
     padding: 0;
+  }
+}
+
+/* ---------- jsxk's motion and polish, on our Story and Gallery ---------- */
+/* Steps rise in as they scroll into view: the words first, the canvas a beat later. */
+.sv-rise .sv-step .sv-say,
+.sv-rise .sv-step .sv-canvas {
+  transition:
+    opacity 0.6s cubic-bezier(0.2, 0.75, 0.25, 1),
+    transform 0.6s cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+.sv-rise .sv-step .sv-canvas {
+  transition-delay: 90ms;
+}
+.sv-rise .sv-step:not([data-in]) .sv-say,
+.sv-rise .sv-step:not([data-in]) .sv-canvas {
+  opacity: 0;
+  transform: translateY(18px);
+}
+/* A picture on a canvas lifts slightly on hover. */
+.sv-cell > button > * {
+  transition: transform 0.25s cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+.sv-cell > button:hover > *,
+.sv-cell > button:focus-visible > * {
+  transform: translateY(-1cqw);
+}
+/* The attempt that was dropped in a detour is outlined with a dashed line. */
+.sv-dropped > button {
+  outline: 1.5px dashed var(--sv-grey);
+  outline-offset: 0.8cqw;
+  border-radius: 1.5cqw;
+}
+/* Tiles panned past the edge of the map fade out instead of being cut off. */
+.gm-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, var(--gm-bg), transparent) top / 100% 32px
+      no-repeat,
+    linear-gradient(to top, var(--gm-bg), transparent) bottom / 100% 32px
+      no-repeat,
+    linear-gradient(to right, var(--gm-bg), transparent) left / 32px 100%
+      no-repeat,
+    linear-gradient(to left, var(--gm-bg), transparent) right / 32px 100%
+      no-repeat;
+}
+/* The center's name stays at least 10px on screen when zoomed out (the map sets --gz). */
+.gm-lbl {
+  font-size: max(12px, calc(10px / var(--gz, 1)));
+}
+.gm-lbl b {
+  font-size: max(13px, calc(11px / var(--gz, 1)));
+}
+@media (prefers-reduced-motion: reduce) {
+  .sv-rise .sv-step:not([data-in]) .sv-say,
+  .sv-rise .sv-step:not([data-in]) .sv-canvas {
+    opacity: 1;
+    transform: none;
+  }
+  .sv-rise .sv-step .sv-say,
+  .sv-rise .sv-step .sv-canvas,
+  .sv-cell > button > * {
+    transition: none;
   }
 }
