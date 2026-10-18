@@ -441,3 +441,18 @@ test("evidence can quote rendered Markdown without copying emphasis delimiters",
   wrong.steps[0].evidence[0].quote = "Loosely follow this as a lofi wireframe";
   assert.throws(() => validateSession(wrong, source), /evidence/);
 });
+
+test("extra major nodes keep their content at normal visual weight", () => {
+  const value = valid();
+  for (const node of value.map.nodes) node.weight = "major";
+  const clean = normalizeSession(value, input);
+  assert.deepEqual(
+    clean.map.nodes.map((node) => node.weight),
+    ["major", "major", "normal"],
+  );
+  assert.deepEqual(
+    clean.map.nodes.map((node) => node.evidence),
+    value.map.nodes.map((node) => node.evidence),
+  );
+  assert.doesNotThrow(() => validateSession(clean, input));
+});
