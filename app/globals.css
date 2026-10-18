@@ -6676,3 +6676,1012 @@ body.desktop-feedback-page {
     max-width: calc(50% - 140px);
   }
 }
+
+/* ---------- Story: up to five steps in the human's voice, each with one canvas (STORY_CANVAS.md) ---------- */
+.sv {
+  --sv-canvas: #f2f2f0;
+  --sv-edge: #dcdcd8;
+  --sv-ink: #111111;
+  --sv-body: #3b3b39;
+  --sv-grey: #8e8e8a;
+  --sv-pill: #111111;
+  --sv-pill-fg: #ffffff;
+  --sv-dot: #e6e6e3;
+  position: relative;
+  isolation: isolate;
+  color: var(--sv-ink);
+  /* The sheet's blur layers reach past the canvas; keep them from widening the page on phones. */
+  overflow-x: clip;
+  overflow-clip-margin: 16px;
+}
+/* The gallery's dot field, fixed behind the column of words; the steps scroll over it. */
+.sv-dots {
+  position: fixed;
+  z-index: -1;
+  top: 0;
+  bottom: 0;
+  left: max(0px, calc((100vw - 1180px) / 2 - 80px));
+  width: min(620px, 70vw);
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle,
+    var(--sv-dot) 1px,
+    transparent 1.6px
+  );
+  background-size: 14px 14px;
+  background-position: center;
+  -webkit-mask-image: radial-gradient(
+    closest-side at 46% 48%,
+    #000 0,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    closest-side at 46% 48%,
+    #000 0,
+    transparent 100%
+  );
+}
+.sv-step {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.75fr);
+  gap: 28px 56px;
+  padding: 36px 0 44px;
+}
+.sv-step:has(> .sv-say:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sv-say {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding-top: 6px;
+}
+.sv-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--sv-grey);
+}
+.sv-label b {
+  font-weight: 450;
+  color: var(--sv-ink);
+  padding: 3px 10px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--sv-edge);
+}
+.sv-say h2 {
+  margin: 0;
+  font-weight: 450;
+  font-size: clamp(24px, 2.4vw, 30px);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  max-width: 17ch;
+}
+.sv-say > p {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--sv-body);
+  text-wrap: pretty;
+}
+
+/* The canvas: a 16:10 sheet, one rounded grey shape drawn three times, crisp at the top and blurring gently
+   toward the bottom. Blurred copies are drawn slightly smaller so their soft edge stays on the outline. */
+.sv-canvas {
+  container-type: inline-size;
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  margin: 0;
+  min-width: 0;
+}
+.sv-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.sv-sheet i {
+  position: absolute;
+  inset: -6cqw;
+}
+.sv-sheet i::before {
+  content: "";
+  position: absolute;
+  inset: 6cqw;
+  border-radius: 6cqw;
+  background: var(--sv-canvas);
+}
+.sv-sheet i:nth-child(1)::before {
+  box-shadow:
+    inset 0 1px 0 var(--sv-edge),
+    inset 0 0 0 1px color-mix(in srgb, var(--sv-edge) 60%, transparent);
+}
+.sv-sheet i:nth-child(1) {
+  filter: blur(0.4px);
+  -webkit-mask-image: linear-gradient(#000 56%, transparent 68%);
+  mask-image: linear-gradient(#000 56%, transparent 68%);
+}
+.sv-sheet i:nth-child(2)::before {
+  inset: calc(6cqw + 0.35cqw);
+}
+.sv-sheet i:nth-child(2) {
+  filter: blur(0.7cqw);
+  -webkit-mask-image: linear-gradient(
+    transparent 50%,
+    #000 58%,
+    #000 80%,
+    transparent 88%
+  );
+  mask-image: linear-gradient(
+    transparent 50%,
+    #000 58%,
+    #000 80%,
+    transparent 88%
+  );
+}
+.sv-sheet i:nth-child(3)::before {
+  inset: calc(6cqw + 0.8cqw);
+}
+.sv-sheet i:nth-child(3) {
+  filter: blur(1.5cqw);
+  -webkit-mask-image: linear-gradient(transparent 74%, #000 82%);
+  mask-image: linear-gradient(transparent 74%, #000 82%);
+}
+/* No z-index on the content: it would cut sketches off from the sheet they blend with. */
+.sv-cv {
+  position: absolute;
+  inset: 0;
+  padding: 4.4cqw 4.6cqw 6cqw;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+}
+.sv-cb {
+  display: grid;
+  gap: 3cqw;
+  min-height: 0;
+  min-width: 0;
+}
+.sv-full .sv-cb {
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+}
+.sv-duo .sv-cb {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.sv-hero .sv-cb,
+.sv-set .sv-cb {
+  grid-template-columns: 618fr 312fr;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+.sv-hero .sv-lead,
+.sv-set .sv-lead {
+  grid-row: 1 / 3;
+}
+.sv-grid .sv-cb {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+.sv-pair .sv-cb {
+  grid-template-columns: 451fr 60fr 451fr;
+  column-gap: 0;
+}
+.sv-path .sv-cb {
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+
+/* A cell: the picture, then its name and a pill only when the pill carries meaning. */
+.sv-cell {
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 1.2cqw;
+  margin: 0;
+}
+.sv-cell > button {
+  display: block;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+  text-align: inherit;
+}
+.sv-cell > button:focus-visible {
+  outline: 2px solid var(--sv-ink);
+  outline-offset: 3px;
+  border-radius: 1.2cqw;
+}
+.sv-cell img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+  object-position: 50% 100%;
+}
+/* Pages keep their own white and may be cropped from the top; objects are shown whole; ink melts into the sheet. */
+.sv-page img {
+  object-fit: cover;
+  object-position: 50% 0;
+  border-radius: 1.2cqw;
+  box-shadow: 0 1.4cqw 3cqw -1.6cqw rgb(0 0 0 / 0.25);
+}
+.sv-object img {
+  filter: drop-shadow(0 1.4cqw 1.6cqw rgb(0 0 0 / 0.14));
+}
+.sv-ink img {
+  mix-blend-mode: multiply;
+}
+.sv-tile {
+  display: grid;
+  align-content: center;
+  gap: 1cqw;
+  width: 100%;
+  height: 100%;
+  padding: 3cqw;
+}
+.sv-tile b {
+  font-weight: 450;
+  font-size: max(15px, 3.2cqw);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+.sv-tile small {
+  font-size: max(11px, 1.45cqw);
+  color: var(--sv-grey);
+}
+.sv-cell figcaption {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.9cqw;
+  flex-wrap: wrap;
+  font-size: max(11px, 1.45cqw);
+  line-height: 1.3;
+  color: var(--sv-grey);
+  text-align: center;
+}
+.sv-cell figcaption b {
+  font-weight: 450;
+  color: var(--sv-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.sv-tag {
+  font-style: normal;
+  font-size: max(10px, 1.2cqw);
+  padding: 0.15em 0.8em;
+  border-radius: 999px;
+  background: var(--sv-pill);
+  color: var(--sv-pill-fg);
+}
+.sv-tag.off {
+  background: none;
+  color: var(--sv-grey);
+  box-shadow: inset 0 0 0 1px var(--sv-grey);
+}
+.sv-faded img {
+  opacity: 0.42;
+}
+.sv-dropped img {
+  opacity: 0.32;
+}
+.sv-dropped figcaption b {
+  color: var(--sv-grey);
+  text-decoration: line-through;
+}
+.sv-arrow {
+  align-self: center;
+  justify-self: center;
+  width: 70%;
+  height: 4px;
+  margin-bottom: 3cqw;
+  background: radial-gradient(circle, var(--sv-grey) 1.2px, transparent 1.6px) 0
+    50% / 7px 4px repeat-x;
+  position: relative;
+}
+.sv-arrow::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: -3px;
+  border: 5px solid transparent;
+  border-left: 6px solid var(--sv-grey);
+  border-right: 0;
+}
+
+/* Words: a step with no picture, shown as a flow, change, spec, line or number. */
+.sv-words .sv-cv {
+  padding: 6cqw 6.4cqw 8cqw;
+}
+.sv-words .sv-cb {
+  align-content: center;
+  gap: 4cqw;
+}
+.sv-words small {
+  display: block;
+  font-size: max(10.5px, 1.6cqw);
+  color: var(--sv-grey);
+}
+.sv-flow {
+  --n: 4;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  gap: 2.4cqw;
+  position: relative;
+  counter-reset: sv-step;
+}
+.sv-flow::before {
+  content: "";
+  position: absolute;
+  top: 1.2cqw;
+  left: 1.2cqw;
+  width: calc((100% + 2.4cqw) * (var(--n) - 1) / var(--n));
+  height: 1.5px;
+  background: var(--sv-grey);
+  opacity: 0.55;
+}
+.sv-flow li {
+  position: relative;
+  display: grid;
+  gap: 2.2cqw;
+  counter-increment: sv-step;
+}
+.sv-flow li::before {
+  content: counter(sv-step);
+  position: relative;
+  width: max(15px, 2.4cqw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--sv-ink);
+  color: #fff;
+  font-size: max(8.5px, 1.2cqw);
+  font-weight: 500;
+}
+.sv-flow b {
+  font-weight: 420;
+  font-size: max(13px, 3.4cqw);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+.sv-change {
+  display: grid;
+  gap: 1.6cqw;
+}
+.sv-change p {
+  margin: 0.6cqw 0 0;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+}
+.sv-was p {
+  font-size: max(14px, 3.4cqw);
+  color: var(--sv-grey);
+}
+.sv-was del {
+  text-decoration-thickness: 1.5px;
+}
+.sv-to {
+  font-size: max(14px, 3cqw);
+  color: var(--sv-grey);
+  line-height: 1;
+}
+.sv-now p {
+  font-size: max(16px, 4.4cqw);
+}
+.sv-spec {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 4cqw;
+}
+.sv-spec dt,
+.sv-spec dd {
+  padding: 2.1cqw 0;
+  box-shadow: inset 0 1px 0 var(--sv-edge);
+}
+.sv-spec dt:first-of-type,
+.sv-spec dd:first-of-type {
+  box-shadow: none;
+}
+.sv-spec dt {
+  font-size: max(10.5px, 1.6cqw);
+  color: var(--sv-grey);
+  padding-top: 2.9cqw;
+}
+.sv-spec dd {
+  margin: 0;
+  font-size: max(14px, 3.6cqw);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+}
+.sv-line {
+  margin: 0;
+  display: grid;
+  gap: 2.4cqw;
+}
+.sv-line p {
+  margin: 0;
+  font-size: max(20px, 6.4cqw);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+  font-weight: 420;
+  text-wrap: balance;
+}
+.sv-number strong {
+  display: block;
+  font-weight: 300;
+  font-size: max(40px, 11cqw);
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 900px) {
+  .sv-step {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding-bottom: 28px;
+  }
+  .sv-dots {
+    width: 100vw;
+    left: 0;
+    opacity: 0.7;
+  }
+}
+
+/* ---------- Gallery: the session map (do's Session Map: weighted tiles, summary bubbles, details on zoom) ---------- */
+.gm {
+  --gm-bg: #ffffff;
+  --gm-ink: #111111;
+  --gm-grey: #8e8e8a;
+  --gm-canvas: #f2f2f0;
+  --gm-edge: #dcdcd8;
+  --gm-tile: #efefee;
+  --gm-faint: #dcdcd8;
+  --gm-line: #a3a3a0;
+  --gm-dot: #d2d2ce;
+  --gm-bd: #e4e4e1;
+  margin: 0 auto;
+  max-width: 1400px;
+  color: var(--gm-ink);
+}
+.gm-stage {
+  position: relative;
+  height: calc(100svh - 150px);
+  min-height: 540px;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.gm-stage:active {
+  cursor: grabbing;
+}
+/* The dot grid is fixed to the stage; only zoom changes its spacing. */
+.gm-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle,
+    var(--gm-dot) 1px,
+    transparent 1.6px
+  );
+  background-size: var(--ds, 14px) var(--ds, 14px);
+  background-position: var(--dx, 0) var(--dy, 0);
+  -webkit-mask-image: radial-gradient(
+    circle at 50% 46%,
+    #000 0,
+    transparent 38%
+  );
+  mask-image: radial-gradient(circle at 50% 46%, #000 0, transparent 38%);
+}
+.gm-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.gm-world.glide {
+  transition: transform 0.6s cubic-bezier(0.3, 0, 0.1, 1);
+}
+.gm-lines {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+}
+.gm-lines path {
+  fill: none;
+  stroke: var(--gm-line);
+  stroke-width: 2;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.gm-lines.anim path.trunk,
+.gm-lines.anim path.bl {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: gm-draw 1.1s cubic-bezier(0.6, 0, 0.2, 1) forwards;
+}
+@keyframes gm-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.gm-lines path.det {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.8s cubic-bezier(0.6, 0, 0.2, 1);
+}
+.gm-world:not([data-lvl="0"]) .gm-lines path.det {
+  stroke-dashoffset: 0;
+}
+.gm-world :is(a, button) {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  padding: 0;
+  background: none;
+  text-decoration: none;
+}
+/* The center keeps do's design: a white box with a hairline border and the dot ring. */
+.gm-core {
+  position: absolute;
+  z-index: 3;
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  cursor: pointer;
+}
+.gm-box {
+  width: 112px;
+  height: 112px;
+  border-radius: 30px;
+  background: var(--gm-bg);
+  box-shadow: inset 0 0 0 1px var(--gm-bd);
+  display: grid;
+  place-items: center;
+  transition: box-shadow 0.2s;
+}
+.gm-core:hover .gm-box {
+  box-shadow: inset 0 0 0 1px var(--gm-ink);
+}
+.gm-lbl {
+  position: absolute;
+  top: 100%;
+  margin-top: 10px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--gm-bg);
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--gm-grey);
+  text-align: center;
+  line-height: 1.4;
+}
+.gm-lbl b {
+  display: block;
+  font-weight: 500;
+  color: var(--gm-ink);
+  font-size: 13px;
+}
+/* Tiles are sized by weight and reuse the Story's sheet at tile scale. */
+.gm-tile {
+  position: absolute;
+  z-index: 2;
+  transform: translateX(-50%);
+  display: block;
+  cursor: grab;
+  --h: 128px;
+}
+.gm-tile.w-major {
+  --h: 196px;
+}
+.gm-tile.w-minor {
+  --h: 92px;
+}
+.gm-pic,
+.gm-say,
+.gm-spec {
+  position: relative;
+  container-type: inline-size;
+  isolation: isolate;
+  --sheet-r: 20cqw;
+  --sheet-o: 10cqw;
+  --sheet-s2: 0.9cqw;
+  --sheet-b2: 2.2cqw;
+  --sheet-s3: 2cqw;
+  --sheet-b3: 4.5cqw;
+}
+.gm-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.gm-sheet i {
+  position: absolute;
+  inset: calc(-1 * var(--sheet-o, 6cqw));
+}
+.gm-sheet i::before {
+  content: "";
+  position: absolute;
+  inset: var(--sheet-o, 6cqw);
+  border-radius: var(--sheet-r, 6cqw);
+  background: var(--gm-canvas);
+  transition: box-shadow 0.2s;
+}
+.gm-sheet i:nth-child(1)::before {
+  box-shadow:
+    inset 0 1px 0 var(--gm-edge),
+    inset 0 0 0 1px color-mix(in srgb, var(--gm-edge) 60%, transparent);
+}
+.gm-sheet i:nth-child(1) {
+  filter: blur(0.4px);
+  -webkit-mask-image: linear-gradient(#000 56%, transparent 68%);
+  mask-image: linear-gradient(#000 56%, transparent 68%);
+}
+.gm-sheet i:nth-child(2)::before {
+  inset: calc(var(--sheet-o, 6cqw) + var(--sheet-s2, 0.35cqw));
+}
+.gm-sheet i:nth-child(2) {
+  filter: blur(var(--sheet-b2, 0.7cqw));
+  -webkit-mask-image: linear-gradient(
+    transparent 50%,
+    #000 58%,
+    #000 80%,
+    transparent 88%
+  );
+  mask-image: linear-gradient(
+    transparent 50%,
+    #000 58%,
+    #000 80%,
+    transparent 88%
+  );
+}
+.gm-sheet i:nth-child(3)::before {
+  inset: calc(var(--sheet-o, 6cqw) + var(--sheet-s3, 0.8cqw));
+}
+.gm-sheet i:nth-child(3) {
+  filter: blur(var(--sheet-b3, 1.5cqw));
+  -webkit-mask-image: linear-gradient(transparent 74%, #000 82%);
+  mask-image: linear-gradient(transparent 74%, #000 82%);
+}
+.gm-tile .gm-pic {
+  display: block;
+  height: var(--h);
+  width: calc(var(--h) * var(--ar, 1));
+  max-width: calc(var(--h) * 1.7);
+  padding: calc(var(--h) * 0.09);
+}
+.gm-pic img {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  object-fit: contain;
+}
+.gm-page img {
+  object-fit: cover;
+  object-position: 50% 0;
+  border-radius: 8cqw;
+  box-shadow: 0 6px 14px -8px rgb(0 0 0 / 0.35);
+}
+.gm-object img {
+  filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.12));
+}
+.gm-ink img {
+  mix-blend-mode: multiply;
+}
+/* A quote tile grows to fit its words (never past six lines), so the sheet always holds the text. */
+.gm-say {
+  display: grid;
+  align-content: center;
+  width: max(150px, calc(var(--h) * 1.15));
+  min-height: var(--h);
+  padding: calc(var(--h) * 0.13) calc(var(--h) * 0.14);
+  font-size: max(12.5px, calc(var(--h) * 0.095));
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-align: left;
+  overflow-wrap: break-word;
+}
+.gm-say .gm-txt,
+.gm-spec .gm-txt {
+  position: relative;
+}
+.gm-say .gm-txt {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.gm-spec {
+  display: grid;
+  place-content: center;
+  width: calc(var(--h) * 1.6);
+  height: var(--h);
+  padding: calc(var(--h) * 0.1);
+  overflow: hidden;
+}
+.gm-spec .gm-txt {
+  font-size: calc(var(--h) * 0.26);
+  line-height: 0.9;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.gm-tile:hover .gm-sheet i:nth-child(1)::before,
+.gm-detail.has-pic:hover .gm-sheet i:nth-child(1)::before,
+.gm-detail:not(.has-pic):hover > .gm-sheet i:nth-child(1)::before {
+  box-shadow: inset 0 0 0 1.5px var(--gm-ink);
+}
+/* The summary bubble beside each tile, shown by default. */
+.gm-bubble {
+  position: absolute;
+  z-index: 2;
+  transform: translateX(-50%);
+  width: 200px;
+  box-sizing: border-box;
+  padding: 14px 16px !important;
+  isolation: isolate;
+  --sheet-r: 22px;
+  --sheet-o: 12px;
+  --sheet-s2: 1px;
+  --sheet-b2: 2.5px;
+  --sheet-s3: 2.5px;
+  --sheet-b3: 6px;
+  font-size: 14.5px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  text-align: left;
+  cursor: grab;
+}
+.gm-bubble .gm-t,
+.gm-bubble small {
+  position: relative;
+  display: block;
+}
+.gm-bubble small {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--gm-grey);
+}
+a.gm-bubble small::after {
+  content: " ↗";
+}
+/* Details pop out when you zoom in; the human's own words appear up close. */
+.gm-detail {
+  position: absolute;
+  z-index: 4;
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  /* Details fade in with the line that leads to them, on the same timing; they never scale. */
+  transition: opacity 0.8s cubic-bezier(0.6, 0, 0.2, 1);
+  display: grid;
+  gap: 4px;
+  width: max-content;
+  max-width: 168px;
+  padding: 8px 12px !important;
+  isolation: isolate;
+  --sheet-r: 16px;
+  --sheet-o: 10px;
+  --sheet-s2: 1px;
+  --sheet-b2: 2px;
+  --sheet-s3: 2px;
+  --sheet-b3: 5px;
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: left;
+  cursor: grab;
+}
+.gm-world:not([data-lvl="0"]) .gm-detail {
+  opacity: 1;
+  pointer-events: auto;
+}
+.gm-detail b {
+  font-weight: 450;
+}
+.gm-detail:not(.has-pic) > b,
+.gm-detail:not(.has-pic) > q {
+  position: relative;
+}
+a.gm-detail b::after {
+  content: " ↗";
+  color: var(--gm-grey);
+}
+.gm-detail q {
+  display: none;
+  color: var(--gm-grey);
+  font-size: 10.5px;
+  line-height: 1.35;
+  quotes: "“" "”";
+}
+.gm-world[data-lvl="2"] .gm-detail q {
+  display: block;
+}
+.gm-detail.has-pic {
+  padding: 0 !important;
+  justify-items: center;
+  gap: 6px;
+  max-width: 150px;
+  text-align: center;
+}
+.gm-detail .gm-pic {
+  display: block;
+  height: 84px;
+  width: calc(84px * var(--ar, 1));
+  max-width: 140px;
+  padding: 8px;
+}
+.gm-cap {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--gm-bg);
+}
+.gm-world[data-lvl="2"] .gm-detail.has-pic q {
+  max-width: 150px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--gm-bg);
+}
+.gm-dragging,
+.gm-dragging * {
+  cursor: grabbing !important;
+}
+.gm-dragging {
+  z-index: 30 !important;
+}
+.gm-zoom {
+  position: absolute;
+  z-index: 16;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--gm-bg);
+  box-shadow: inset 0 0 0 1px var(--gm-bd);
+  border-radius: 99px;
+  padding: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.gm-zoom button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--gm-tile);
+  font-size: 16px;
+  cursor: pointer;
+}
+.gm-level {
+  min-width: 116px;
+  text-align: center;
+  color: var(--gm-grey);
+}
+.gm-level b {
+  font-weight: 500;
+  color: var(--gm-ink);
+}
+.gm-level em {
+  font-style: normal;
+}
+.gm-dots {
+  display: flex;
+  gap: 4px;
+}
+.gm-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gm-faint);
+  transition: background 0.3s;
+}
+.gm-dots i.on {
+  background: var(--gm-ink);
+}
+@media (max-width: 700px) {
+  .gm-bubble {
+    display: none;
+  }
+  .gm-level {
+    min-width: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gm-lines.anim path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .gm-world.glide {
+    transition: none;
+  }
+  .gm * {
+    transition: none !important;
+  }
+}
+
+/* Pictures in the Story and Gallery are fitted in the browser (SheetMedia): an object is cut out and shown
+   whole, ink blends into the sheet, a page keeps its own white. Fallback previews lose their card chrome. */
+.sv-fit .fitted-media,
+.gm-fit .fitted-media {
+  object-position: 50% 100%;
+}
+.sv-fit .fitted-object,
+.gm-fit .fitted-object {
+  filter: drop-shadow(0 1.4cqw 1.6cqw rgb(0 0 0 / 0.14));
+}
+.sv-fit .block-preview,
+.gm-fit .block-preview {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.sv-fit .block-preview img,
+.gm-fit .block-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+/* The map fills the screen under the header; status floats over its top-right corner. */
+.workspace main.map-main:has(.gm) {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.map-main:has(.gm) .session-gallery > .session-feedback {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+  min-height: 0;
+  padding: 0;
+}
+.map-main .gm-stage {
+  height: calc(100dvh - 103px);
+}
+@media (max-width: 700px) {
+  .map-main .gm-stage {
+    height: calc(100dvh - 139px);
+  }
+}
