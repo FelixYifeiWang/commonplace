@@ -4,6 +4,8 @@ A first draft of a shared home for ideas from human–AI conversations.
 
 ## Try it
 
+See [the morning test guide](MORNING_TEST.md) for controls, verified flows and current limits.
+
 Open `Start Commonplace.command` on this Mac, then visit http://127.0.0.1:3100/ for your local space. The desktop buddy opens alongside it. Open a conversation in a single Codex window and move the desktop buddy over the conversation area, click it, then click Connect. Dragging only moves the buddy. Local sign-in uses a development identity. The optional sample collection is at `/?demo=1`.
 
 Each collection opens as a map. Drag the background to pan, scroll or pinch to zoom, and zoom in for details. Story shows the decisions alongside their sources. Cmd/Ctrl+Shift+G toggles the original block gallery. The buddy only appears on the desktop. The collection menu includes connection and account controls.
@@ -21,6 +23,8 @@ Both routes use the same device/subscription APIs. A device token is scoped to w
 Collections, manual blocks, source passages, account sign-in, revocable connections, session controls, duplicate-resistant imports, JSONL parsing, and a floating Electron companion. Each connected session gets a collection named after it, and the home view shows every collection. Captured URLs become reference blocks with locally rendered page screenshots, cover fallbacks and media viewers. The hidden block gallery stacks pages by website; click a stack to expand inline, then click its cover to fold. Media keeps its proportions inside aligned cells. Search and type/source filters work inside stacks. Select blocks to delete with Undo; sync preserves deletion markers. The first empty tile accepts text, links and dropped/pasted files. The searchable collection picker can delete and disconnect channels. Sign-in and callback URLs are excluded. Each channel has a Gallery map and a Story view with up to five concise decisions. Both are grounded in the conversation and saved sources. Website pages keep their own backgrounds; still images are fitted or cut out when browser image access permits. The saved originals stay untouched.
 
 ## Unfinished
+
+Images pasted into coding sessions and screenshots of generated local websites are not automatically imported into the new canvases yet. Add those images manually. The model currently reads text and media metadata, not image pixels.
 
 The example collection is sample content, not a live extraction. Clicking the desktop buddy to identify an open window currently supports Codex and Claude Code in the Claude desktop app. Inactive sidebar rows must be opened first. The setup-prompt route supports local Codex, Claude Code and Cursor JSONL transcripts; see `COMPATIBILITY.md`. Map nodes can be moved, but their text and relationships are generated. There is no signed desktop installer yet.
 
