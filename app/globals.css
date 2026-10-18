@@ -8077,3 +8077,21 @@ a[href].gm-detail b::after {
     display: none;
   }
 }
+.gm-toolbar .map-mode-switch,
+.gm-toolbar-divider {
+  flex-shrink: 0;
+}
+@media (max-width: 380px) {
+  .gm-toolbar .gm-navigation button:nth-child(2) {
+    min-width: 64px;
+  }
+  .gm-toolbar :is(.gm-navigation, .gm-zoom) {
+    gap: 3px;
+  }
+  .gm-toolbar .gm-zoom button,
+  .gm-toolbar .gm-navigation button:not(:nth-child(2)) {
+    width: 26px;
+    min-width: 26px;
+    padding: 0;
+  }
+}

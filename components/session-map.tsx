@@ -122,6 +122,7 @@ export function SessionMap({
       };
     });
     let guidedMode = modeRef.current;
+    let freeStart: { z: number; px: number; py: number } | null = null;
     let glideTimer: ReturnType<typeof setTimeout> | undefined;
     let fit = 1,
       cx0 = 0,
@@ -507,6 +508,7 @@ export function SessionMap({
         // Keep positions and camera alive. Free movement starts exactly where the tour left off.
         if (!next) {
           touched = true;
+          freeStart = { z, px, py };
           delete world.dataset.focus;
           Object.values(W).forEach((w) => {
             w.el.classList.remove("gm-current", "gm-focused");
@@ -514,6 +516,16 @@ export function SessionMap({
           });
           view();
           draw(false);
+          return;
+        }
+        // A round trip without navigation keeps the exact same branch framing.
+        if (
+          freeStart &&
+          freeStart.z === z &&
+          freeStart.px === px &&
+          freeStart.py === py
+        ) {
+          guidedFrame(guidedFocus.current?.detail);
           return;
         }
         // Rejoin the tour at the closest visible node, instead of flying back to the start.
