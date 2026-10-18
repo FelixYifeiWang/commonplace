@@ -235,7 +235,15 @@ function hideBuddy() {
 function buddyMenu() {
   return Menu.buildFromTemplate([
     { label: "Hide buddy", click: hideBuddy },
-    { label: "Open Commonplace", click: () => shell.openExternal(ORIGIN) },
+    {
+      label: "Open Newron",
+      click: () =>
+        shell.openExternal(
+          ORIGIN === "https://commonplace-pearl.vercel.app"
+            ? "https://newron.app"
+            : ORIGIN,
+        ),
+    },
     { type: "separator" },
     { label: "Quit and stop syncing", click: () => app.quit() },
   ]);
@@ -541,26 +549,26 @@ if (!lock) {
       // Keep the original encryption service so upgrading does not orphan paired devices.
       // The app's display identity is configured after Chromium's storage key is cached.
       if (safeStorage.isEncryptionAvailable()) safeStorage.encryptString("");
-      app.setName("Commonplace");
+      app.setName("Newron");
       app.dock?.setIcon(nativeImage.createFromPath(appIcon));
       app.setAboutPanelOptions({
-        applicationName: "Commonplace",
+        applicationName: "Newron",
         applicationVersion: "0.1.0",
         iconPath: appIcon,
       });
       Menu.setApplicationMenu(
         Menu.buildFromTemplate([
           {
-            label: "Commonplace",
+            label: "Newron",
             submenu: [
               {
-                label: "About Commonplace",
+                label: "About Newron",
                 click: () =>
                   dialog.showMessageBox({
                     type: "none",
                     icon: nativeImage.createFromPath(appIcon),
-                    title: "About Commonplace",
-                    message: "Commonplace",
+                    title: "About Newron",
+                    message: "Newron",
                     detail: "Version 0.1.0",
                     buttons: ["Done"],
                   }),
@@ -570,7 +578,12 @@ if (!lock) {
               { label: "Hide buddy", click: hideBuddy },
               {
                 label: "Open my space",
-                click: () => shell.openExternal(ORIGIN),
+                click: () =>
+                  shell.openExternal(
+                    ORIGIN === "https://commonplace-pearl.vercel.app"
+                      ? "https://newron.app"
+                      : ORIGIN,
+                  ),
               },
               { type: "separator" },
               {
@@ -608,7 +621,7 @@ if (!lock) {
         if (error.code !== "ENOENT")
           lastError = "Saved subscriptions could not be restored.";
       }
-      // macOS setup registers Commonplace.app. Registering bare Electron here
+      // macOS setup registers Newron.app. Registering bare Electron here
       // discards the app entry path and opens Electron's welcome screen.
       if (process.platform !== "darwin" && !process.defaultApp)
         app.setAsDefaultProtocolClient("commonplace");
@@ -806,7 +819,13 @@ if (!lock) {
         if (!source.paused) void tick();
         return { ok: true };
       });
-      register("companion:open-space", () => shell.openExternal(ORIGIN));
+      register("companion:open-space", () =>
+        shell.openExternal(
+          ORIGIN === "https://commonplace-pearl.vercel.app"
+            ? "https://newron.app"
+            : ORIGIN,
+        ),
+      );
       register("companion:hide", hideBuddy);
       win.on("closed", () => dragController?.cancel());
       feedbackWindow = new BrowserWindow({
@@ -850,12 +869,20 @@ if (!lock) {
       const trayIcon = icon.resize({ width: 18, height: 18 });
       trayIcon.setTemplateImage(true);
       tray = new Tray(trayIcon);
-      tray.setToolTip("Commonplace · Show buddy");
+      tray.setToolTip("Newron · Show buddy");
       tray.setContextMenu(
         Menu.buildFromTemplate([
           { label: "Show buddy", click: showBuddy },
           { label: "Hide buddy", click: hideBuddy },
-          { label: "Open my space", click: () => shell.openExternal(ORIGIN) },
+          {
+            label: "Open my space",
+            click: () =>
+              shell.openExternal(
+                ORIGIN === "https://commonplace-pearl.vercel.app"
+                  ? "https://newron.app"
+                  : ORIGIN,
+              ),
+          },
           { type: "separator" },
           { label: "Quit and stop syncing", click: () => app.quit() },
         ]),

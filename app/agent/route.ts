@@ -1,7 +1,7 @@
 export async function GET(request: Request) {
   const origin = new URL(request.url).origin;
   return new Response(
-    `# Commonplace: optional agent connection
+    `# Newron: optional agent connection
 
 The user's URL fragment (#) is a device API token. Keep it out of chat replies, logs, and repositories. Do not install MCP or request database credentials.
 

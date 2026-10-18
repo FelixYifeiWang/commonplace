@@ -614,9 +614,6 @@ export default function Workspace({
                   : "Continue with ChatGPT"}{" "}
                 <ArrowRight size={15} />
               </a>
-              <Link className="text-link" href="/?demo=1">
-                Take a look around <ArrowUpRight size={13} />
-              </Link>
             </div>
           ) : (
             <>

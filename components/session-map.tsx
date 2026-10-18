@@ -4,7 +4,12 @@ import type { CSSProperties, ReactNode } from "react";
 import Image from "next/image";
 import type { Item } from "@/lib/types";
 import { pictureFor } from "@/lib/story-canvas.mjs";
-import { placeMap, radialPath, zoomLevel } from "@/lib/session-map.mjs";
+import {
+  placeMap,
+  radialPath,
+  zoomLevel,
+  visibleSessionMap,
+} from "@/lib/session-map.mjs";
 import type { MapNode, SessionDocument } from "@/lib/session-types";
 import { SheetMedia } from "./sheet-media";
 // The Gallery tab: do's session map, curated by the model (STORY_CANVAS.md, "Gallery").
@@ -57,7 +62,11 @@ export function SessionMap({
     dotsRef = useRef<HTMLSpanElement>(null),
     engine = useRef<Engine | null>(null);
   const media = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
-  const nodes = doc.map.nodes.slice(0, 6);
+  const map = useMemo(
+    () => visibleSessionMap(doc.map, items),
+    [doc.map, items],
+  );
+  const nodes: MapNode[] = map.nodes.slice(0, 6);
   // Lines a story canvas already shows are not shown again on a tile; the tile shows its name instead.
   const shown = useMemo(
     () =>
@@ -74,7 +83,7 @@ export function SessionMap({
   useFonts(nodes);
   // The story and items are polled every few seconds; lay out again only when their content changes,
   // so a refresh never undoes the viewer's zoom or drags.
-  const docKey = JSON.stringify(doc.map);
+  const docKey = JSON.stringify(map);
   const mediaKey = items.map((i) => `${i.id}:${i.imageUrl || ""}`).join("|");
   useEffect(() => {
     const stage = stageRef.current,
@@ -457,7 +466,7 @@ export function SessionMap({
       engine.current = null;
     };
   }, [docKey, mediaKey]);
-  const { center } = doc.map;
+  const { center } = map;
   return (
     <section className="gm" aria-label="Gallery: session map">
       <div className="gm-stage" ref={stageRef}>

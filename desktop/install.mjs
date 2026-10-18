@@ -45,7 +45,7 @@ export function parseSetupLink(link) {
     url.search ||
     !/^#[a-f0-9]{64}$/.test(url.hash)
   )
-    throw new Error("Use the private setup link copied from Commonplace.");
+    throw new Error("Use the private setup link copied from Newron.");
   return {
     origin: url.origin,
     code: url.hash.slice(1),
@@ -137,11 +137,18 @@ export async function bootstrapBuddy(
     }
   }
 }
+// Keep the existing storage and launch-service identity after the domain rename.
+export function installationOrigin(origin) {
+  return origin === "https://newron.app"
+    ? "https://commonplace-pearl.vercel.app"
+    : origin;
+}
+
 export async function installAppShortcut(home, appPath) {
   const applications = join(home, "Applications");
   await mkdir(applications, { recursive: true });
   try {
-    await symlink(appPath, join(applications, "Commonplace.app"));
+    await symlink(appPath, join(applications, "Newron.app"));
   } catch (error) {
     if (error.code !== "EEXIST") throw error;
   }
@@ -157,14 +164,21 @@ export async function installLauncher(
   const appPath = join(root, "Commonplace.app");
   const source = join(root, "open-buddy.applescript");
   const command = `/usr/bin/touch ${quote(join(data, "show-request"))}; /bin/launchctl kickstart ${quote(service)} || /bin/launchctl bootstrap ${quote(`gui/${process.getuid()}`)} ${quote(plist)}`;
-  const link = `commonplace://show?origin=${encodeURIComponent(origin)}`;
+  const origins =
+    installationOrigin(origin) === "https://commonplace-pearl.vercel.app"
+      ? ["https://commonplace-pearl.vercel.app", "https://newron.app"]
+      : [origin];
+  const links = origins.flatMap((value) => {
+    const link = `commonplace://show?origin=${encodeURIComponent(value)}`;
+    return [link, link.replace("show?", "show/?")];
+  });
   await writeFile(
     source,
     `on run
   revealBuddy()
 end run
 on open location incomingURL
-  if incomingURL is ${JSON.stringify(link)} or incomingURL is ${JSON.stringify(link.replace("show?", "show/?"))} then revealBuddy()
+  if incomingURL is ${links.map((link) => JSON.stringify(link)).join(" or incomingURL is ")} then revealBuddy()
 end open location
 on revealBuddy()
   do shell script ${JSON.stringify(command)}
@@ -186,8 +200,8 @@ end revealBuddy
     ]);
   }
   for (const args of [
-    ["-replace", "CFBundleName", "-string", "Commonplace"],
-    ["-replace", "CFBundleDisplayName", "-string", "Commonplace"],
+    ["-replace", "CFBundleName", "-string", "Newron"],
+    ["-replace", "CFBundleDisplayName", "-string", "Newron"],
     [
       "-replace",
       "CFBundleIdentifier",
@@ -201,7 +215,7 @@ end revealBuddy
       "-json",
       JSON.stringify([
         {
-          CFBundleURLName: "Commonplace buddy",
+          CFBundleURLName: "Newron buddy",
           CFBundleURLSchemes: ["commonplace"],
         },
       ]),
@@ -242,7 +256,7 @@ export async function install(
   if (major < 22 || (major === 22 && minor < 13))
     throw new Error("Node.js 22.13 or newer is required.");
   const { origin, code, action } = parseSetupLink(input.link),
-    space = digest(origin).slice(0, 16);
+    space = digest(installationOrigin(origin)).slice(0, 16);
   const root = join(
       home,
       "Library",
@@ -454,7 +468,7 @@ export async function install(
         if (!receipt.ok) throw new Error(receipt.error);
         onProgress(
           action === "setup"
-            ? "Buddy ready. Choose a session to save in Commonplace."
+            ? "Buddy ready. Choose a session to save in Newron."
             : "Session connected.",
         );
         return receipt;

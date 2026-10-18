@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { placeMap, radialPath, zoomLevel } from "../lib/session-map.mjs";
+import {
+  placeMap,
+  radialPath,
+  zoomLevel,
+  visibleSessionMap,
+} from "../lib/session-map.mjs";
 
 // Rendered sizes, as the component measures them: tiles by weight, bubbles, details.
 function widgets(n, { bubbles = true, details = 2 } = {}) {
@@ -96,4 +101,50 @@ test("zoom levels: overview, details, then the human's words", () => {
   assert.equal(zoomLevel(1), 0);
   assert.equal(zoomLevel(1.6), 1);
   assert.equal(zoomLevel(3), 2);
+});
+
+test("deleted media is removed from map links while named references remain", () => {
+  const map = {
+    center: {
+      itemId: "deleted",
+      label: "Project",
+      url: "https://deleted.example",
+    },
+    nodes: [
+      { itemId: "deleted", url: "https://deleted.example", details: [] },
+      {
+        itemId: "kept",
+        details: [
+          { itemId: "deleted", url: "https://deleted.example" },
+          { itemId: null, label: "A principle" },
+        ],
+      },
+      {
+        itemId: null,
+        label: "Named reference",
+        url: "https://reference.example",
+        details: [],
+      },
+    ],
+  };
+  const original = structuredClone(map);
+  const visible = visibleSessionMap(map, [{ id: "kept" }]);
+  assert.deepEqual(
+    visible.nodes.map((n) => n.itemId),
+    ["kept", null],
+  );
+  assert.deepEqual(visible.nodes[0].details, [
+    { itemId: null, label: "A principle" },
+  ]);
+  assert.deepEqual(visible.center, {
+    itemId: null,
+    label: "Project",
+    url: null,
+  });
+  assert.deepEqual(map, original);
+  assert.deepEqual(
+    visibleSessionMap(map, [{ id: "kept" }, { id: "deleted" }]),
+    original,
+    "Undo restores the original map",
+  );
 });

@@ -1,4 +1,4 @@
-# Commonplace
+# Newron
 
 A first draft of a shared home for ideas from human–AI conversations.
 
@@ -6,7 +6,7 @@ A first draft of a shared home for ideas from human–AI conversations.
 
 See [the morning test guide](MORNING_TEST.md) for controls, verified flows and current limits.
 
-Open [Commonplace](https://commonplace-pearl.vercel.app) and sign in with Google. Choose Set up buddy to connect this hosted space to your Mac. Open a conversation, move the buddy over it, click it, then click Connect. Dragging only moves the buddy. Test on Vercel by default; use localhost only when explicitly requested. Local and hosted collections are separate.
+Open [Newron](https://newron.app) and sign in with Google. Choose Set up buddy to connect this hosted space to your Mac. Open a conversation, move the buddy over it, click it, then click Connect. Dragging only moves the buddy. Test on Vercel by default; use localhost only when explicitly requested. Local and hosted collections are separate.
 
 Each collection has three views: **Gallery** for saved media, **Map** for connections, and **Story** for decisions and their sources. Gallery opens by default. In Map, drag the background to pan and scroll or pinch to zoom. Cmd/Ctrl+Shift+G toggles Gallery and Map. The buddy only appears on the desktop. The collection menu includes connection and account controls.
 
@@ -81,7 +81,7 @@ Run `node tests/story.integration.mjs` against the local server with a valid key
 
 The hosted app uses Next.js, Turso SQLite and private Vercel Blob. Local Vinext/D1 and the desktop companion remain available without migrating or uploading existing laptop data. The hosted space starts empty.
 
-Production configuration (server-side): `COMMONPLACE_HOSTED=1`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=https://commonplace-pearl.vercel.app`, `OPENAI_API_KEY`, `CRON_SECRET`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BLOB_STORE_ID` and `BLOB_WEBHOOK_PUBLIC_KEY`. Keep secrets outside Git. The Google Web client callback is `https://commonplace-pearl.vercel.app/api/auth/callback/google`; only basic profile and email are requested. Retain `COMMONPLACE_SESSION_SECRET` and the old access code only for prototype ownership recovery. Once Google OAuth is configured, legacy cookies alone do not authenticate API requests.
+Production configuration (server-side): `COMMONPLACE_HOSTED=1`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=https://newron.app`, `OPENAI_API_KEY`, `CRON_SECRET`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BLOB_STORE_ID` and `BLOB_WEBHOOK_PUBLIC_KEY`. Keep secrets outside Git. The Google Web client callback is `https://newron.app/api/auth/callback/google`; only basic profile and email are requested. Retain `COMMONPLACE_SESSION_SECRET` and the old access code only for prototype ownership recovery. Once Google OAuth is configured, legacy cookies alone do not authenticate API requests.
 
 Migrations 0008 and 0009 add account ownership mappings and Better Auth tables. Claims never rewrite saved record ownership, and an account with its own collections or devices cannot switch spaces. New users start empty.
 
@@ -117,7 +117,7 @@ Electron 44.9.0 has an on-demand binary installer. After `npm ci`, the installer
 
 Dragging preserves the grab offset. Native mouse events move and release the window before renderer dispatch, so renderer delays cannot extend a drag. Capture loss and focus changes keep the latest position; only Escape cancels back to the start. Connect fades into reserved space above the face without resizing the window.
 
-Right-click the buddy for **Hide buddy** or **Quit and stop syncing**. Hide keeps subscriptions running. The Commonplace menu-bar icon restores it. **Open buddy** in the website header restores a hidden buddy or launches it after Quit. The installer registers a small macOS launcher and explicitly makes it the default `commonplace://` handler, without modifying Electron’s signed runtime. Setup verifies that the link resolves to Commonplace, and development Electron never registers itself as the macOS handler. Existing installations need one setup update to receive it. The browser may ask permission to open Commonplace. If nothing opens, the dialog offers setup. Opening the buddy never connects a session.
+Right-click the buddy for **Hide buddy** or **Quit and stop syncing**. Hide keeps subscriptions running. The Newron menu-bar icon restores it. **Open buddy** in the website header restores a hidden buddy or launches it after Quit. The installer registers a small macOS launcher and explicitly makes it the default `commonplace://` handler, without modifying Electron’s signed runtime. Setup verifies that the link resolves to Commonplace, and development Electron never registers itself as the macOS handler. Existing installations need one setup update to receive it. The browser may ask permission to open Newron. If nothing opens, the dialog offers setup. Opening the buddy never connects a session.
 
 Native checks: two off-center drags moved by exactly the pointer delta, release coordinates matched the saved position, Connect kept the face fixed, and Hide removed the window. Browser automation blocks the desktop URI, so the complete browser-to-native handoff must also be checked in a regular browser. Installer and one-shot reopen behavior are covered by the remote test suite.
 
@@ -139,4 +139,8 @@ The macOS helper explicitly assigns and verifies Commonplace’s URL handler dur
 
 ### Current onboarding checks
 
-See [the onboarding QA report](docs/ONBOARDING_QA.md) for the latest production walkthrough, native checks, cleanup and remaining verification limits. Setup now confirms completion on the website, and the installed launcher is available as Commonplace in your Applications folder.
+See [the onboarding QA report](docs/ONBOARDING_QA.md) for the latest production walkthrough, native checks, cleanup and remaining verification limits. Setup now confirms completion on the website, and the installed launcher is available as Newron in your Applications folder.
+
+### Product rename
+
+See [Newron migration notes](docs/NEWRON_RENAME.md) for the canonical domain and legacy identifiers retained for installed buddies.

@@ -1,6 +1,6 @@
 # Hosted test guide
 
-Open [Commonplace](https://commonplace-pearl.vercel.app). Use Vercel for testing unless local testing is explicitly requested.
+Open [Newron](https://newron.app). Use Vercel for testing unless local testing is explicitly requested.
 
 1. Sign in with Google. A new account starts with an empty space. If you previously used the access code in this browser, choose **Open existing space** to retain its collections and buddy connections.
 2. **All collections** opens the overview. Hover a collection to delete it. **Undo** restores it but leaves capture disconnected.

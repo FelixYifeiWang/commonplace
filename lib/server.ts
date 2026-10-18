@@ -29,7 +29,7 @@ export async function jsonBody(request: Request) {
 export function fail(error: unknown) {
   if (error instanceof HttpError)
     return Response.json({ error: error.message }, { status: error.status });
-  console.error("Commonplace request failed", error);
+  console.error("Newron request failed", error);
   return Response.json(
     { error: "Something went wrong. Please try again." },
     { status: 500 },
