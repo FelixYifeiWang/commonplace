@@ -7247,7 +7247,7 @@ body.desktop-feedback-page {
   place-items: center;
   transition: box-shadow 0.2s;
 }
-.gm-core:hover .gm-box {
+.gm:not(.gm-guided) .gm-core:hover .gm-box {
   box-shadow: inset 0 0 0 1px var(--gm-ink);
 }
 .gm-lbl {
@@ -7415,9 +7415,9 @@ body.desktop-feedback-page {
   text-transform: uppercase;
   white-space: nowrap;
 }
-.gm-tile:hover .gm-sheet i:nth-child(1)::before,
-.gm-detail.has-pic:hover .gm-sheet i:nth-child(1)::before,
-.gm-detail:not(.has-pic):hover > .gm-sheet i:nth-child(1)::before {
+.gm:not(.gm-guided) .gm-tile:hover .gm-sheet i:nth-child(1)::before,
+.gm:not(.gm-guided) .gm-detail.has-pic:hover .gm-sheet i:nth-child(1)::before,
+.gm:not(.gm-guided) .gm-detail:not(.has-pic):hover > .gm-sheet i:nth-child(1)::before {
   box-shadow: inset 0 0 0 1.5px var(--gm-ink);
 }
 /* The summary bubble beside each tile, shown by default. */
