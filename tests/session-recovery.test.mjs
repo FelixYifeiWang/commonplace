@@ -144,6 +144,8 @@ test("provider selects an excerpt ID and persisted evidence is inserted by the s
     transport: async (_, options) => {
       const request = JSON.parse(options.body),
         payload = JSON.parse(request.input);
+      assert.doesNotMatch(request.instructions, /evidenceSnippets offers/);
+      assert.match(request.instructions, /Choose excerptId/);
       const value = doc();
       value.steps[0].evidence = [
         { excerptId: payload.excerpts.find((e) => e.sourceId === "t1").id },
