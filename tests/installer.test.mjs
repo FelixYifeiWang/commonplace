@@ -247,6 +247,8 @@ test("launcher registers a reveal-only app without modifying Electron", async (t
   assert.ok(!script.includes("incomingURL &"));
   assert.equal(calls[0][0], "/usr/bin/osacompile");
   assert.ok(calls.some(([, args]) => args.includes("CFBundleURLTypes")));
+  for (const field of ["CFBundleName", "CFBundleDisplayName"])
+    assert.ok(calls.some(([, args]) => args[1] === field && args[3] === "Nox"));
   assert.deepEqual(calls.at(-2)[1], ["-f", appPath]);
   assert.deepEqual(calls.at(-1)[1], [
     "--register-opener",
@@ -307,7 +309,7 @@ test("launch retries the macOS teardown race, but never retries unrelated failur
     /Permission denied/,
   );
 });
-test("Newron app shortcut is repeatable and preserves an existing app", async (t) => {
+test("Nox app shortcut is repeatable and preserves an existing app", async (t) => {
   const { mkdtemp, readlink, rm } = await import("node:fs/promises");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
@@ -316,7 +318,25 @@ test("Newron app shortcut is repeatable and preserves an existing app", async (t
   await installAppShortcut(home, "/first/Commonplace.app");
   await installAppShortcut(home, "/other/Commonplace.app");
   assert.equal(
-    await readlink(join(home, "Applications/Newron.app")),
+    await readlink(join(home, "Applications/Nox.app")),
     "/first/Commonplace.app",
   );
+});
+
+test("shortcut migration removes only an owned legacy alias", async (t) => {
+  const { mkdtemp, mkdir, symlink, readlink, access, rm } =
+    await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const home = await mkdtemp(join(tmpdir(), "nox-upgrade-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  const apps = join(home, "Applications");
+  await mkdir(apps);
+  await symlink("/owned/Commonplace.app", join(apps, "Newron.app"));
+  await installAppShortcut(home, "/owned/Commonplace.app");
+  assert.equal(await readlink(join(apps, "Nox.app")), "/owned/Commonplace.app");
+  await assert.rejects(access(join(apps, "Newron.app")), { code: "ENOENT" });
+  await symlink("/unrelated/app", join(apps, "Newron.app"));
+  await installAppShortcut(home, "/owned/Commonplace.app");
+  assert.equal(await readlink(join(apps, "Newron.app")), "/unrelated/app");
 });

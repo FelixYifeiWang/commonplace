@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { deviceDisplayName } from "@/lib/brand.mjs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -912,8 +913,8 @@ export default function Workspace({
                     </div>
                     <OpenBuddy onSetup={() => openModal("setup")} />
                     <p className="section-description">
-                      One connection per computer. Your companion remembers it
-                      for next time.
+                      One connection per computer. Nox remembers it for next
+                      time.
                     </p>
                     {data.devices.filter((d) => !d.revoked).length ? (
                       data.devices
@@ -922,7 +923,7 @@ export default function Workspace({
                           <div className="setting-row" key={device.id}>
                             <Monitor size={19} />
                             <div>
-                              <strong>{device.name}</strong>
+                              <strong>{deviceDisplayName(device.name)}</strong>
                               <p>
                                 {device.lastSeen
                                   ? "Connected to your space"

@@ -31,9 +31,13 @@ import {
 } from "./drag.mjs";
 const exec = promisify(execFile);
 import fs from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { pathToFileURL, fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const appIcon = path.join(__dirname, "commonplace.png");
+const assetsDir = existsSync(path.join(__dirname, "commonplace.png"))
+  ? __dirname
+  : path.join(__dirname, "release");
+const appIcon = path.join(assetsDir, "commonplace.png");
 const ORIGIN = process.env.COMMONPLACE_ORIGIN || "http://127.0.0.1:3100";
 if (process.env.COMMONPLACE_DATA_DIR) {
   if (!path.isAbsolute(process.env.COMMONPLACE_DATA_DIR))
@@ -551,27 +555,27 @@ if (!lock) {
       // Keep the original encryption service so upgrading does not orphan paired devices.
       // The app's display identity is configured after Chromium's storage key is cached.
       if (safeStorage.isEncryptionAvailable()) safeStorage.encryptString("");
-      app.setName("Newron");
+      app.setName("Nox");
       app.dock?.setIcon(nativeImage.createFromPath(appIcon));
       app.setAboutPanelOptions({
-        applicationName: "Newron",
+        applicationName: "Nox",
         applicationVersion: "0.1.0",
         iconPath: appIcon,
       });
       Menu.setApplicationMenu(
         Menu.buildFromTemplate([
           {
-            label: "Newron",
+            label: "Nox",
             submenu: [
               {
-                label: "About Newron",
+                label: "About Nox",
                 click: () =>
                   dialog.showMessageBox({
                     type: "none",
                     icon: nativeImage.createFromPath(appIcon),
-                    title: "About Newron",
-                    message: "Newron",
-                    detail: "Version 0.1.0",
+                    title: "About Nox",
+                    message: "Nox",
+                    detail: "Newron’s desktop companion · Version 0.1.0",
                     buttons: ["Done"],
                   }),
               },
@@ -623,12 +627,13 @@ if (!lock) {
         if (error.code !== "ENOENT")
           lastError = "Saved subscriptions could not be restored.";
       }
-      // macOS setup registers Newron.app. Registering bare Electron here
+      // macOS setup registers the dedicated Nox launcher. Registering bare Electron here
       // discards the app entry path and opens Electron's welcome screen.
       if (process.platform !== "darwin" && !process.defaultApp)
         app.setAsDefaultProtocolClient("commonplace");
       const area = screen.getPrimaryDisplay().workArea;
       win = new BrowserWindow({
+        title: "Nox",
         ...buddyBounds({
           x: savedPosition?.x ?? area.x + area.width - 128,
           y: savedPosition ? savedPosition.y + 54 : area.y + area.height - 136,
@@ -660,6 +665,7 @@ if (!lock) {
         }
       });
       controlsWindow = new BrowserWindow({
+        title: "Nox",
         width: 220,
         height: 224,
         frame: false,
@@ -831,6 +837,7 @@ if (!lock) {
       register("companion:hide", hideBuddy);
       win.on("closed", () => dragController?.cancel());
       feedbackWindow = new BrowserWindow({
+        title: "Nox",
         ...screen.getPrimaryDisplay().bounds,
         frame: false,
         transparent: true,
@@ -865,13 +872,13 @@ if (!lock) {
       controlsReady = true;
       await win.loadURL(`${ORIGIN}/buddy`);
       win.show();
-      const icon = nativeImage.createFromDataURL(
-        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAACRElEQVRYhe2XPU8VQRSGn6s0ytUeKz6iXjuB1gSwko9KI6WNSusvUED+APIV/gWCNVAQQI39cm0MoiYqFoAWQMI1k7ybTJbZ3Zld6HiTSW7mnPOes/Nx5r1wAX9UgG7gNbAKRMBfjUhz40DXeSQeBupAw3MY38eKLYUO4L1F/BWYBh4ANaBZo6a5GWDH8jex7UWT3wN+iugbMAI0ecRd0td/Uewf4H5o8j7gSAQLQLXAB1wDFsVxCPSGLPuuAif1RUVhYt+I6zfQlhdQAT5YX14muV1EvBIbeQdz2NrzvGU3ROvAmud2fBf3oyzCupyeepB2yncbPzyXv+kZTnRbV+1ywmau2e3E3Kj851L4kjFNWtmGij+FCRmnHETHGjbhJ/kPpCR3xcwqZsxVwKqM/R5kLcAJ8A+4GlDAoHIsuwr4LONNh82Q3HLs51sXUUpMPGfitlwBBzL6NJ2lgMNqo6o4k+sU9mU0VyYLV7T0ZgtuBBZwXTn2XMa6jMllS2JIfh8JRy3rKq6kHMIk5uX3skABmYdwXEbz3GZhO0MH5HXFOfm9chm7ZNxxNCIbawULsBvR3bRWvCWHZ5w9RvJaMRIS8WOUdxtCT/8PcT/McqwAm1aTOavnOO4b6z46sV3ioSExUVaQTFmCpNU3sNeSZIsFt8Ms+ztLkvWUEaW/gBcBovSJtee7RURpjDbJqIZ1OGf1BN9Rb6/q96DueXzV4j3P1YF5qEhGRQF/TCKd9tJ/TJLolJhYVpIDjUhzY2lq5wKk4D+X1s9iWaDrGgAAAABJRU5ErkJggg==",
+      const icon = nativeImage.createFromPath(
+        path.join(assetsDir, "nox-tray.png"),
       );
       const trayIcon = icon.resize({ width: 18, height: 18 });
       trayIcon.setTemplateImage(true);
       tray = new Tray(trayIcon);
-      tray.setToolTip("Newron · Show Nox");
+      tray.setToolTip("Nox");
       tray.setContextMenu(
         Menu.buildFromTemplate([
           { label: "Show Nox", click: showBuddy },

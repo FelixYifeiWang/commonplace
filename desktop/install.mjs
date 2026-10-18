@@ -1,9 +1,10 @@
-// Commonplace's agent installer. No global packages, MCP, or agent settings are modified.
+// Nox's agent installer. No global packages, MCP, or agent settings are modified.
 import {
   mkdir,
   copyFile,
   symlink,
   readFile,
+  readlink,
   writeFile,
   rename,
   chmod,
@@ -69,7 +70,7 @@ export function validateManifest(manifest) {
   ];
   for (const f of manifest.files)
     if (
-      !/^(?:desktop\/[a-z-]+\.(?:mjs|cjs)|desktop\/native\/bin\/commonplace-target|desktop\/commonplace\.(?:png|icns)|lib\/protocol\.mjs|package(?:-lock)?\.json)$/.test(
+      !/^(?:desktop\/[a-z-]+\.(?:mjs|cjs)|desktop\/native\/bin\/commonplace-target|desktop\/(?:commonplace\.(?:png|icns)|nox-tray\.png)|lib\/protocol\.mjs|package(?:-lock)?\.json)$/.test(
         f.path,
       ) ||
       !Number.isInteger(f.size) ||
@@ -146,12 +147,25 @@ export function installationOrigin(origin) {
 
 export async function installAppShortcut(home, appPath) {
   const applications = join(home, "Applications");
+  const shortcut = join(applications, "Nox.app");
   await mkdir(applications, { recursive: true });
   try {
-    await symlink(appPath, join(applications, "Newron.app"));
+    await symlink(appPath, shortcut);
   } catch (error) {
     if (error.code !== "EEXIST") throw error;
   }
+  // Never replace another app or remove an alias we do not own.
+  const pointsHere = async (file) => {
+    try {
+      return resolve(dirname(file), await readlink(file)) === resolve(appPath);
+    } catch (error) {
+      if (["ENOENT", "EINVAL"].includes(error.code)) return false;
+      throw error;
+    }
+  };
+  const legacy = join(applications, "Newron.app");
+  if ((await pointsHere(shortcut)) && (await pointsHere(legacy)))
+    await rm(legacy);
 }
 
 // A small app owns the URL scheme, so Electron's signed runtime stays untouched.
@@ -200,8 +214,8 @@ end revealBuddy
     ]);
   }
   for (const args of [
-    ["-replace", "CFBundleName", "-string", "Newron"],
-    ["-replace", "CFBundleDisplayName", "-string", "Newron"],
+    ["-replace", "CFBundleName", "-string", "Nox"],
+    ["-replace", "CFBundleDisplayName", "-string", "Nox"],
     [
       "-replace",
       "CFBundleIdentifier",

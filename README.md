@@ -48,7 +48,7 @@ npm run desktop
 
 `local` keeps live code replacement off and uses a separate optimizer cache. Restart it after code changes. For active editing with hot reload, use `npm run dev -- --host 127.0.0.1 --port 3100` instead. Collection updates still arrive normally in local mode.
 
-Run the initialization loop only against a new, empty database. On later launches use `Start Commonplace.command` or `npm run local` and `npm run desktop`. Session data, device credentials, dependencies, and build outputs are local-only and are excluded from Git. Never commit `.wrangler/`, `.sites-runtime/`, or credentials.
+Run the initialization loop only against a new, empty database. On later launches use `npm run local` and `npm run desktop`. Session data, device credentials, dependencies, and build outputs are local-only and are excluded from Git. Never commit `.wrangler/`, `.sites-runtime/`, or credentials.
 
 ```sh
 npm test
@@ -63,7 +63,7 @@ Verification: protocol, collector, move/connect lifecycle, and media-preview tes
 
 The local helper reads window geometry and the owning process, never screen pixels or window titles. Codex navigation logs identify the open conversation; its ID resolves to a transcript in the local session index. Dragging always repositions the visible Nox. Clicking opens one Connect/Connected control; connection requires an explicit click. Ambiguous windows, sidebar locations, and missing navigation records do not upload anything. This uses undocumented local formats and may require updates after Codex upgrades. A browser alone cannot access this local state; the preview still runs a local Electron companion.
 
-An explicit connection shows a screen-wide ripple, then connection/import status. The Connected result appears after the initial transcript capture succeeds. The overlay ignores pointer input. Public webpage screenshots and covers are captured while the local collection page is open; a source may still appear as a text card if it blocks previews or supplies no cover. The mouthless Nox has a single connection control, cursor-aware eyes and reduced-motion support. Expanding its control preserves its face position, including at the bottom of a display. See `ARENA_REFERENCE.md` for media behavior and limits.
+An explicit connection shows a screen-wide ripple, then connection/import status. The Connected result appears after the initial transcript capture succeeds. The overlay ignores pointer input. Public webpage screenshots and covers are captured while the local collection page is open; a source may still appear as a text card if it blocks previews or supplies no cover. Nox is a glass lens with a violet neuron and a connection control. Expanding its control preserves its face position, including at the bottom of a display. See `ARENA_REFERENCE.md` for media behavior and limits.
 
 The `drizzle/0002_yellow_freak.sql` migration separates existing sessions into named collections and preserves their blocks. The `drizzle/0003_tough_gladiator.sql` migration adds named groups and local file references without changing existing blocks. The `drizzle/0004_pretty_sally_floyd.sql` migration adds reversible deletion markers. Collection deletion revokes capture; Undo restores the collection but leaves it disconnected. Explicitly connecting again restores and resumes that collection while preserving deleted-block markers. Apply only migrations not already present on an existing database. Run `node tests/local-api.integration.mjs` against the local preview for collection, grouping and media checks; it removes its own temporary fixtures.
 
@@ -117,7 +117,7 @@ Electron 44.9.0 has an on-demand binary installer. After `npm ci`, the installer
 
 Dragging preserves the grab offset. Native mouse events move and release the window before renderer dispatch, so renderer delays cannot extend a drag. Capture loss and focus changes keep the latest position; only Escape cancels back to the start. Connect fades into reserved space above the face without resizing the window.
 
-Right-click Nox for **Hide Nox** or **Quit and stop syncing**. Hide keeps subscriptions running. The Newron menu-bar icon restores it. **Open Nox** in the website header restores Nox when hidden or launches it after Quit. The installer registers a small macOS launcher and explicitly makes it the default `commonplace://` handler, without modifying Electron’s signed runtime. Setup verifies that the link resolves to Commonplace, and development Electron never registers itself as the macOS handler. Existing installations need one setup update to receive it. The browser may ask permission to open Newron. If nothing opens, the dialog offers setup. Opening Nox never connects a session.
+Right-click Nox for **Hide Nox** or **Quit and stop syncing**. Hide keeps subscriptions running. The Nox menu-bar icon restores it. **Open Nox** in the website header restores Nox when hidden or launches it after Quit. The installer registers a small macOS launcher and explicitly makes it the default `commonplace://` handler, without modifying Electron’s signed runtime. Setup verifies that the link resolves to the dedicated Nox launcher, and development Electron never registers itself as the macOS handler. Existing installations need one setup update to receive it. The browser may ask permission to open Nox. If nothing opens, the dialog offers setup. Opening Nox never connects a session.
 
 Native checks: two off-center drags moved by exactly the pointer delta, release coordinates matched the saved position, Connect kept the face fixed, and Hide removed the window. Browser automation blocks the desktop URI, so the complete browser-to-native handoff must also be checked in a regular browser. Installer and one-shot reopen behavior are covered by the remote test suite.
 
@@ -139,7 +139,7 @@ The macOS helper explicitly assigns and verifies Commonplace’s URL handler dur
 
 ### Current onboarding checks
 
-See [the onboarding QA report](docs/ONBOARDING_QA.md) for the latest production walkthrough, native checks, cleanup and remaining verification limits. Setup now confirms completion on the website, and the installed launcher is available as Newron in your Applications folder.
+See [the onboarding QA report](docs/ONBOARDING_QA.md) for the latest production walkthrough, native checks, cleanup and remaining verification limits. Setup now confirms completion on the website, and the installed launcher is available as Nox in your Applications folder.
 
 ### Product rename
 

@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buddyLink, PRODUCTION_ORIGIN, LEGACY_ORIGIN } from "../lib/brand.mjs";
+import {
+  deviceDisplayName,
+  buddyLink,
+  PRODUCTION_ORIGIN,
+  LEGACY_ORIGIN,
+} from "../lib/brand.mjs";
 import { installationOrigin } from "../desktop/install.mjs";
 
 test("Newron opens the existing buddy using its registered legacy link", () => {
@@ -19,4 +24,10 @@ test("other spaces retain independent launcher and installation identities", () 
     buddyLink("https://space.example"),
     "commonplace://show?origin=https%3A%2F%2Fspace.example",
   );
+});
+
+test("legacy default device labels become Nox without renaming personal computers", () => {
+  assert.equal(deviceDisplayName("Desktop buddy"), "Nox");
+  assert.equal(deviceDisplayName("Newron buddy"), "Nox");
+  assert.equal(deviceDisplayName("Felix’s MacBook"), "Felix’s MacBook");
 });

@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 const digest = (value) => createHash("sha256").update(value).digest("hex");
 const sources = {
+  "desktop/nox-tray.png": "desktop/release/nox-tray.png",
   "desktop/commonplace.png": "desktop/release/commonplace.png",
   "desktop/commonplace.icns": "desktop/release/commonplace.icns",
   "package.json": "desktop/release/package.json",

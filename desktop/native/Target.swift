@@ -19,11 +19,11 @@ if args.count == 2 && args[1] == "--url-handler" {
 if args.count == 3 && args[1] == "--register-opener" {
     let identifier = args[2]
     guard identifier.range(of: "^ai\\.commonplace\\.opener\\.[a-f0-9]{16}$", options: .regularExpression) != nil else {
-        emit(["error": "Invalid Commonplace launcher identifier."]); exit(1)
+        emit(["error": "Invalid Nox launcher identifier."]); exit(1)
     }
     let status = LSSetDefaultHandlerForURLScheme("commonplace" as CFString, identifier as CFString)
     guard status == noErr && urlHandler().lowercased() == identifier.lowercased() else {
-        emit(["error": "Could not make Commonplace the buddy link handler.", "status": status]); exit(1)
+        emit(["error": "Could not register the Nox link handler.", "status": status]); exit(1)
     }
     emit(["handler": urlHandler()]); exit(0)
 }
