@@ -696,7 +696,6 @@ export default function Workspace({
                     ]}
                     onOpen={setDetail}
                     demo={demo}
-                    fallback={itemGrid}
                   />
                 ))}
               {screen === "collection" &&

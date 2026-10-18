@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ReactNode } from "react";
 import { SAMPLE_SESSION } from "@/lib/sample";
 import { StoryView } from "./story-view";
 import { SessionStory } from "./session-story";
@@ -25,7 +24,6 @@ export function SessionView({
   onOpen,
   demo = false,
   devMode = false,
-  fallback,
 }: {
   collectionId: string;
   name: string;
@@ -34,8 +32,6 @@ export function SessionView({
   onOpen: (item: Item) => void;
   demo?: boolean;
   devMode?: boolean;
-  // Shown in the Gallery until the collection has a map (the item grid).
-  fallback?: ReactNode;
 }) {
   const [story, setStory] = useState<StoryState | null>(null);
   const [error, setError] = useState("");
@@ -129,8 +125,6 @@ export function SessionView({
         )
       ) : session && mode === "story" && session.steps.length ? (
         <SessionStory document={session} items={items} onOpen={onOpen} />
-      ) : mode === "gallery" && fallback ? (
-        fallback
       ) : mode === "story" && !!story?.beats.length ? (
         <StoryView collectionId={collectionId} items={items} onOpen={onOpen} />
       ) : (
