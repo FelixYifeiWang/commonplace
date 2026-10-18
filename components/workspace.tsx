@@ -110,11 +110,11 @@ export default function Workspace({
   const [busy, setBusy] = useState(false),
     [toast, setToast] = useState(""),
     [modalError, setModalError] = useState("");
-  // The shortcut toggles the item grid and its third tab for this workspace visit.
+  // Dev mode reveals the item grid and guided map for this workspace visit.
   const [view, setView] = useState<"gallery" | "map" | "story">("map");
-  const [galleryEnabled, setGalleryEnabled] = useState(false);
+  const [devMode, setDevMode] = useState(false);
   useEffect(() => {
-    const toggleGallery = (event: KeyboardEvent) => {
+    const toggleDevMode = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
       if (
         (event.metaKey || event.ctrlKey) &&
@@ -124,13 +124,13 @@ export default function Workspace({
       ) {
         event.preventDefault();
         if (event.repeat) return;
-        setView(galleryEnabled ? "map" : "gallery");
-        setGalleryEnabled(!galleryEnabled);
+        setView(devMode ? "map" : "gallery");
+        setDevMode(!devMode);
       }
     };
-    window.addEventListener("keydown", toggleGallery);
-    return () => window.removeEventListener("keydown", toggleGallery);
-  }, [galleryEnabled]);
+    window.addEventListener("keydown", toggleDevMode);
+    return () => window.removeEventListener("keydown", toggleDevMode);
+  }, [devMode]);
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const [droppedText, setDroppedText] = useState("");
   const [undo, setUndo] = useState<{
@@ -583,7 +583,7 @@ export default function Workspace({
               role="group"
               aria-label="Collection view"
             >
-              {(galleryEnabled
+              {(devMode
                 ? (["gallery", "map", "story"] as const)
                 : (["map", "story"] as const)
               ).map((option) => (
@@ -592,7 +592,7 @@ export default function Workspace({
                   aria-pressed={view === option}
                   onClick={() => setView(option)}
                 >
-                  {option === "map" && !galleryEnabled
+                  {option === "map" && !devMode
                     ? "Gallery"
                     : option[0].toUpperCase() + option.slice(1)}
                 </button>
@@ -687,6 +687,7 @@ export default function Workspace({
                       "Untitled"
                     }
                     mode={view === "map" ? "gallery" : "story"}
+                    devMode={devMode}
                     items={[
                       ...visibleItems,
                       ...(data.recentlyDeleted || []).filter(

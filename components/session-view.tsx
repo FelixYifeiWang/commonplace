@@ -6,6 +6,7 @@ import { SAMPLE_SESSION } from "@/lib/sample";
 import { StoryView } from "./story-view";
 import { SessionStory } from "./session-story";
 import { SessionMap } from "./session-map";
+import { DevSessionMap } from "./guided-session-map";
 import type { Item } from "@/lib/types";
 import type { SessionDocument } from "@/lib/session-types";
 
@@ -23,6 +24,7 @@ export function SessionView({
   mode,
   onOpen,
   demo = false,
+  devMode = false,
   fallback,
 }: {
   collectionId: string;
@@ -31,6 +33,7 @@ export function SessionView({
   mode: "gallery" | "story";
   onOpen: (item: Item) => void;
   demo?: boolean;
+  devMode?: boolean;
   // Shown in the Gallery until the collection has a map (the item grid).
   fallback?: ReactNode;
 }) {
@@ -119,7 +122,11 @@ export function SessionView({
         ) : null}
       </div>
       {session && mode === "gallery" && session.map?.nodes?.length ? (
-        <SessionMap doc={session} items={items} />
+        devMode ? (
+          <DevSessionMap doc={session} items={items} onOpen={onOpen} />
+        ) : (
+          <SessionMap doc={session} items={items} />
+        )
       ) : session && mode === "story" && session.steps.length ? (
         <SessionStory document={session} items={items} onOpen={onOpen} />
       ) : mode === "gallery" && fallback ? (

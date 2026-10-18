@@ -637,6 +637,20 @@ function pictureOf(item: Item) {
     return { fit: "fit", src: "" };
   return pictureFor(item, { screenshots });
 }
+export function MapMediaPreview({
+  item,
+  fallback = null,
+}: {
+  item: Item;
+  fallback?: ReactNode;
+}) {
+  const picture = pictureOf(item);
+  return picture ? (
+    <Picture item={item} fit={picture.fit} src={picture.src} />
+  ) : (
+    fallback
+  );
+}
 function Picture({ item, fit, src }: { item: Item; fit: string; src: string }) {
   return (
     <span
