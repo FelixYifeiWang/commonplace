@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import { items } from "@/db/schema";
 import { userRequired, fail, HttpError } from "@/lib/server";
 import preview from "@/lib/runtime-preview";
+import { itemAvailable } from "@/lib/item-retention.mjs";
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -14,7 +15,7 @@ export async function GET(
       .select()
       .from(items)
       .where(and(eq(items.id, id), eq(items.ownerId, user.userId)));
-    if (!item?.url || item.kind !== "link")
+    if (!item?.url || item.kind !== "link" || !itemAvailable(item))
       throw new HttpError(404, "Website not found.");
     const response = await preview.screenshot(item.url);
     return new Response(response.body, {

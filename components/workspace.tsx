@@ -37,6 +37,8 @@ import { AccountControls, AccountTransition } from "./account-controls";
 import { Modal } from "./modal";
 import { OpenBuddy } from "./open-buddy";
 import { SetupDialog } from "./setup-dialog";
+import { RecentlyDeleted } from "./recently-deleted";
+import { itemAvailable } from "@/lib/item-retention.mjs";
 
 const EMPTY: WorkspaceData = {
   collections: [],
@@ -347,11 +349,37 @@ export default function Workspace({
     if (!demo) await api("/api/items", "DELETE", { ids });
     setData((d) => ({
       ...d,
+      recentlyDeleted: [
+        ...d.items
+          .filter((i) => ids.includes(i.id))
+          .map((i) => ({
+            ...i,
+            deletedAt: new Date().toISOString(),
+            collectionName: d.collections.find((c) => c.id === i.collectionId)
+              ?.name,
+          })),
+        ...(d.recentlyDeleted || []),
+      ],
       items: d.items.filter((i) => !ids.includes(i.id)),
     }));
     setDetail(null);
     setUndo({ kind: "items", ids, previous });
     setToast(`${ids.length} ${ids.length === 1 ? "block" : "blocks"} deleted`);
+  }
+  async function restoreItem(item: Item) {
+    if (!demo) {
+      await api("/api/items", "PATCH", { action: "restore", ids: [item.id] });
+      await refresh();
+    } else
+      setData((d) => ({
+        ...d,
+        items: [{ ...item, deletedAt: null }, ...d.items],
+        recentlyDeleted: (d.recentlyDeleted || []).filter(
+          (i) => i.id !== item.id,
+        ),
+      }));
+    setDetail(null);
+    setToast("Item restored");
   }
   async function favoriteCollection(collection: Collection) {
     if (favoritePending.current.has(collection.id)) return;
@@ -662,7 +690,12 @@ export default function Workspace({
                       "Untitled"
                     }
                     mode={view}
-                    items={visibleItems}
+                    items={[
+                      ...visibleItems,
+                      ...(data.recentlyDeleted || []).filter(
+                        (i) => i.collectionId === selected && itemAvailable(i),
+                      ),
+                    ]}
                     onOpen={setDetail}
                     demo={demo}
                     fallback={itemGrid}
@@ -777,6 +810,11 @@ export default function Workspace({
                       <h1>Settings</h1>
                     </div>
                   </div>
+                  <RecentlyDeleted
+                    items={data.recentlyDeleted || []}
+                    onOpen={setDetail}
+                    onRestore={restoreItem}
+                  />
                   <section className="settings-section">
                     <h2>Your account</h2>
                     <div className="setting-row">
@@ -939,15 +977,29 @@ export default function Workspace({
       )}
       {detail && (
         <Modal title={detail.title} onClose={() => setDetail(null)} wide>
-          <button
-            className="detail-delete"
-            aria-label="Delete block"
-            onClick={() =>
-              void deleteBlocks([detail.id]).catch((e) => setToast(e.message))
-            }
-          >
-            <Trash2 size={15} />
-          </button>
+          {detail.deletedAt ? (
+            <div className="deleted-item-notice">
+              <span>Recently deleted</span>
+              <button
+                className="text-button"
+                onClick={() =>
+                  void restoreItem(detail).catch((e) => setToast(e.message))
+                }
+              >
+                Restore
+              </button>
+            </div>
+          ) : (
+            <button
+              className="detail-delete"
+              aria-label="Delete block"
+              onClick={() =>
+                void deleteBlocks([detail.id]).catch((e) => setToast(e.message))
+              }
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
           <MediaDetail
             item={data.items.find((item) => item.id === detail.id) || detail}
           />

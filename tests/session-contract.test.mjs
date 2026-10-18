@@ -5,6 +5,7 @@ import {
   normalizeSession,
   sessionInstructions,
   validateSession,
+  sessionURLs,
 } from "../lib/story.mjs";
 
 const input = {
@@ -595,4 +596,16 @@ test("a typeface node shows its specimen, never a picture", () => {
   const v = valid();
   v.map.nodes[0].font = { family: "Doto", sample: "WELCOME ABOARD" };
   assert.equal(normalizeSession(v, input).map.nodes[0].itemId, null);
+});
+
+test("deleted URLs cannot return through earlier transcripts or the saved map", () => {
+  const value = valid();
+  const removedURL = value.map.nodes.find((n) => n.url).url;
+  const source = {
+    ...input,
+    current: value,
+    removedMedia: [{ id: "deleted", url: removedURL }],
+  };
+  assert.ok(!sessionURLs(source).includes(removedURL));
+  assert.throws(() => validateSession(value, source), /deleted source/);
 });

@@ -6678,6 +6678,44 @@ body.desktop-feedback-page {
 }
 
 /* ---------- Story: up to five steps in the human's voice, each with one canvas (STORY_CANVAS.md) ---------- */
+.recently-deleted > summary {
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+}
+.recently-deleted > summary span {
+  margin-left: 8px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.trash-item-title {
+  min-width: 0;
+  flex: 1;
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+.trash-item-title strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trash-item-title small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.deleted-item-notice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
 .sv {
   --sv-canvas: #f2f2f0;
   --sv-edge: #dcdcd8;

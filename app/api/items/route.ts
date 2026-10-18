@@ -14,6 +14,8 @@ import {
 import preview from "@/lib/runtime-preview";
 import { classifyMedia } from "@/lib/media.mjs";
 import { normalizeItem, itemIdentity } from "@/lib/protocol.mjs";
+import { createItemTrash } from "@/lib/item-trash.mjs";
+import { env } from "@/lib/runtime-env";
 export async function POST(request: Request) {
   try {
     checkOrigin(request);
@@ -103,17 +105,10 @@ export async function PATCH(request: Request) {
       db = getDb();
     if (body.action === "restore") {
       const ids = validateIds(body.ids);
-      for (let i = 0; i < ids.length; i += 80)
-        await db
-          .update(items)
-          .set({ deletedAt: null })
-          .where(
-            and(
-              eq(items.ownerId, user.userId),
-              inArray(items.id, ids.slice(i, i + 80)),
-            ),
-          );
-      return storyResponse({ ok: true });
+      const restored = await createItemTrash(env.DB).restore(user.userId, ids);
+      if (!restored.length)
+        throw new HttpError(410, "These items can no longer be restored.");
+      return storyResponse({ ok: true, restored });
     }
     const [item] = await db
       .select()
@@ -160,6 +155,7 @@ export async function DELETE(request: Request) {
         .where(
           and(
             eq(items.ownerId, user.userId),
+            isNull(items.deletedAt),
             inArray(items.id, ids.slice(i, i + 80)),
           ),
         );
