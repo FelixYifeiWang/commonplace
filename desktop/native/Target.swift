@@ -34,4 +34,4 @@ for window in windows {
     ])
     exit(0)
 }
-emit(["error": "no-target", "message": "Drop over the open Codex conversation."])
+emit(["error": "no-target", "message": "Move the buddy over an open Codex conversation or Claude Code session."])

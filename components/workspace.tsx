@@ -780,7 +780,8 @@ export default function Workspace({
             </p>
           )}
           <p className="companion-build-note">
-            Drag the desktop buddy over an open Codex conversation.
+            Move the desktop buddy over an open Codex conversation or a Claude
+            Code session in the Claude app, click it, then click Connect.
           </p>
           <details className="advanced-connection">
             <summary>
