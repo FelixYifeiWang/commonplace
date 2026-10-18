@@ -108,6 +108,61 @@ async function download(url) {
     throw new Error("Could not download companion (" + r.status + ").");
   return Buffer.from(await r.arrayBuffer());
 }
+// A small app owns the URL scheme, so Electron's signed runtime stays untouched.
+// All paths are fixed at installation. Incoming URLs never become shell commands.
+export async function installLauncher(
+  { root, origin, data, service, plist, space },
+  run = exec,
+) {
+  const quote = (value) => "'" + String(value).replaceAll("'", "'\"'\"'") + "'";
+  const appPath = join(root, "Commonplace.app");
+  const source = join(root, "open-buddy.applescript");
+  const command = `/usr/bin/touch ${quote(join(data, "show-request"))}; /bin/launchctl kickstart ${quote(service)} || /bin/launchctl bootstrap ${quote(`gui/${process.getuid()}`)} ${quote(plist)}`;
+  const link = `commonplace://show?origin=${encodeURIComponent(origin)}`;
+  await writeFile(
+    source,
+    `on run
+  revealBuddy()
+end run
+on open location incomingURL
+  if incomingURL is ${JSON.stringify(link)} or incomingURL is ${JSON.stringify(link.replace("show?", "show/?"))} then revealBuddy()
+end open location
+on revealBuddy()
+  do shell script ${JSON.stringify(command)}
+end revealBuddy
+`,
+    { mode: 0o600 },
+  );
+  await run("/usr/bin/osacompile", ["-o", appPath, source]);
+  const info = join(appPath, "Contents/Info.plist");
+  for (const args of [
+    [
+      "-replace",
+      "CFBundleIdentifier",
+      "-string",
+      `ai.commonplace.opener.${space}`,
+    ],
+    ["-replace", "LSUIElement", "-bool", "true"],
+    [
+      "-replace",
+      "CFBundleURLTypes",
+      "-json",
+      JSON.stringify([
+        {
+          CFBundleURLName: "Commonplace buddy",
+          CFBundleURLSchemes: ["commonplace"],
+        },
+      ]),
+    ],
+  ])
+    await run("/usr/bin/plutil", [...args, info]);
+  await run(
+    "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
+    ["-f", appPath],
+  );
+  return appPath;
+}
+
 export async function install(
   input,
   {
@@ -254,6 +309,7 @@ export async function install(
     const environment = {
       COMMONPLACE_ORIGIN: origin,
       COMMONPLACE_DATA_DIR: data,
+      COMMONPLACE_LAUNCHER: "1",
       ...(process.env.CODEX_HOME ? { CODEX_HOME: process.env.CODEX_HOME } : {}),
     };
     const xml = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>Label</key><string>${label}</string><key>ProgramArguments</key><array><string>${escapeXml(electron)}</string><string>${escapeXml(runtime)}</string></array><key>EnvironmentVariables</key><dict>${Object.entries(
@@ -270,6 +326,7 @@ export async function install(
       if (e.code !== "ENOENT") throw e;
     }
     const service = `gui/${process.getuid()}/${label}`;
+    await installLauncher({ root, origin, data, service, plist, space }, run);
     if (!same) {
       try {
         await run("/bin/launchctl", ["bootout", service]);

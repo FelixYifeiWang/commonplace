@@ -6,6 +6,7 @@ import {
   validateManifest,
   install,
   verifyRuntime,
+  installLauncher,
 } from "../desktop/install.mjs";
 import { redactSetupLinks } from "../desktop/setup-session.mjs";
 test("installer accepts only a private setup link on HTTPS or local development", () => {
@@ -195,4 +196,36 @@ test("Markdown setup links pair without selecting a session", () => {
       "Set up [private setup link]",
     );
   }
+});
+
+test("launcher registers a reveal-only app without modifying Electron", async (t) => {
+  const { mkdtemp, rm } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const root = await mkdtemp(join(tmpdir(), "buddy-launcher-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const calls = [];
+  const appPath = await installLauncher(
+    {
+      root,
+      origin: "https://space.example",
+      data: join(root, "data"),
+      service: "gui/501/ai.commonplace.test",
+      plist: join(root, "agent.plist"),
+      space: "test",
+    },
+    async (...args) => calls.push(args),
+  );
+  const script = await readFile(join(root, "open-buddy.applescript"), "utf8");
+  assert.ok(script.includes("on open location incomingURL"));
+  assert.ok(
+    script.includes("commonplace://show?origin=https%3A%2F%2Fspace.example"),
+  );
+  assert.ok(script.includes("show-request"));
+  assert.ok(!script.includes("setup-request"));
+  assert.ok(!script.includes("incomingURL &"));
+  assert.equal(calls[0][0], "/usr/bin/osacompile");
+  assert.ok(calls.some(([, args]) => args.includes("CFBundleURLTypes")));
+  assert.deepEqual(calls.at(-1)[1], ["-f", appPath]);
+  assert.ok(!JSON.stringify(calls).includes("Electron.app"));
 });

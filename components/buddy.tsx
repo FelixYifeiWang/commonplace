@@ -25,7 +25,7 @@ export function Buddy({
         <path
           className="nosy-outline"
           d="M71 40C71 58 58 71 40 71C22 71 9 58 9 40C9 22 22 9 40 9C58 9 71 22 71 40Z"
-          fill="#fffefa"
+          fill="#ffffff"
           stroke="currentColor"
           strokeWidth="1.8"
         />

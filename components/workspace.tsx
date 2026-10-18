@@ -34,6 +34,7 @@ import { MediaCard } from "./media-card";
 import { AddBlock } from "./add-block";
 import { AccountControls, AccountTransition } from "./account-controls";
 import { Modal } from "./modal";
+import { OpenBuddy } from "./open-buddy";
 
 const EMPTY: WorkspaceData = {
   collections: [],
@@ -499,7 +500,6 @@ export default function Workspace({
             selected={selected}
             screen={screen}
             onChoose={chooseCollection}
-            onNew={() => openModal("collection")}
             onManage={setScreen}
             onDelete={(id) => void deleteCollection(id)}
           />
@@ -525,16 +525,28 @@ export default function Workspace({
               Example
             </Link>
           )}
-          <button
-            className="minimal-add icon-button"
-            aria-label="Add an item"
-            title="Add"
-            onClick={() =>
-              collections.length ? openModal("item") : openModal("collection")
-            }
-          >
-            <Plus size={20} strokeWidth={1.3} />
-          </button>
+          <div className="workspace-actions">
+            {!demo && ready && data.user && (
+              <OpenBuddy onSetup={() => openModal("setup")} />
+            )}
+            <button
+              className="button new-collection"
+              onClick={() =>
+                openModal(
+                  screen === "collection" && selected !== "all"
+                    ? "item"
+                    : "collection",
+                )
+              }
+            >
+              <Plus size={16} strokeWidth={1.5} />
+              <span>
+                {screen === "collection" && selected !== "all"
+                  ? "Add block"
+                  : "New collection"}
+              </span>
+            </button>
+          </div>
         </header>
         {!demo &&
           process.env.NEXT_PUBLIC_ACCOUNTS_ENABLED === "1" &&
@@ -571,13 +583,29 @@ export default function Workspace({
                 </div>
               )}
               {screen === "collection" && !collections.length && !demo && (
-                <div className="welcome">
-                  <button
-                    className="button primary"
-                    onClick={() => openModal("connect")}
-                  >
-                    {connectionLabel} <ArrowRight size={15} />
-                  </button>
+                <div className="welcome first-collection">
+                  <h1>Your first collection</h1>
+                  <p>
+                    Add things yourself, or connect a session with the buddy.
+                  </p>
+                  <div className="first-collection-actions">
+                    <button
+                      className="button primary"
+                      onClick={() => openModal("collection")}
+                    >
+                      Create collection
+                    </button>
+                    {hasBuddy ? (
+                      <OpenBuddy onSetup={() => openModal("setup")} />
+                    ) : (
+                      <button
+                        className="text-button"
+                        onClick={() => openModal("setup")}
+                      >
+                        Set up buddy
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
               {screen === "collection" &&
@@ -756,16 +784,7 @@ export default function Workspace({
                         Connect a computer
                       </button>
                     </div>
-                    {hasBuddy && (
-                      <button
-                        className="text-button"
-                        onClick={() => {
-                          window.location.href = `commonplace://show?origin=${encodeURIComponent(window.location.origin)}`;
-                        }}
-                      >
-                        Show buddy
-                      </button>
-                    )}
+                    <OpenBuddy onSetup={() => openModal("setup")} />
                     <p className="section-description">
                       One connection per computer. Your companion remembers it
                       for next time.

@@ -76,3 +76,15 @@ export async function consumeSetupRequest(
   await unlink(file);
   return result;
 }
+
+// Showing the app is independent of pairing, capture, and connection state.
+export async function consumeShowRequest(data, show) {
+  try {
+    await unlink(join(data, "show-request"));
+  } catch (error) {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  }
+  show();
+  return true;
+}

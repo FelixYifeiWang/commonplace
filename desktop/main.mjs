@@ -15,7 +15,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { resolveLocalTarget } from "./target.mjs";
 import { claudeProjectSource } from "./claude.mjs";
-import { consumeSetupRequest } from "./setup-inbox.mjs";
+import { consumeSetupRequest, consumeShowRequest } from "./setup-inbox.mjs";
 import { connectSession, SUPPORTED_APPS } from "./connect.mjs";
 import {
   createDragController,
@@ -34,6 +34,11 @@ if (process.env.COMMONPLACE_DATA_DIR) {
 }
 let setupBusy = false;
 async function processSetup() {
+  try {
+    await consumeShowRequest(app.getPath("userData"), showBuddy);
+  } catch (error) {
+    console.error("Could not reopen buddy:", error.message);
+  }
   if (setupBusy || busy) return;
   setupBusy = true;
   try {
@@ -473,11 +478,12 @@ if (!lock) {
         if (error.code !== "ENOENT")
           lastError = "Saved subscriptions could not be restored.";
       }
-      if (process.defaultApp) {
+      if (!process.env.COMMONPLACE_LAUNCHER && process.defaultApp) {
         app.setAsDefaultProtocolClient("commonplace", process.execPath, [
           app.getAppPath(),
         ]);
-      } else app.setAsDefaultProtocolClient("commonplace");
+      } else if (!process.env.COMMONPLACE_LAUNCHER)
+        app.setAsDefaultProtocolClient("commonplace");
       const area = screen.getPrimaryDisplay().workArea;
       win = new BrowserWindow({
         ...buddyBounds({

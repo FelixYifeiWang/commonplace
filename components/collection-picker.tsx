@@ -1,20 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import {
-  Check,
-  ChevronDown,
-  LayoutGrid,
-  Plus,
-  Search,
-  Trash2,
-} from "lucide-react";
+import { Check, ChevronDown, LayoutGrid, Search, Trash2 } from "lucide-react";
 import type { Collection } from "@/lib/types";
 export function CollectionPicker({
   collections,
   selected,
   screen,
   onChoose,
-  onNew,
   onManage,
   onDelete,
 }: {
@@ -22,7 +14,6 @@ export function CollectionPicker({
   selected: string;
   screen: string;
   onChoose: (id: string) => void;
-  onNew: () => void;
   onManage: (screen: "sessions" | "settings") => void;
   onDelete: (id: string) => void;
 }) {
@@ -120,16 +111,6 @@ export function CollectionPicker({
                 </div>
               ))}
           </div>
-          <button
-            className="channel-menu-new"
-            onClick={() => {
-              setOpen(false);
-              onNew();
-            }}
-          >
-            <Plus size={14} />
-            New collection
-          </button>
           <div className="channel-menu-footer">
             <button
               onClick={() => {

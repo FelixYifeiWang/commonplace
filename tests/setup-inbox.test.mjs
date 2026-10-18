@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { consumeSetupRequest } from "../desktop/setup-inbox.mjs";
+import {
+  consumeSetupRequest,
+  consumeShowRequest,
+} from "../desktop/setup-inbox.mjs";
 const id = "12345678-1234-1234-1234-123456789abc";
 async function fixture(t) {
   const data = await mkdtemp(join(tmpdir(), "buddy-inbox-"));
@@ -91,4 +94,16 @@ test("setup pairs without reading or subscribing any session, even with a legacy
   });
   assert.deepEqual(result, { ok: true, action: "setup" });
   assert.deepEqual(events, ["pair"]);
+});
+
+test("reopen consumes one signal without touching a pending setup or session", async (t) => {
+  const data = await fixture(t);
+  const setup = await readFile(join(data, "setup-request.json"), "utf8");
+  let shown = 0;
+  assert.equal(await consumeShowRequest(data, () => shown++), false);
+  await writeFile(join(data, "show-request"), "");
+  assert.equal(await consumeShowRequest(data, () => shown++), true);
+  assert.equal(await consumeShowRequest(data, () => shown++), false);
+  assert.equal(shown, 1);
+  assert.equal(await readFile(join(data, "setup-request.json"), "utf8"), setup);
 });
