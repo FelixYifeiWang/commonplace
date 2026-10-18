@@ -51,7 +51,7 @@ export function Nox({
   }, [size, trackPointer]);
   useEffect(() => {
     neuron.current?.setMood(MOOD[state] || "rest");
-  }, [state, size]);
+  }, [state, size, trackPointer]);
   useEffect(() => {
     if (trackPointer && window.commonplaceDesktop?.onGaze) return;
     neuron.current?.setGaze(gaze?.x || 0, gaze?.y || 0);

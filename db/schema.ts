@@ -3,6 +3,7 @@ import {
   text,
   integer,
   uniqueIndex,
+  index,
 } from "drizzle-orm/sqlite-core";
 export const devices = sqliteTable("devices", {
   id: text("id").primaryKey(),
@@ -156,4 +157,5 @@ export const collectionReferenceLinks = sqliteTable(
       .references(() => devices.id),
     expiresAt: text("expires_at").notNull(),
   },
+  (table) => [index("collection_reference_links_expiry").on(table.expiresAt)],
 );

@@ -628,7 +628,7 @@ export function SessionMap({
             <span className="gm-lbl">
               <b>
                 {center.label}
-                {center.url ? " ↗" : ""}
+                {center.url && (!guided || focusedKey === "core") ? " ↗" : ""}
               </b>
               Session output
             </span>
@@ -720,9 +720,12 @@ export function SessionMap({
                 onClick={() => engine.current?.reset()}
                 aria-label="Show map overview"
               >
-                {focusedNode < 0
-                  ? "Overview"
-                  : `${focusedNode + 1} / ${nodes.length} · Overview`}
+                {focusedNode >= 0 && (
+                  <span className="gm-node-count">
+                    {focusedNode + 1} / {nodes.length} ·{" "}
+                  </span>
+                )}
+                Overview
               </button>
               <button
                 type="button"

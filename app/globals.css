@@ -7505,7 +7505,7 @@ body.desktop-feedback-page {
   font-size: 12px;
   color: var(--gm-grey);
 }
-a.gm-bubble small::after {
+a[href].gm-bubble small::after {
   content: " ↗";
 }
 /* Details pop out when you zoom in; the human's own words appear up close. */
@@ -7545,7 +7545,7 @@ a.gm-bubble small::after {
 .gm-detail:not(.has-pic) > q {
   position: relative;
 }
-a.gm-detail b::after {
+a[href].gm-detail b::after {
   content: " ↗";
   color: var(--gm-grey);
 }
@@ -7784,6 +7784,9 @@ a.gm-detail b::after {
   cursor: default;
   touch-action: pan-y;
 }
+.gm-guided .gm-world :is(.gm-core, .gm-tile, .gm-bubble, .gm-detail) {
+  cursor: pointer;
+}
 .gm-guided .gm-stage:active {
   cursor: default;
 }
@@ -7891,6 +7894,16 @@ a.gm-detail b::after {
   }
   .gm-toolbar .map-navigation-toggle {
     padding: 0 6px;
+  }
+  .gm-toolbar .map-navigation-toggle svg,
+  .gm-toolbar .gm-node-count {
+    display: none;
+  }
+  .gm-toolbar .gm-navigation {
+    flex-shrink: 0;
+  }
+  .gm-toolbar .gm-navigation button:nth-child(2) {
+    min-width: 76px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
