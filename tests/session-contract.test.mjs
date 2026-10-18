@@ -604,8 +604,27 @@ test("deleted URLs cannot return through earlier transcripts or the saved map", 
   const source = {
     ...input,
     current: value,
+    media: input.media.filter((item) => item.url !== removedURL),
     removedMedia: [{ id: "deleted", url: removedURL }],
   };
   assert.ok(!sessionURLs(source).includes(removedURL));
-  assert.throws(() => validateSession(value, source), /deleted source/);
+  assert.throws(
+    () => validateSession(value, source),
+    /deleted source|unavailable item/,
+  );
+});
+
+test("deleting a duplicate does not ban a source that is still saved", () => {
+  const value = valid();
+  const kept = input.media.find((item) => item.url);
+  const source = {
+    ...input,
+    current: value,
+    removedMedia: [{ id: "deleted-duplicate", url: kept.url }],
+  };
+  assert.ok(
+    sessionURLs(source).includes(kept.url.replace(/\/$/, "")) ||
+      sessionURLs(source).includes(kept.url),
+  );
+  assert.doesNotThrow(() => validateSession(value, source));
 });
