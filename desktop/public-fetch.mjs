@@ -52,7 +52,7 @@ export async function fetchPublic(
             ? cb(null, [address])
             : cb(null, address.address, address.family),
         headers: {
-          "User-Agent": "Commonplace/0.1 (link preview)",
+          "User-Agent": "Newron/0.1 (link preview)",
           Accept: "text/html,application/xhtml+xml,*/*;q=0.5",
           "Accept-Encoding": "identity",
         },

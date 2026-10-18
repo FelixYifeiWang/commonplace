@@ -13,7 +13,7 @@ export default async function SignInPage({
   return (
     <main className="account-signin">
       <div className="account-signin-card">
-        <h1>Commonplace</h1>
+        <h1>Newron</h1>
         <GoogleSignIn
           initialError={
             error ? "Sign-in did not finish. Please try again." : ""

@@ -12,7 +12,7 @@ export default async function SignIn({
   return (
     <main className="hosted-signin">
       <form action="/api/auth/login" method="post">
-        <h1>Commonplace</h1>
+        <h1>Newron</h1>
         <label htmlFor="access-code">Access code</label>
         <input
           id="access-code"

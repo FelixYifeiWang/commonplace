@@ -4,7 +4,7 @@ import { screenshotResource } from "./screenshot-resource.mjs";
 import { hasVisualContent } from "./capture-quality.mjs";
 import { publicUrl } from "../lib/media.mjs";
 const [url, output, profile] = process.argv.slice(2);
-app.setName("Commonplace preview");
+app.setName("Newron preview");
 app.setPath("userData", profile);
 app.setPath("sessionData", profile);
 app.disableHardwareAcceleration();

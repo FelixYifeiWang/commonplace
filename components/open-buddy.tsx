@@ -1,4 +1,5 @@
 "use client";
+import { buddyLink } from "@/lib/brand.mjs";
 import { useState } from "react";
 import { Modal } from "./modal";
 
@@ -6,7 +7,7 @@ export function OpenBuddy({ onSetup }: { onSetup: () => void }) {
   const [open, setOpen] = useState(false);
   function launch() {
     // This link only opens the installed app. It never pairs or subscribes.
-    window.location.href = `commonplace://show?origin=${encodeURIComponent(window.location.origin)}`;
+    window.location.href = buddyLink(window.location.origin);
   }
   return (
     <>
@@ -22,7 +23,7 @@ export function OpenBuddy({ onSetup }: { onSetup: () => void }) {
       {open && (
         <Modal title="Open buddy" onClose={() => setOpen(false)}>
           <p className="modal-description">
-            Allow your browser to open Commonplace.
+            Allow your browser to open Newron.
           </p>
           <div className="buddy-launch-actions">
             <button className="button primary" onClick={launch}>

@@ -15,9 +15,12 @@ function createAuth() {
   const database = env.DB;
   if (!database) throw new Error("The account database is not configured.");
   return betterAuth({
-    appName: "Commonplace",
-    baseURL:
-      process.env.BETTER_AUTH_URL || "https://commonplace-pearl.vercel.app",
+    appName: "Newron",
+    baseURL: process.env.BETTER_AUTH_URL || "https://newron.app",
+    trustedOrigins: [
+      "https://newron.app",
+      "https://commonplace-pearl.vercel.app",
+    ],
     secret: process.env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(drizzle(database, { schema }), {
       provider: "sqlite",

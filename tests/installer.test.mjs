@@ -307,7 +307,7 @@ test("launch retries the macOS teardown race, but never retries unrelated failur
     /Permission denied/,
   );
 });
-test("Commonplace app shortcut is repeatable and preserves an existing app", async (t) => {
+test("Newron app shortcut is repeatable and preserves an existing app", async (t) => {
   const { mkdtemp, readlink, rm } = await import("node:fs/promises");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
@@ -316,7 +316,7 @@ test("Commonplace app shortcut is repeatable and preserves an existing app", asy
   await installAppShortcut(home, "/first/Commonplace.app");
   await installAppShortcut(home, "/other/Commonplace.app");
   assert.equal(
-    await readlink(join(home, "Applications/Commonplace.app")),
+    await readlink(join(home, "Applications/Newron.app")),
     "/first/Commonplace.app",
   );
 });

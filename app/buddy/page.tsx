@@ -185,7 +185,7 @@ export default function Companion() {
           }
           title={
             needsSetup
-              ? "Open Commonplace to set up the buddy."
+              ? "Open Newron to set up the buddy."
               : snapshot?.error ||
                 snapshot?.candidateTitle ||
                 "Move the buddy over an open Codex conversation or Claude Code session, then choose Connect."
