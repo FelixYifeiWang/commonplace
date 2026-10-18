@@ -16,10 +16,7 @@ export function RecentlyDeleted({
   const [error, setError] = useState("");
   const visible = items.filter((item) => item.deletedAt && itemAvailable(item));
   return (
-    <details className="settings-section recently-deleted">
-      <summary>
-        Recently deleted <span>{visible.length || ""}</span>
-      </summary>
+    <section className="recently-deleted" aria-label="Deleted items">
       <p className="section-description">Restore items for 30 days.</p>
       {visible.length ? (
         visible.map((item) => (
@@ -56,6 +53,6 @@ export function RecentlyDeleted({
         <p className="section-description">No deleted items.</p>
       )}
       {error && <p role="alert">{error}</p>}
-    </details>
+    </section>
   );
 }

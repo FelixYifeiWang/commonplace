@@ -100,7 +100,7 @@ export default function Workspace({
     [ready, setReady] = useState(initialDemo),
     [error, setError] = useState("");
   const [selected, setSelected] = useState(initialDemo ? "c1" : "all"),
-    [screen, setScreen] = useState<"collection" | "sessions" | "settings">(
+    [screen, setScreen] = useState<"collection" | "trash" | "settings">(
       "collection",
     );
   const [modal, setModal] = useState<
@@ -767,40 +767,16 @@ export default function Workspace({
                     })}
                   </div>
                 )}
-              {screen === "sessions" && (
+              {screen === "trash" && (
                 <>
                   <div className="page-heading">
-                    <div>
-                      <h1>Connections</h1>
-                    </div>
-                    <button
-                      className="button primary"
-                      onClick={() => openModal("connect")}
-                    >
-                      <Plus size={15} />
-                      {connectionLabel}
-                    </button>
+                    <h1>Trash</h1>
                   </div>
-                  <div className="sessions-table">
-                    <div className="table-label">
-                      <span>YOUR SESSIONS</span>
-                      <span>{data.sessions.length} connected</span>
-                    </div>
-                    {data.sessions.length ? (
-                      data.sessions.map((s) => renderSession(s))
-                    ) : (
-                      <div className="empty-sessions">
-                        <Radio size={26} strokeWidth={1} />
-                        <h3>No sessions</h3>
-                        <button
-                          className="button subtle"
-                          onClick={() => openModal("connect")}
-                        >
-                          {connectionLabel} <ArrowRight size={14} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <RecentlyDeleted
+                    items={data.recentlyDeleted || []}
+                    onOpen={setDetail}
+                    onRestore={restoreItem}
+                  />
                 </>
               )}
               {screen === "settings" && (
@@ -810,11 +786,6 @@ export default function Workspace({
                       <h1>Settings</h1>
                     </div>
                   </div>
-                  <RecentlyDeleted
-                    items={data.recentlyDeleted || []}
-                    onOpen={setDetail}
-                    onRestore={restoreItem}
-                  />
                   <section className="settings-section">
                     <h2>Your account</h2>
                     <div className="setting-row">
@@ -846,6 +817,38 @@ export default function Workspace({
                         >
                           Sign out <ArrowUpRight size={13} />
                         </a>
+                      )}
+                    </div>
+                  </section>
+                  <section className="settings-section">
+                    <div className="section-heading">
+                      <h2>Connections</h2>
+                      <button
+                        className="text-button"
+                        onClick={() => openModal("connect")}
+                      >
+                        <Plus size={15} />
+                        {connectionLabel}
+                      </button>
+                    </div>
+                    <div className="sessions-table">
+                      <div className="table-label">
+                        <span>YOUR SESSIONS</span>
+                        <span>{data.sessions.length} connected</span>
+                      </div>
+                      {data.sessions.length ? (
+                        data.sessions.map((s) => renderSession(s))
+                      ) : (
+                        <div className="empty-sessions">
+                          <Radio size={26} strokeWidth={1} />
+                          <h3>No sessions</h3>
+                          <button
+                            className="button subtle"
+                            onClick={() => openModal("connect")}
+                          >
+                            {connectionLabel} <ArrowRight size={14} />
+                          </button>
+                        </div>
                       )}
                     </div>
                   </section>

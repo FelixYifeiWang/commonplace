@@ -22,7 +22,7 @@ export function CollectionPicker({
   selected: string;
   screen: string;
   onChoose: (id: string) => void;
-  onManage: (screen: "sessions" | "settings") => void;
+  onManage: (screen: "trash" | "settings") => void;
   onDelete: (id: string) => void;
   onFavorite: (collection: Collection) => void;
 }) {
@@ -39,8 +39,8 @@ export function CollectionPicker({
     return () => document.removeEventListener("pointerdown", close);
   }, [open]);
   const title =
-    screen === "sessions"
-      ? "Connections"
+    screen === "trash"
+      ? "Trash"
       : screen === "settings"
         ? "Settings"
         : collections.find((c) => c.id === selected)?.name || "Collections";
@@ -135,10 +135,10 @@ export function CollectionPicker({
             <button
               onClick={() => {
                 setOpen(false);
-                onManage("sessions");
+                onManage("trash");
               }}
             >
-              Connections
+              Trash
             </button>
             <button
               onClick={() => {

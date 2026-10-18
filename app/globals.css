@@ -6678,16 +6678,6 @@ body.desktop-feedback-page {
 }
 
 /* ---------- Story: up to five steps in the human's voice, each with one canvas (STORY_CANVAS.md) ---------- */
-.recently-deleted > summary {
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 500;
-}
-.recently-deleted > summary span {
-  margin-left: 8px;
-  color: var(--muted);
-  font-weight: 400;
-}
 .trash-item-title {
   min-width: 0;
   flex: 1;
