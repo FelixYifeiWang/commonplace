@@ -6137,10 +6137,30 @@ body.desktop-feedback-page {
   }
 }
 .workspace main.map-main {
+  padding-top: 0;
   padding-bottom: 0;
 }
 .session-map {
   overflow: clip;
+}
+/* The map starts right under the header: status floats over its top-right
+   corner instead of reserving a row, and the stage fills the rest. */
+.map-main .session-gallery > .session-feedback {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  min-height: 0;
+  padding: 0;
+}
+.map-main .session-map {
+  height: calc(100dvh - 103px);
+}
+@media (max-width: 700px) {
+  /* The phone header wraps to two rows. */
+  .map-main .session-map {
+    height: calc(100dvh - 139px);
+  }
 }
 
 /* All collections is navigation; individual collections belong below it. */
