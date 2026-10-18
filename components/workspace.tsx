@@ -110,11 +110,11 @@ export default function Workspace({
   const [busy, setBusy] = useState(false),
     [toast, setToast] = useState(""),
     [modalError, setModalError] = useState("");
-  // The shortcut reveals the item grid as a third view for this workspace visit.
+  // The shortcut toggles the item grid and its third tab for this workspace visit.
   const [view, setView] = useState<"gallery" | "map" | "story">("map");
   const [galleryEnabled, setGalleryEnabled] = useState(false);
   useEffect(() => {
-    const revealGallery = (event: KeyboardEvent) => {
+    const toggleGallery = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
       if (
         (event.metaKey || event.ctrlKey) &&
@@ -123,13 +123,14 @@ export default function Workspace({
         !target.closest("input,textarea,[contenteditable=true]")
       ) {
         event.preventDefault();
-        setView("gallery");
-        setGalleryEnabled(true);
+        if (event.repeat) return;
+        setView(galleryEnabled ? "map" : "gallery");
+        setGalleryEnabled(!galleryEnabled);
       }
     };
-    window.addEventListener("keydown", revealGallery);
-    return () => window.removeEventListener("keydown", revealGallery);
-  }, []);
+    window.addEventListener("keydown", toggleGallery);
+    return () => window.removeEventListener("keydown", toggleGallery);
+  }, [galleryEnabled]);
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const [droppedText, setDroppedText] = useState("");
   const [undo, setUndo] = useState<{
