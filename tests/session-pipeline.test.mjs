@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  validateSession,
   cleanSessionText,
   isSessionNoise,
   prepareSessionBatch,
@@ -216,7 +217,10 @@ test("the session call uses strict structured output, no tools and no provider s
         body = JSON.parse(opts.body);
         return reply({
           steps: [],
-          map: { center: { label: "x", itemId: null, url: null }, nodes: [] },
+          map: {
+            center: { label: "x", itemId: null, url: null },
+            nodes: Array(7).fill({}),
+          },
         });
       },
     }),
@@ -240,7 +244,10 @@ test("a response that fails validation is retried once, then rejected", async ()
         calls++;
         return reply({
           steps: [],
-          map: { center: { label: "x", itemId: null, url: null }, nodes: [] },
+          map: {
+            center: { label: "x", itemId: null, url: null },
+            nodes: Array(7).fill({}),
+          },
         });
       },
     }),
@@ -258,13 +265,16 @@ test("the retry tells the model which rule the first attempt broke", async () =>
         sent.push(JSON.parse(opts.body).instructions);
         return reply({
           steps: [],
-          map: { center: { label: "x", itemId: null, url: null }, nodes: [] },
+          map: {
+            center: { label: "x", itemId: null, url: null },
+            nodes: Array(7).fill({}),
+          },
         });
       },
     }),
   );
   assert.doesNotMatch(sent[0], /rejected/);
-  assert.match(sent[1], /rejected: The gallery holds 1–6 nodes/);
+  assert.match(sent[1], /rejected: The gallery holds at most 6 nodes/);
 });
 
 test("provider errors never expose the credential", async () => {
@@ -344,4 +354,65 @@ test("a website capture is always a page, even when it is mostly white", () => {
   );
   assert.equal(classifyImage(sparseSite).kind, "ink");
   assert.equal(classifyImage(sparseSite, { source: "website" }).kind, "page");
+});
+
+test("noise-only batches advance the raw cursor so long imports cannot stall", async () => {
+  const body = "<task-notification>nothing to collect</task-notification>";
+  const result = await prepareSessionBatch({
+    ...job,
+    current: null,
+    items: [],
+    turns: [{ id: "noise", sequence: 99, role: "user", body }],
+    moreTurns: true,
+  });
+  assert.equal(result.checkpoint.turnSequence, 99);
+  assert.equal(result.checkpoint.turnOffset, body.length);
+  assert.equal(result.needsModel, false);
+});
+
+test("continued generation includes verified historical turns for unchanged story evidence", async () => {
+  const result = await prepareSessionBatch({
+    ...job,
+    history: [{ id: "old", role: "user", body: "Keep this exact choice." }],
+  });
+  assert.ok(
+    result.input.transcript.some(
+      (t) =>
+        t.id === "old" && t.historical && t.text === "Keep this exact choice.",
+    ),
+  );
+});
+
+test("routine-only sessions can be empty without inventing decisions", () => {
+  const result = validateSession(
+    {
+      steps: [],
+      map: {
+        center: { label: "Untitled", itemId: null, url: null },
+        nodes: [],
+      },
+    },
+    input,
+  );
+  assert.deepEqual(result.steps, []);
+  assert.deepEqual(result.map.nodes, []);
+});
+
+test("a split turn retains earlier evidence when its next chunk arrives", async () => {
+  const body = "We picked blue. Then we picked serif.";
+  const result = await prepareSessionBatch({
+    ...job,
+    items: [],
+    checkpoint: { turnSequence: 10, turnOffset: 16, items: {} },
+    turns: [{ id: "split", sequence: 10, role: "user", body }],
+    history: [{ id: "split", role: "user", body }],
+  });
+  const source = result.input.transcript.find((t) => t.id === "split");
+  assert.match(source.text, /We picked blue/);
+  assert.match(source.text, /serif/);
+  assert.equal(
+    result.input.transcript.filter((t) => t.id === "split").length,
+    1,
+  );
+  assert.equal(result.needsModel, true);
 });

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   sessionSchema,
+  normalizeSession,
   sessionInstructions,
   validateSession,
 } from "../lib/story.mjs";
@@ -203,10 +204,10 @@ test("step text is a paragraph, not bullet points", () => {
   assert.throws(() => validateSession(v, input), /paragraph/);
 });
 
-test("a reference node must carry its URL", () => {
+test("a reference named without a URL remains grounded in its evidence", () => {
   const v = valid();
   v.map.nodes[1].url = null;
-  assert.throws(() => validateSession(v, input), /URL/);
+  assert.equal(validateSession(v, input).map.nodes[1].url, null);
 });
 
 test("a canvas names one of the plain layouts", () => {
@@ -249,7 +250,7 @@ test("the gallery holds at most six nodes, each with at most three details", () 
     ...valid().map.nodes[2],
     label: `Principle ${i}`,
   }));
-  assert.throws(() => validateSession(seven, input), /1–6 nodes/);
+  assert.throws(() => validateSession(seven, input), /at most 6 nodes/);
   const crowded = valid();
   crowded.map.nodes[0].details = Array.from({ length: 4 }, (_, i) => ({
     ...valid().map.nodes[0].details[0],
@@ -381,4 +382,40 @@ test("a canvas quote is one short line", () => {
   const v = valid();
   v.steps[1].canvas.quote = { sourceId: "t5", text };
   assert.throws(() => validateSession(v, long), /20 words/);
+});
+
+test("Chinese titles and concise paragraphs do not require English word spacing", () => {
+  const value = valid();
+  value.steps[0].title = "从草图开始";
+  value.steps[0].text =
+    "我希望先保留自己画的布局，再慢慢调整细节。每个元素的位置都应该跟着草图走。";
+  const chineseInput = structuredClone(input);
+  chineseInput.transcript[0].text += ` ${value.steps[0].text}`;
+  assert.equal(
+    validateSession(value, chineseInput).steps[0].title,
+    "从草图开始",
+  );
+});
+
+test("a repeated optional quote is removed without losing the story or evidence", () => {
+  const value = valid();
+  value.steps[1].text += " i really dislike custom cursors";
+  const normalized = normalizeSession(value, input);
+  assert.equal(normalized.steps[1].canvas.layout, "none");
+  assert.equal(normalized.steps[1].canvas.quote, null);
+  assert.deepEqual(normalized.steps[1].evidence, value.steps[1].evidence);
+  assert.doesNotThrow(() => validateSession(normalized, input));
+});
+
+test("an exact quote assigned to the wrong source is corrected only when unambiguous", () => {
+  const value = valid();
+  value.steps[0].evidence[0].sourceId = "t3";
+  const normalized = normalizeSession(value, input);
+  assert.equal(normalized.steps[0].evidence[0].sourceId, "t1");
+  assert.doesNotThrow(() => validateSession(normalized, input));
+  value.steps[0].evidence[0].quote = "An invented claim";
+  assert.throws(
+    () => validateSession(normalizeSession(value, input), input),
+    /evidence/,
+  );
 });

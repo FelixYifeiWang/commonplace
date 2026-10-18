@@ -183,3 +183,63 @@ test("story triggers survive Wrangler's SQL migration splitter", async () => {
     sqlite.close();
   }
 });
+
+test("session snapshots continue the current version without deleting legacy beats", async () => {
+  const { sqlite, store, add, advance } = fixture();
+  try {
+    add();
+    const first = await store.claim();
+    const batch = await prepareStoryBatch(first);
+    await store.complete(first, batch, [beat], "gpt-6-luna");
+    advance(20000);
+    add("later");
+    const job = await store.claim();
+    const session = {
+      steps: [],
+      map: { center: { label: "Quiet", itemId: null, url: null }, nodes: [] },
+    };
+    assert.equal(
+      await store.completeSession(
+        job,
+        await prepareStoryBatch(job),
+        session,
+        "gpt-6-luna",
+      ),
+      true,
+    );
+    assert.deepEqual((await store.get("c", "u")).session, session);
+    assert.equal((await store.get("c", "u")).beats.length, 1);
+    assert.equal(
+      await store.completeSession(
+        job,
+        batch,
+        { ...session, steps: [beat] },
+        "gpt-6-luna",
+      ),
+      false,
+    );
+    advance(20000);
+    add("next");
+    const next = await store.claim();
+    assert.deepEqual(next.current, session);
+    await store.fail(next, "Unavailable");
+    assert.deepEqual((await store.get("c", "u")).session, session);
+  } finally {
+    sqlite.close();
+  }
+});
+
+test("a failed request waits for retry or a new revision instead of spending forever", async () => {
+  const { sqlite, store, add, advance } = fixture();
+  try {
+    add();
+    const job = await store.claim();
+    await store.fail(job, "Invalid response");
+    advance(3600000);
+    assert.equal(await store.claim(), null);
+    await store.retry("c", "u");
+    assert.ok(await store.claim());
+  } finally {
+    sqlite.close();
+  }
+});

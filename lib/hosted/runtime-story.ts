@@ -1,8 +1,8 @@
 import { after } from "next/server";
 import { env } from "./runtime-env";
 import { createStoryStore } from "../story-store.mjs";
-import { prepareStoryBatch, STORY_MODEL } from "../story.mjs";
-import { generateStory } from "../story-provider.mjs";
+import { prepareSessionBatch, STORY_MODEL } from "../story.mjs";
+import { generateSession } from "../story-provider.mjs";
 export const enabled = true;
 // The local bridge is never exposed on the public deployment.
 export function authorized() {
@@ -15,13 +15,13 @@ export async function drainStories() {
     const job = await store.claim();
     if (!job) return;
     try {
-      const batch = await prepareStoryBatch(job);
-      const beats = batch.needsModel
-        ? await generateStory(batch.input, {
+      const batch = await prepareSessionBatch(job);
+      const session = batch.needsModel
+        ? await generateSession(batch.input, {
             apiKey: process.env.OPENAI_API_KEY,
           })
-        : [];
-      await store.complete(job, batch, beats, STORY_MODEL);
+        : null;
+      await store.completeSession(job, batch, session, STORY_MODEL);
     } catch (error) {
       await store.fail(
         job,

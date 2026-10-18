@@ -11,7 +11,12 @@ export async function POST(request: Request) {
     if (body.op === "claim") return Response.json({ job: await store.claim() });
     if (body.op === "complete")
       return Response.json({
-        ok: await store.complete(body.job, body.batch, body.beats, body.model),
+        ok: await store.completeSession(
+          body.job,
+          body.batch,
+          body.session,
+          body.model,
+        ),
       });
     if (body.op === "fail") {
       await store.fail(body.job, body.message);

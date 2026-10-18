@@ -2,8 +2,8 @@ import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { parseEnv } from "node:util";
 import { join } from "node:path";
-import { prepareStoryBatch, STORY_MODEL } from "../lib/story.mjs";
-import { generateStory } from "../lib/story-provider.mjs";
+import { prepareSessionBatch, STORY_MODEL } from "../lib/story.mjs";
+import { generateSession } from "../lib/story-provider.mjs";
 // Only the local server owns the provider key. The browser never receives it.
 export function storyWorker() {
   const id = "virtual:commonplace-story",
@@ -44,10 +44,10 @@ export function storyWorker() {
     try {
       ({ job } = await call("claim"));
       if (!job) return;
-      const batch = await prepareStoryBatch(job);
-      const beats = batch.needsModel
-        ? await generateStory(batch.input, { apiKey: await key() })
-        : [];
+      const batch = await prepareSessionBatch(job);
+      const session = batch.needsModel
+        ? await generateSession(batch.input, { apiKey: await key() })
+        : null;
       await call("complete", {
         job: {
           collectionId: job.collectionId,
@@ -55,7 +55,7 @@ export function storyWorker() {
           revision: job.revision,
         },
         batch: { checkpoint: batch.checkpoint, hasMore: batch.hasMore },
-        beats,
+        session,
         model: STORY_MODEL,
       });
     } catch (error) {
