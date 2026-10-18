@@ -6572,63 +6572,6 @@ body.desktop-feedback-page {
   color: #444;
   border: 1px solid #ddd;
 }
-.session-map {
-  background-image: radial-gradient(#dedede 0.65px, transparent 0.65px);
-  background-size: 24px 24px;
-}
-.map-tile.soft-sheet {
-  background: #fff;
-  border: 1px solid #e4e4e4;
-  border-radius: 5px;
-  box-shadow: 0 2px 4px #00000004;
-  padding: 16px;
-  color: #333;
-}
-.map-tile.soft-sheet:hover {
-  border-color: #aaa;
-  box-shadow:
-    0 3px 12px #00000008,
-    inset 0 0 0 999px rgb(0 0 0 / 0.025);
-}
-.map-tile.is-page {
-  padding: 8px;
-}
-.map-tile.is-page img {
-  object-fit: contain;
-}
-.map-center .map-tile {
-  background: #fff;
-  border-color: #bdbdbd;
-}
-.map-center .map-tile strong {
-  font:
-    500 18px/1.4 Arial,
-    sans-serif;
-  color: #333;
-}
-.map-quote {
-  font:
-    400 14px/1.65 Arial,
-    sans-serif;
-  text-align: left;
-  -webkit-line-clamp: 5;
-}
-.map-caption {
-  text-align: left;
-  padding: 10px 20px 0;
-}
-.map-caption p {
-  margin: 5px 0 0;
-}
-.map-edges line {
-  stroke: #d8d8d8;
-}
-.map-condensed .map-quote {
-  -webkit-line-clamp: 4;
-}
-.map-condensed .map-caption p {
-  display: none;
-}
 .buddy-controls {
   padding: 4px 6px;
   display: flex;
@@ -6728,18 +6671,6 @@ body.desktop-feedback-page {
   }
 }
 
-/* Labels stay legible when the whole map is fitted to the viewport. */
-.map-caption strong {
-  font-size: clamp(13px, calc(12px / var(--map-zoom)), 21px);
-}
-.map-tile .map-quote {
-  font-family: var(--sans);
-  font-size: clamp(14px, calc(12px / var(--map-zoom)), 22px);
-  line-height: 1.45;
-}
-.map-center .map-tile strong {
-  font-family: var(--sans);
-}
 @media (min-width: 681px) {
   .minimal-header:has(.channel-view-switch) .channel-picker {
     max-width: calc(50% - 140px);
