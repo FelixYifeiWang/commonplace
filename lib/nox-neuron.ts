@@ -4,7 +4,7 @@
 // It is seen through a glass lens (lib/glass-lens.ts) that bends it near the rim. While Nox works, signals travel
 // along the strokes and each corner flashes as one lands and fires the next. At rest nothing is drawn.
 import * as THREE from "three";
-import { followGaze, silhouetteCenter } from "./nox-motion.mjs";
+import { followGaze, strokeCenter } from "./nox-motion.mjs";
 import { createLens } from "./glass-lens";
 
 export type NeuronMood = "rest" | "working" | "muted" | "alert";
@@ -205,22 +205,13 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
   const reducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
   ).matches;
-  const lens = createLens(
-    size,
-    Math.round(size * ratio),
-    {
-      borderWidth: 0.28,
-      brightness: 50,
-      opacity: 0.93,
-      blur: 6,
-      distortionScale: -18,
-      redOffset: 0,
-      greenOffset: 4,
-      blueOffset: 8,
-      saturation: 1,
-    },
-    () => wake(),
-  );
+  const lens = createLens(Math.round(size * ratio), {
+    distortionScale: -18,
+    redOffset: 0,
+    greenOffset: 4,
+    blueOffset: 8,
+    saturation: 1,
+  });
 
   const paint = (color: number) => {
     ink.setHex(color);
@@ -248,7 +239,7 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
         .applyEuler(neuron.rotation)
         .applyEuler(pointerTilt.rotation),
     );
-    const center = silhouetteCenter(projectedCorners);
+    const center = strokeCenter(projectedCorners);
     pointerTilt.position.set(-center.x, -center.y, 0);
 
     if (working && pulses.length === 0)
@@ -282,12 +273,10 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
       m.color.lerp(live ? light : ink, 0.2);
     });
 
-    if (lens.ready) {
-      renderer.setRenderTarget(lens.target);
-      renderer.clear();
-      renderer.render(scene, camera);
-      lens.draw(renderer);
-    }
+    renderer.setRenderTarget(lens.target);
+    renderer.clear();
+    renderer.render(scene, camera);
+    lens.draw(renderer);
 
     const settling =
       Math.abs(gaze.tx - gaze.x) > 0.001 ||

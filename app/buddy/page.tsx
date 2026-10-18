@@ -45,6 +45,7 @@ declare global {
 export default function Companion() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [error, setError] = useState("");
+  const [keyboardFocus, setKeyboardFocus] = useState(false);
   const pointer = useRef<number | null>(null);
   const dragging = snapshot?.dragging || false;
   const receive = (value: Snapshot) =>
@@ -121,10 +122,16 @@ export default function Companion() {
     >
       <button
         className={`native-buddy-grab ${dragging ? "dragging" : ""}`}
+        data-keyboard-focus={keyboardFocus}
+        onKeyUp={(e) => {
+          if (["Tab", "Enter", " "].includes(e.key)) setKeyboardFocus(true);
+        }}
+        onBlur={() => setKeyboardFocus(false)}
         aria-label="Move Nox. Hover or click to connect."
         title={error || "Move Nox. Click to connect."}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
+          setKeyboardFocus(false);
           e.preventDefault();
           e.currentTarget.setPointerCapture(e.pointerId);
           pointer.current = e.pointerId;

@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   },
   description:
     "Keep the ideas, references, and unexpected connections from your AI conversations.",
-  icons: { icon: "/favicon.svg?v=nox", apple: "/nox-icon.png" },
+  icons: { icon: "/favicon.svg?v=nox-centered", apple: "/nox-icon.png?v=centered" },
 };
 export default function RootLayout({
   children,

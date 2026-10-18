@@ -23,7 +23,7 @@ func render(_ size: Int, template: Bool = false) -> Data {
     NSColor.white.setStroke()
     let rim = NSBezierPath(ovalIn:NSRect(x:5.5,y:5.5,width:69,height:69));rim.lineWidth=1;rim.stroke()
   }
-  let center = NSAffineTransform(); center.translateX(by:-4.49,yBy:0.235); center.concat()
+  let center = NSAffineTransform(); center.translateX(by:0.73,yBy:0.75); center.concat()
   let ink = template ? NSColor.black : NSColor(calibratedRed:0.231,green:0.212,blue:0.831,alpha:1)
   ink.setStroke()
   for (a,b) in edges {

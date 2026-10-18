@@ -7714,9 +7714,9 @@ a[href].gm-detail b::after {
 .native-buddy-grab.dragging .nox {
   transform: scale(1.07);
 }
-.native-buddy-grab:focus-visible .nox {
-  outline: 2px solid #737373;
-  outline-offset: 3px;
+.native-buddy-grab[data-keyboard-focus="true"]:focus-visible .nox {
+  outline: 1px dashed #999;
+  outline-offset: 4px;
 }
 @media (prefers-reduced-motion: reduce) {
   .native-buddy-grab .nox {
@@ -8033,12 +8033,9 @@ a[href].gm-detail b::after {
   outline-offset: 3px;
 }
 
-/* A focused source keeps its own shape, with a quiet pencil line and a little lift. */
+/* Focus is a small lift; connected branches already provide context. */
 .gm-guided .gm-focused {
-  outline: 1px solid color-mix(in srgb, var(--gm-ink) 24%, transparent);
-  outline-offset: 10px;
-  border-radius: 4px;
-  filter: drop-shadow(0 4px 9px rgb(0 0 0 / 0.06));
+  filter: drop-shadow(0 2px 5px rgb(0 0 0 / 0.08));
 }
 .gm-guided .gm-world[data-focus] .gm-core.gm-focused {
   opacity: 1;

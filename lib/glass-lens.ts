@@ -1,7 +1,7 @@
 /*
  * Glass lens for Nox, ported from React Bits' Glass Surface (https://reactbits.dev/components/glass-surface):
- * the same displacement map and the same refraction shader, which bends the backdrop near the rim and offsets
- * the red, green and blue channels for a chromatic fringe. Here the backdrop is Nox's own neuron, rendered into
+ * adapted to symmetric radial refraction, with red, green and blue offsets for a subtle chromatic fringe.
+ * Here the backdrop is Nox's own neuron, rendered into
  * a texture, because a transparent desktop window cannot see what is behind it.
  *
  * MIT + Commons Clause License Condition v1.0
@@ -28,10 +28,6 @@
 import * as THREE from "three";
 
 export type LensOptions = {
-  borderWidth: number;
-  brightness: number;
-  opacity: number;
-  blur: number;
   distortionScale: number;
   redOffset: number;
   greenOffset: number;
@@ -39,41 +35,20 @@ export type LensOptions = {
   saturation: number;
 };
 
-// React Bits' displacement map for a circle: a red gradient across and a blue one down (blended by difference),
-// with a blurred grey core that leaves the middle of the lens clear.
-function lensMap(size: number, o: LensOptions) {
-  const r = size / 2,
-    edge = size * (o.borderWidth * 0.5);
-  return `data:image/svg+xml,${encodeURIComponent(`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="r" x1="100%" y1="0%" x2="0%" y2="0%"><stop offset="0%" stop-color="#0000"/><stop offset="100%" stop-color="red"/></linearGradient>
-      <linearGradient id="b" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0000"/><stop offset="100%" stop-color="blue"/></linearGradient>
-      <filter id="s" filterUnits="userSpaceOnUse" x="0" y="0" width="${size}" height="${size}" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="${o.blur}"/></filter>
-    </defs>
-    <rect x="0" y="0" width="${size}" height="${size}" fill="black"/>
-    <rect x="0" y="0" width="${size}" height="${size}" rx="${r}" fill="url(#r)"/>
-    <rect x="0" y="0" width="${size}" height="${size}" rx="${r}" fill="url(#b)" style="mix-blend-mode: difference"/>
-    <rect x="${edge}" y="${edge}" width="${size - edge * 2}" height="${size - edge * 2}" rx="${r - edge}" fill="hsl(0 0% ${o.brightness}% / ${o.opacity})" filter="url(#s)"/>
-  </svg>`)}`;
-}
-
-// React Bits' refraction shader: each channel samples the backdrop shifted by the map, by its own amount.
+// A symmetric, size-independent lens keeps the center clear at every icon size.
+// The former directional SVG displacement map shifted even the center of the
+// drawing, and its fixed pixel blur exaggerated that shift on small icons.
 const fragmentShader = `
 uniform sampler2D uBackdrop;
-uniform sampler2D uMap;
-uniform vec2 uSize;
 uniform vec3 uScale;
 uniform float uSaturation;
 varying vec2 vUv;
 vec4 bend(vec2 uv) {
-  vec4 map = texture2D(uMap, uv);
-  // x reads the red gradient and y the blue one (React Bits' yChannel "B"), so the rim bends evenly all round.
-  vec2 shift = vec2(map.r, map.b) - 0.5;
-  // The map is laid out top-down like the page; textures here run bottom-up.
-  vec2 step = vec2(1.0, -1.0) / uSize;
-  vec4 red = texture2D(uBackdrop, uv + shift * uScale.r * step);
-  vec4 green = texture2D(uBackdrop, uv + shift * uScale.g * step);
-  vec4 blue = texture2D(uBackdrop, uv + shift * uScale.b * step);
+  vec2 radial = (uv - 0.5) * 2.0;
+  vec2 shift = radial * smoothstep(0.45, 0.98, length(radial)) * 0.12;
+  vec4 red = texture2D(uBackdrop, uv + shift * uScale.r / 80.0);
+  vec4 green = texture2D(uBackdrop, uv + shift * uScale.g / 80.0);
+  vec4 blue = texture2D(uBackdrop, uv + shift * uScale.b / 80.0);
   return vec4(red.r, green.g, blue.b, (red.a + green.a + blue.a) / 3.0);
 }
 vec3 toSRGB(vec3 c) {
@@ -92,19 +67,12 @@ void main() {
   gl_FragColor = vec4(rgb * color.a, color.a);
 }`;
 
-// Draws a backdrop texture through the lens onto the canvas. The map loads once; until then nothing is drawn.
-export function createLens(
-  size: number,
-  pixels: number,
-  options: LensOptions,
-  onReady: () => void,
-) {
+// Draw the backdrop through the lens without waiting for an external texture.
+export function createLens(pixels: number, options: LensOptions) {
   const target = new THREE.WebGLRenderTarget(pixels, pixels, { samples: 4 });
   const material = new THREE.ShaderMaterial({
     uniforms: {
       uBackdrop: { value: target.texture },
-      uMap: { value: null },
-      uSize: { value: new THREE.Vector2(size, size) },
       uScale: {
         value: new THREE.Vector3(
           options.distortionScale + options.redOffset,
@@ -126,24 +94,13 @@ export function createLens(
   quad.frustumCulled = false;
   scene.add(quad);
   const camera = new THREE.Camera();
-  let ready = false;
-  new THREE.TextureLoader().load(lensMap(size, options), (map) => {
-    map.minFilter = THREE.LinearFilter;
-    material.uniforms.uMap.value = map;
-    ready = true;
-    onReady();
-  });
   return {
     target,
-    get ready() {
-      return ready;
-    },
     draw(renderer: THREE.WebGLRenderer) {
       renderer.setRenderTarget(null);
       renderer.render(scene, camera);
     },
     dispose() {
-      (material.uniforms.uMap.value as THREE.Texture | null)?.dispose();
       material.dispose();
       quad.geometry.dispose();
       target.dispose();
