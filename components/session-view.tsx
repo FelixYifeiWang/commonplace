@@ -12,7 +12,15 @@ import { ArrowUpRight, Minus, Plus, RotateCcw } from "lucide-react";
 import { SheetMedia } from "./sheet-media";
 import { SAMPLE_SESSION } from "@/lib/sample";
 import { StoryView } from "./story-view";
-import { mapLayout, zoomAround, pinchAround } from "@/lib/map-layout.mjs";
+import {
+  captionAbove,
+  dragOffsets,
+  exitPoint,
+  mapLayout,
+  pinchAround,
+  tileCenter,
+  zoomAround,
+} from "@/lib/map-layout.mjs";
 import type { Item } from "@/lib/types";
 import type {
   MapDetail,
@@ -122,13 +130,15 @@ export function SessionView({
       aria-label={mode === "gallery" ? "Collection map" : "Collection story"}
     >
       <div className="session-feedback" aria-live="polite">
-        {problem ? (
-          <>
-            <span>{problem}</span>
+        {problem && session ? (
+          // The last good view stays below; say so, so it isn't mistaken for new.
+          <span className="session-notice">
+            <i aria-hidden="true" />
+            <span>{problem} Showing the last version.</span>
             <button onClick={() => void retry()} disabled={retrying}>
-              Retry
+              {retrying ? "Retrying…" : "Retry"}
             </button>
-          </>
+          </span>
         ) : working && session ? (
           <span className="session-updating">
             <i />
@@ -146,7 +156,15 @@ export function SessionView({
         <StoryView collectionId={collectionId} items={items} onOpen={onOpen} />
       ) : (
         <div className="session-await" role="status" aria-live="polite">
-          {!problem && (
+          {problem ? (
+            // With no view to fall back on, the failure is the page's message.
+            <div className="session-await-problem">
+              <p>{problem}</p>
+              <button onClick={() => void retry()} disabled={retrying}>
+                {retrying ? "Retrying…" : "Retry"}
+              </button>
+            </div>
+          ) : (
             <p className={working || !story ? "session-updating" : ""}>
               {(working || !story) && <i />}
               {!story
@@ -174,8 +192,38 @@ function SessionStory({
   onOpen: (item: Item) => void;
 }) {
   const media = new Map(items.map((item) => [item.id, item]));
+  const thread = useRef<HTMLDivElement>(null);
+  const stepKeys = document.steps
+    .map((step, index) => `${index}-${step.title}`)
+    .join("|");
+  useEffect(() => {
+    const el = thread.current;
+    if (
+      !el ||
+      typeof IntersectionObserver === "undefined" ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    )
+      return;
+    // Steps rise in as they reach the viewport. Without this class (no
+    // observer, reduced motion) every step simply stays visible.
+    el.classList.add("can-reveal");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries)
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+      },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.15 },
+    );
+    el.querySelectorAll(".session-step:not(.is-visible)").forEach((step) =>
+      observer.observe(step),
+    );
+    return () => observer.disconnect();
+  }, [stepKeys]);
   return (
-    <div className="session-story-thread">
+    <div className="session-story-thread" ref={thread}>
       {!document.steps.length && (
         <p className="session-empty">No decisions yet.</p>
       )}
@@ -183,7 +231,7 @@ function SessionStory({
         <article className="session-step" key={`${index}-${step.title}`}>
           <div className="session-step-copy">
             <span className="session-step-index">
-              {String(index + 1).padStart(2, "0")}
+              Step {String(index + 1).padStart(2, "0")}
             </span>
             <h2>{step.title}</h2>
             <p>{step.text}</p>
@@ -200,6 +248,13 @@ function SessionStory({
     </div>
   );
 }
+// A pill appears only when the role carries meaning: solid for what stayed,
+// outlined for what was dropped. Shape and line style, never color alone.
+const PILLS: Record<string, { label: string; style: "solid" | "outline" }> = {
+  picked: { label: "Picked", style: "solid" },
+  result: { label: "Kept", style: "solid" },
+  attempt: { label: "Dropped", style: "outline" },
+};
 function StorySheet({
   step,
   media,
@@ -216,21 +271,26 @@ function StorySheet({
       className={`soft-sheet story-sheet layout-${step.canvas.layout} count-${entries.length}`}
     >
       <div className="story-sheet-content">
-        {entries.map((entry) => {
+        {entries.map((entry, index) => {
           const item = media.get(entry.itemId)!;
+          const pill = PILLS[entry.role];
           return (
             <button
               className={`sheet-object role-${entry.role} kind-${item.kind}`}
               key={entry.itemId}
+              style={{ "--i": index } as CSSProperties}
               onClick={() => onOpen(item)}
             >
               <span className="sheet-media">
                 <SheetMedia item={item} />
               </span>
               <span className="sheet-caption">
-                {entry.label}
-                {entry.role === "picked" && <small>Picked</small>}
-                {entry.role === "attempt" && <small>Dropped</small>}
+                <span className="sheet-label">{entry.label}</span>
+                {pill && (
+                  <small className={`sheet-pill pill-${pill.style}`}>
+                    {pill.label}
+                  </small>
+                )}
               </span>
             </button>
           );
@@ -257,6 +317,8 @@ export function SessionMap({
   const stage = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<Viewport>({ x: 0, y: 0, zoom: 0.7 });
   const [offsets, setOffsets] = useState<Record<number, Point>>({});
+  // The last dragged group stays where it was put; neighbors yield to it.
+  const [pinned, setPinned] = useState<number | null>(null);
   const pointers = useRef(new Map<number, Point>());
   const gesture = useRef<{
     point: Point;
@@ -270,8 +332,8 @@ export function SessionMap({
   );
   const details = view.zoom >= 1.05;
   const boxes = useMemo(
-    () => mapLayout(document.map.nodes, { details, offsets }),
-    [document.map.nodes, details, offsets],
+    () => mapLayout(document.map.nodes, { details, offsets, pinned }),
+    [document.map.nodes, details, offsets, pinned],
   );
   const initialBoxes = useMemo(
     () => mapLayout(document.map.nodes),
@@ -298,6 +360,7 @@ export function SessionMap({
       zoom,
     });
     setOffsets({});
+    setPinned(null);
   }, [initialBoxes]);
   // Resize keeps the map framed. Content changes preserve the user's exploration.
   const resetRef = useRef(reset);
@@ -446,13 +509,20 @@ export function SessionMap({
         suppressClick.current = true;
         if (drag.group !== null && drag.group >= 0) {
           const group = drag.group;
-          setOffsets((all) => ({
-            ...all,
-            [group]: {
-              x: (all[group]?.x || 0) + dx / view.zoom,
-              y: (all[group]?.y || 0) + dy / view.zoom,
-            },
-          }));
+          setPinned(group);
+          setOffsets((all) =>
+            dragOffsets(
+              document.map.nodes,
+              {
+                ...all,
+                [group]: {
+                  x: (all[group]?.x || 0) + dx / view.zoom,
+                  y: (all[group]?.y || 0) + dy / view.zoom,
+                },
+              },
+              group,
+            ),
+          );
         } else setView((v) => ({ ...v, x: v.x + dx, y: v.y + dy }));
       }}
       onPointerUp={(e) => {
@@ -474,16 +544,24 @@ export function SessionMap({
           {boxes
             .filter((b) => b.id !== "center")
             .map((box) => {
-              const owner = box.id.startsWith("detail")
+              const detail = box.id.startsWith("detail");
+              const owner = detail
                 ? boxes.find((b) => b.id === `node-${box.group}`)!
                 : boxes[0];
+              // Main edges run tile center to tile center, under the opaque
+              // tiles. A detail's edge leaves its node beyond the node's own
+              // caption, which faces outward like the details do.
+              const to = tileCenter(box);
+              const from = detail
+                ? exitPoint(owner, tileCenter(owner), to)
+                : tileCenter(owner);
               return (
                 <line
                   key={box.id}
-                  x1={owner.x}
-                  y1={owner.y}
-                  x2={box.x}
-                  y2={box.y}
+                  x1={from.x}
+                  y1={from.y}
+                  x2={to.x}
+                  y2={to.y}
                 />
               );
             })}
@@ -505,7 +583,7 @@ export function SessionMap({
             "evidence" in entry ? (entry as MapDetail).evidence.quote : "";
           return (
             <div
-              className={`map-object ${box.id === "center" ? "map-center" : detailIndex >= 0 ? "map-detail" : "map-node"}`}
+              className={`map-object ${box.id === "center" ? "map-center" : detailIndex >= 0 ? "map-detail" : "map-node"}${captionAbove(box) ? " caption-above" : ""}`}
               data-group={box.group}
               key={box.id}
               style={{
@@ -516,11 +594,11 @@ export function SessionMap({
               }}
             >
               <button
-                className={`soft-sheet map-tile ${item?.kind === "link" ? "is-page" : ""}`}
+                className={`${box.id === "center" ? "" : "soft-sheet "}map-tile ${item?.kind === "link" ? "is-page" : ""}`}
                 style={{
                   height:
                     box.id === "center"
-                      ? 114
+                      ? box.height
                       : "size" in box
                         ? (box.size as number)
                         : 160,
@@ -532,10 +610,23 @@ export function SessionMap({
                 disabled={removed}
                 title={removed ? "Item removed" : entry.label}
               >
-                {item ? (
+                {box.id === "center" ? (
+                  // One card: no caption hangs below for edges to cross.
+                  <>
+                    {item && (
+                      <span className="map-center-media">
+                        <SheetMedia item={item} />
+                      </span>
+                    )}
+                    <strong
+                      className={`map-center-name${item ? " is-small" : ""}`}
+                    >
+                      {entry.label}
+                    </strong>
+                    <span className="map-output">Session output</span>
+                  </>
+                ) : item ? (
                   <SheetMedia item={item} />
-                ) : box.id === "center" ? (
-                  <strong>{entry.label}</strong>
                 ) : detailIndex < 0 && node.font ? (
                   <span
                     className="map-specimen"
@@ -555,12 +646,12 @@ export function SessionMap({
                     entry.url || (item?.kind === "link" ? item.url : null),
                   ) && <ArrowUpRight className="map-external" size={13} />}
               </button>
-              <div className="map-caption">
-                <strong>{entry.label}</strong>
-                {detailIndex < 0 && box.group >= 0 && (
-                  <p>{(entry as MapNode).summary}</p>
-                )}
-              </div>
+              {box.id !== "center" && (
+                <div className="map-caption">
+                  <strong>{entry.label}</strong>
+                  {detailIndex < 0 && <p>{(entry as MapNode).summary}</p>}
+                </div>
+              )}
               {view.zoom >= 1.4 && detailIndex >= 0 && item && (
                 <span className="map-proof">
                   {(entry as MapDetail).evidence.quote}
