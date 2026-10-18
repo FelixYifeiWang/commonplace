@@ -51,3 +51,21 @@ test("pasted links and notes do not require choosing a type", () =>
     ],
     ["link", "note"],
   ));
+
+import { stackRows } from "../lib/gallery.mjs";
+test("wrapped outlines follow only occupied cells without moving the cover", () => {
+  assert.deepEqual(
+    stackRows(
+      [
+        { left: 200, top: 0, right: 300, bottom: 130 },
+        { left: 310, top: 0, right: 410, bottom: 130 },
+        { left: 0, top: 150, right: 100, bottom: 280 },
+      ],
+      8,
+    ),
+    [
+      { left: 192, top: -8, width: 226, height: 146 },
+      { left: -8, top: 142, width: 116, height: 146 },
+    ],
+  );
+});

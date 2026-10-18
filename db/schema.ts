@@ -90,6 +90,9 @@ export const turns = sqliteTable(
 );
 
 export const stories = sqliteTable("stories", {
+  visualRefresh: integer("visual_refresh", { mode: "boolean" })
+    .notNull()
+    .default(false),
   collectionId: text("collection_id")
     .primaryKey()
     .references(() => collections.id, { onDelete: "cascade" }),

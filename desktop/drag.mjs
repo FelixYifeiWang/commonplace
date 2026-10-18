@@ -150,3 +150,34 @@ export function createHoverController({ onChange, now = Date.now }) {
     },
   };
 }
+
+export function buddyControlsBounds(face, count, area) {
+  const width = 220,
+    height = 44 + Math.min(5, Math.max(0, count)) * 36;
+  const above = face.y - 40 - height;
+  return {
+    x: Math.round(
+      Math.max(
+        area.x,
+        Math.min(face.x - width / 2, area.x + area.width - width),
+      ),
+    ),
+    y: Math.round(
+      above >= area.y
+        ? above
+        : Math.min(area.y + area.height - height, face.y + 40),
+    ),
+    width,
+    height,
+  };
+}
+export function insideBuddyControls(point, face, panel) {
+  if (!panel) return false;
+  // The rectangle includes the gap, so travelling between windows is forgiving.
+  return (
+    point.x >= Math.min(panel.x, face.x - 52) - 6 &&
+    point.x <= Math.max(panel.x + panel.width, face.x + 52) + 6 &&
+    point.y >= Math.min(panel.y, face.y - 30) - 6 &&
+    point.y <= Math.max(panel.y + panel.height, face.y + 42) + 6
+  );
+}

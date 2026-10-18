@@ -24,6 +24,7 @@ export type MapNode = MapDetail & {
   details: MapDetail[];
 };
 export type SessionDocument = {
+  collectionName?: string;
   steps: SessionStep[];
   map: {
     center: { label: string; itemId: string | null; url: string | null };

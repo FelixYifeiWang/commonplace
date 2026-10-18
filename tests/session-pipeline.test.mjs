@@ -255,7 +255,7 @@ test("a response that fails validation is retried once, then rejected", async ()
         });
       },
     }),
-    /gallery/,
+    /Couldn’t verify the sources/,
   );
   assert.equal(calls, 2);
 });
@@ -468,5 +468,33 @@ test("historical emphasis does not lose evidence beyond the context excerpt", as
     result.input.transcript
       .find((t) => t.id === "old-long")
       .text.includes(quote),
+  );
+});
+
+import { evidenceSnippets, publicStoryError } from "../lib/story.mjs";
+test("evidence excerpts remain verbatim and errors hide internal source IDs", () => {
+  const snippets = evidenceSnippets(input);
+  assert.ok(input.transcript[0].text.includes(snippets[0].quotes[0]));
+  assert.equal(
+    publicStoryError(
+      "The evidence quote from private-id is not an exact copy of that source.",
+    ),
+    "Couldn’t verify the sources. Try again.",
+  );
+});
+
+test("collection names remain brief and are returned for each update", () => {
+  const base = {
+    collectionName: "Portfolio Website",
+    steps: [],
+    map: { center: { label: "Portfolio", itemId: null, url: null }, nodes: [] },
+  };
+  assert.equal(
+    validateSession(base, input).collectionName,
+    "Portfolio Website",
+  );
+  assert.throws(
+    () => validateSession({ ...base, collectionName: "x".repeat(61) }, input),
+    /short project name/,
   );
 });

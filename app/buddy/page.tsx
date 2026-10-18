@@ -4,6 +4,8 @@ import { Check, Loader2, Plus } from "lucide-react";
 import { Buddy } from "@/components/buddy";
 import type { SessionState } from "@/lib/types";
 type Snapshot = {
+  separateControls?: boolean;
+  favorites?: { id: string; name: string }[];
   connected?: boolean;
   revision?: number;
   dragging?: boolean;
@@ -20,6 +22,7 @@ type Snapshot = {
   error: string;
 };
 type Bridge = {
+  copyReference?: (id: string) => Promise<{ copied: boolean }>;
   nativeDrag?: boolean;
   snapshot: () => Promise<Snapshot>;
   onSnapshot?: (callback: (snapshot: Snapshot) => void) => () => void;
@@ -84,7 +87,11 @@ export default function Companion() {
   }, []);
   const offset = snapshot?.buddyOffsetY ?? 54;
   const needsSetup = snapshot?.connected === false;
-  const panelVisible = !!snapshot?.expanded && !dragging;
+  const panelVisible =
+    !!snapshot?.expanded &&
+    !!snapshot?.candidateTitle &&
+    !dragging &&
+    !snapshot?.separateControls;
   return (
     <div
       className={`native-buddy compact ${snapshot?.expanded ? "expanded" : ""}`}

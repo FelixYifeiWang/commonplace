@@ -60,7 +60,7 @@ try {
         id: "design",
         role: "user",
         text: `<in-app-browser-context>Current URL: https://example.com/incidental</in-app-browser-context>
-Use https://www.are.na/ for uncropped image grids. Use https://linear.app/ for navigation. Use https://www.notion.com/ for restrained typography. Those three references define our portfolio. Keep Georgia for the heading. Show three project cards with generous spacing. No slogans.
+The project is called Field Notes. Use https://www.are.na/ for uncropped image grids. Use https://linear.app/ for navigation. Use https://www.notion.com/ for restrained typography. Those three references define our portfolio. Keep Georgia for the heading. Show three project cards with generous spacing. No slogans.
 I also logged into https://mail.google.com/mail/u/0/ and visited https://claude.ai/design/p/private-session and https://auth.openai.com/log-in; these are unrelated navigation.`,
       },
     ],
@@ -72,6 +72,15 @@ I also logged into https://mail.google.com/mail/u/0/ and visited https://claude.
     "Only the three intentional references are collected",
   );
   const first = await ready();
+  assert.equal(first.collectionName, "Field Notes");
+  assert.equal(
+    (
+      await db.get("SELECT name FROM collections WHERE id=?", [
+        subscription.collectionId,
+      ])
+    ).name,
+    "Field Notes",
+  );
   const ids = new Set(
     first.steps.flatMap((s) => s.canvas.items.map((i) => i.itemId)),
   );

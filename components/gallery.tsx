@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useRef, useMemo, useState } from "react";
 import {
   Check,
   CheckSquare2,
@@ -14,7 +14,12 @@ import {
   Paperclip,
 } from "lucide-react";
 import type { Item } from "@/lib/types";
-import { filterItems, groupItems, sourceHost } from "@/lib/gallery.mjs";
+import {
+  filterItems,
+  groupItems,
+  sourceHost,
+  stackRows,
+} from "@/lib/gallery.mjs";
 import { MediaCard } from "./media-card";
 type Group = { key: string; title: string; topic: boolean; items: Item[] };
 type Drop = { files?: File[]; text?: string };
@@ -41,13 +46,48 @@ export function Gallery({
     [selected, setSelected] = useState<string[]>([]),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [screenshots, setScreenshots] = useState(true);
+    [screenshots, setScreenshots] = useState(true),
+    [deleting, setDeleting] = useState<string[]>([]);
   const sites = useMemo(
     () => [...new Set(items.map(sourceHost).filter(Boolean))].sort(),
     [items],
   );
   const filtered = filterItems(items, { query, type, site }) as Item[];
   const groups: Group[] = groupItems(filtered, !selecting);
+  const grid = useRef<HTMLDivElement>(null);
+  const [outlines, setOutlines] = useState<
+    { left: number; top: number; width: number; height: number }[]
+  >([]);
+  useEffect(() => {
+    const element = grid.current;
+    if (!element) return;
+    const measure = () => {
+      const parent = element.getBoundingClientRect();
+      const next = expanded.flatMap((key) => {
+        const rects = Array.from(
+          element.querySelectorAll<HTMLElement>("[data-stack]"),
+        )
+          .filter((el) => el.dataset.stack === key)
+          .map((el) => {
+            const r = el.getBoundingClientRect();
+            return {
+              left: r.left - parent.left,
+              top: r.top - parent.top,
+              right: r.right - parent.left,
+              bottom: r.bottom - parent.top,
+            };
+          });
+        return rects.length > 1 ? stackRows(rects) : [];
+      });
+      setOutlines(next);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    for (const card of element.querySelectorAll(".gallery-card"))
+      observer.observe(card);
+    measure();
+    return () => observer.disconnect();
+  }, [expanded, items, selecting, query, type, site]);
   const toggle = (id: string) =>
     setSelected((s) =>
       s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
@@ -58,73 +98,101 @@ export function Gallery({
       stack = group.items.length > 1,
       open = expanded.includes(group.key);
     return (
-      <button
-        className={`gallery-card ${stack ? "is-stack" : ""} ${open && stack ? "stack-open" : ""} ${memberOf ? "stack-member" : ""} ${selected.includes(item.id) ? "is-selected" : ""}`}
+      <div
         key={group.key}
+        className="gallery-tile"
         data-stack={memberOf || (stack ? group.key : undefined)}
-        aria-label={
-          stack
-            ? `${open ? "Fold" : "Expand"} ${group.title}, ${group.items.length} sources`
-            : item.title
-        }
-        aria-expanded={stack ? open : undefined}
-        aria-pressed={selecting ? selected.includes(item.id) : undefined}
-        onClick={() =>
-          selecting
-            ? toggle(item.id)
-            : stack
-              ? setExpanded((s) =>
-                  open ? s.filter((x) => x !== group.key) : [...s, group.key],
-                )
-              : onOpen(item)
-        }
       >
-        <div className="gallery-card-art">
-          {stack && !open && (
-            <>
-              <div className="stack-sheet stack-back" />
-              <div className="stack-sheet stack-middle" />
-            </>
-          )}
-          <div className="stack-front">
-            <MediaCard key={item.id} item={item} screenshots={screenshots} />
+        <button
+          className={`gallery-card ${stack ? "is-stack" : ""} ${open && stack ? "stack-open" : ""} ${memberOf ? "stack-member" : ""} ${selected.includes(item.id) ? "is-selected" : ""}`}
+          aria-label={
+            stack
+              ? `${open ? "Fold" : "Expand"} ${group.title}, ${group.items.length} sources`
+              : item.title
+          }
+          aria-expanded={stack ? open : undefined}
+          aria-pressed={selecting ? selected.includes(item.id) : undefined}
+          onClick={() =>
+            selecting
+              ? toggle(item.id)
+              : stack
+                ? setExpanded((s) =>
+                    open ? s.filter((x) => x !== group.key) : [...s, group.key],
+                  )
+                : onOpen(item)
+          }
+        >
+          <div className="gallery-card-art">
+            {stack && !open && (
+              <>
+                <div className="stack-sheet stack-back" />
+                <div className="stack-sheet stack-middle" />
+              </>
+            )}
+            <div className="stack-front">
+              <MediaCard key={item.id} item={item} screenshots={screenshots} />
+            </div>
+            {selecting && (
+              <span className="block-select">
+                {selected.includes(item.id) && <Check size={13} />}
+              </span>
+            )}
+            {stack && (
+              <span className="stack-count">
+                {open ? <ChevronUp size={12} /> : <Layers2 size={12} />}{" "}
+                {open ? "Fold" : group.items.length}
+              </span>
+            )}
           </div>
-          {selecting && (
-            <span className="block-select">
-              {selected.includes(item.id) && <Check size={13} />}
-            </span>
-          )}
-          {stack && (
-            <span className="stack-count">
-              {open ? <ChevronUp size={12} /> : <Layers2 size={12} />}{" "}
-              {open ? "Fold" : group.items.length}
-            </span>
-          )}
-        </div>
-        <div className="gallery-caption">
-          <span>{stack ? group.title : item.title}</span>
-          <small>
-            {stack
-              ? open
-                ? "Click to fold"
-                : `${group.items.length} sources`
-              : sourceHost(item) ||
-                (
-                  {
-                    note: "Text",
-                    idea: "Text",
-                    quote: "Text",
-                    image: "Image",
-                    video: "Video",
-                    audio: "Audio",
-                    file: "File",
-                    document: "PDF",
-                  } as Record<string, string>
-                )[item.kind]}
-          </small>
-        </div>
-        {cover && <span className="sr-only">Group cover</span>}
-      </button>
+          <div className="gallery-caption">
+            <span>{stack ? group.title : item.title}</span>
+            <small>
+              {stack
+                ? open
+                  ? "Click to fold"
+                  : `${group.items.length} sources`
+                : sourceHost(item) ||
+                  (
+                    {
+                      note: "Text",
+                      idea: "Text",
+                      quote: "Text",
+                      image: "Image",
+                      video: "Video",
+                      audio: "Audio",
+                      file: "File",
+                      document: "PDF",
+                    } as Record<string, string>
+                  )[item.kind]}
+            </small>
+          </div>
+          {cover && <span className="sr-only">Group cover</span>}
+        </button>
+        {!stack && !selecting && (
+          <button
+            className="gallery-item-delete"
+            aria-label={`Delete ${item.title}`}
+            disabled={deleting.includes(item.id)}
+            onClick={async () => {
+              setDeleting((ids) => [...ids, item.id]);
+              setError("");
+              try {
+                await onDelete([item.id]);
+              } catch (e) {
+                setError(
+                  e instanceof Error
+                    ? e.message
+                    : "Could not delete this item.",
+                );
+              } finally {
+                setDeleting((ids) => ids.filter((id) => id !== item.id));
+              }
+            }}
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
     );
   }
   return (
@@ -269,7 +337,15 @@ export function Gallery({
           {error}
         </p>
       )}
-      <div className="gallery-grid">
+      <div className="gallery-grid" ref={grid}>
+        {outlines.map((rect, index) => (
+          <div
+            key={index}
+            className="stack-outline"
+            style={rect}
+            aria-hidden="true"
+          />
+        ))}
         {!selecting && (
           <AddTile canAdd={canAdd} onAdd={onAdd} onSave={onQuickAdd} />
         )}

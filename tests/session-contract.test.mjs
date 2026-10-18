@@ -456,3 +456,16 @@ test("extra major nodes keep their content at normal visual weight", () => {
   );
   assert.doesNotThrow(() => validateSession(clean, input));
 });
+
+test("visible Markdown does not reject a genuine quote or allow a changed meaning", () => {
+  const source = structuredClone(input),
+    output = valid();
+  source.transcript[0].text =
+    "Strictly **follow this** as a lofi wireframe. Also look at https://www.hirotos.com/ this is the standard and the vibes I want";
+  assert.doesNotThrow(() => validateSession(output, source));
+  source.transcript[0].text = source.transcript[0].text.replace(
+    "follow this",
+    "do not follow this",
+  );
+  assert.throws(() => validateSession(output, source), /exact copy/);
+});

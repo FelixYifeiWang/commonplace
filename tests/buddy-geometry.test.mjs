@@ -242,3 +242,17 @@ test("keyboard activation stays open until the pointer enters or controls are di
   hover.update(false);
   assert.deepEqual(changes, [true, false]);
 });
+
+import { buddyControlsBounds, insideBuddyControls } from "../desktop/drag.mjs";
+test("reference panel expands without moving the face and stays within the display", () => {
+  const face = { x: 700, y: 600 },
+    area = { x: 0, y: 0, width: 1440, height: 900 };
+  for (let count = 0; count <= 5; count++) {
+    const panel = buddyControlsBounds(face, count, area);
+    assert.equal(panel.y + panel.height, 560);
+    assert.equal(insideBuddyControls({ x: 700, y: 575 }, face, panel), true);
+    assert.equal(insideBuddyControls({ x: 1000, y: 575 }, face, panel), false);
+  }
+  assert.equal(buddyControlsBounds({ x: 50, y: 60 }, 5, area).x, 0);
+  assert.ok(buddyControlsBounds({ x: 50, y: 60 }, 5, area).y >= 100);
+});

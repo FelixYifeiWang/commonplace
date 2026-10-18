@@ -1,0 +1,1 @@
+ALTER TABLE stories ADD COLUMN visual_refresh INTEGER NOT NULL DEFAULT 0;

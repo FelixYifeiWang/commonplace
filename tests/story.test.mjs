@@ -210,3 +210,32 @@ test("previously processed media remains available for richer visual connections
     true,
   );
 });
+
+import { normalizeSession } from "../lib/story.mjs";
+test("visual refresh preserves existing Story prose and order while accepting new media", () => {
+  const old = {
+    title: "Keep the space",
+    text: "I kept the layout quiet.",
+    evidence: [],
+    canvas: { layout: "none", items: [], quote: null },
+  };
+  const canvas = {
+    layout: "reference",
+    items: [{ itemId: "ref", label: "Spacing", role: "reference" }],
+    quote: null,
+  };
+  const output = normalizeSession(
+    {
+      steps: [{ ...old, text: "Unwanted rewrite.", canvas }],
+      map: { nodes: [] },
+    },
+    {
+      visualRefresh: true,
+      current: { steps: [old] },
+      transcript: [],
+      media: [],
+    },
+  );
+  assert.equal(output.steps[0].text, old.text);
+  assert.deepEqual(output.steps[0].canvas, canvas);
+});

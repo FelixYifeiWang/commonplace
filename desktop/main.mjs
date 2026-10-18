@@ -10,6 +10,7 @@ import {
   Menu,
   nativeImage,
   dialog,
+  clipboard,
 } from "electron";
 import path from "node:path";
 import { execFile } from "node:child_process";
@@ -23,6 +24,8 @@ import {
   createHoverController,
   buddyHoverRegion,
   buddyBounds,
+  buddyControlsBounds,
+  insideBuddyControls,
   handleBuddyMouse,
 } from "./drag.mjs";
 const exec = promisify(execFile);
@@ -74,6 +77,9 @@ let win,
   cursors = {},
   dragController,
   hoverController,
+  controlsWindow,
+  controlsReady = false,
+  favorites = [],
   expanded = false,
   targetTitle = "",
   busy = false,
@@ -183,6 +189,20 @@ function setExpanded(value) {
 }
 function notifyBuddy() {
   stateRevision++;
+  const visible =
+    expanded && !!candidate && !dragController?.hasMoved() && win?.isVisible();
+  if (controlsWindow && !controlsWindow.isDestroyed()) {
+    if (visible && controlsReady) {
+      const point = anchorPoint(),
+        area = screen.getDisplayNearestPoint(point).workArea;
+      controlsWindow.setBounds(
+        buddyControlsBounds(point, favorites.length, area),
+        false,
+      );
+      controlsWindow.showInactive();
+    } else controlsWindow.hide();
+    controlsWindow.webContents.send("companion:state", buddySnapshot());
+  }
   if (win && !win.isDestroyed())
     win.webContents.send("companion:state", buddySnapshot());
 }
@@ -231,6 +251,8 @@ function buddySnapshot() {
   };
   return {
     gaze,
+    separateControls: true,
+    favorites,
     revision: stateRevision,
     dragging: dragController?.hasMoved() || false,
     buddyOffsetY,
@@ -267,12 +289,16 @@ async function inspectPoint(point) {
 }
 async function findCandidate() {
   const revision = ++candidateRevision;
-  candidate = null;
-  candidateConnected = false;
   lastError = "";
   try {
     const target = await inspectPoint(anchorPoint());
-    if (target.error || !SUPPORTED_APPS.has(target.bundleId)) return;
+    if (target.error || !SUPPORTED_APPS.has(target.bundleId)) {
+      if (revision === candidateRevision) {
+        candidate = null;
+        candidateConnected = false;
+      }
+      return;
+    }
     const found = await resolveLocalTarget(target);
     let connected = false;
     if (connection) {
@@ -291,7 +317,11 @@ async function findCandidate() {
       candidateConnected = connected;
     }
   } catch (e) {
-    if (revision === candidateRevision) lastError = e.message;
+    if (revision === candidateRevision) {
+      lastError = e.message;
+      candidate = null;
+      candidateConnected = false;
+    }
   } finally {
     notifyBuddy();
   }
@@ -301,7 +331,55 @@ async function toggleControls() {
   candidate = null;
   candidateConnected = false;
   setExpanded(true);
-  if (expanded && connection) await findCandidate();
+  if (expanded && connection)
+    await Promise.all([findCandidate(), refreshFavorites()]);
+}
+async function refreshFavorites() {
+  if (!connection) {
+    favorites = [];
+    return;
+  }
+  try {
+    const response = await request(
+      `${connection.origin}/api/device-favorites`,
+      { headers: { Authorization: `Bearer ${connection.token}` } },
+    );
+    if (!response.ok) {
+      favorites = [];
+      return;
+    }
+    const data = await response.json();
+    favorites = Array.isArray(data.collections)
+      ? data.collections.slice(0, 5)
+      : [];
+  } catch {
+    favorites = [];
+  } finally {
+    notifyBuddy();
+  }
+}
+async function copyReference(id) {
+  if (!connection || !favorites.some((c) => c.id === id))
+    throw new Error("Choose a starred collection.");
+  const target = await inspectPoint(anchorPoint());
+  if (target.error || !SUPPORTED_APPS.has(target.bundleId))
+    throw new Error("Open a supported session first.");
+  await resolveLocalTarget(target);
+  const response = await request(`${connection.origin}/api/device-favorites`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${connection.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ id }),
+  });
+  if (!response.ok)
+    throw new Error("Could not copy this collection. Try again.");
+  const data = await response.json();
+  if (typeof data.prompt !== "string")
+    throw new Error("Reference unavailable.");
+  clipboard.writeText(data.prompt);
+  return { copied: true };
 }
 async function captureSource(_source, subscription) {
   while (busy) await new Promise((resolve) => setTimeout(resolve, 50));
@@ -565,6 +643,41 @@ if (!lock) {
           void shell.openExternal(url);
         }
       });
+      controlsWindow = new BrowserWindow({
+        width: 220,
+        height: 224,
+        frame: false,
+        transparent: true,
+        backgroundColor: "#00000000",
+        hasShadow: false,
+        resizable: false,
+        alwaysOnTop: true,
+        skipTaskbar: true,
+        show: false,
+        webPreferences: {
+          preload: path.join(__dirname, "preload.cjs"),
+          contextIsolation: true,
+          nodeIntegration: false,
+          sandbox: true,
+        },
+      });
+      controlsWindow.setVisibleOnAllWorkspaces(true, {
+        visibleOnFullScreen: true,
+      });
+      controlsWindow.webContents.setWindowOpenHandler(() => ({
+        action: "deny",
+      }));
+      controlsWindow.webContents.on("will-navigate", (event) =>
+        event.preventDefault(),
+      );
+      controlsWindow.webContents.on("before-input-event", (_event, input) => {
+        if (input.type === "keyDown" && input.key === "Escape")
+          hoverController?.reset();
+      });
+      controlsWindow.on("blur", () => {
+        if (!connecting) hoverController?.update(false);
+      });
+      register("companion:copy-reference", copyReference);
       register("companion:snapshot", buddySnapshot);
       register("companion:pair", pair);
       dragController = createDragController({
@@ -600,7 +713,13 @@ if (!lock) {
           buddyHoverRegion(
             { x: cursor.x - bounds.x, y: cursor.y - bounds.y },
             expanded,
-          ),
+          ) ||
+            (controlsWindow?.isVisible() &&
+              insideBuddyControls(
+                cursor,
+                anchorPoint(),
+                controlsWindow.getBounds(),
+              )),
         );
       }, 60);
       win.once("closed", () => clearInterval(hoverTimer));
@@ -726,6 +845,8 @@ if (!lock) {
       await feedbackWindow.loadURL(`${ORIGIN}/buddy/feedback`);
       // Account sign-in belongs in the browser. The native shell is always available,
       // including before pairing and while recovering a connection.
+      await controlsWindow.loadURL(`${ORIGIN}/buddy/controls`);
+      controlsReady = true;
       await win.loadURL(`${ORIGIN}/buddy`);
       win.show();
       const icon = nativeImage.createFromDataURL(
@@ -749,6 +870,15 @@ if (!lock) {
       await processSetup();
       setInterval(() => void processSetup(), 2000);
       setInterval(() => void tick(), 15000);
+      setInterval(() => {
+        if (
+          expanded &&
+          candidate &&
+          !connecting &&
+          !dragController.isDragging()
+        )
+          void Promise.all([refreshFavorites(), findCandidate()]);
+      }, 4000);
       void tick();
       const folder = projectArg(process.argv);
       if (folder) void followClaudeProject(folder);

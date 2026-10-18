@@ -243,3 +243,72 @@ test("a failed request waits for retry or a new revision instead of spending for
     sqlite.close();
   }
 });
+
+test("session names follow new project names and expired workers cannot rename", async () => {
+  const { sqlite, store, add, advance } = fixture();
+  try {
+    sqlite
+      .prepare(
+        "INSERT INTO sessions(id,owner_id,collection_id,title,provider,token_hash,created_at) VALUES('s','u','c','Original session','Codex','hash','2026-10-18')",
+      )
+      .run();
+    add();
+    const job = await store.claim();
+    const batch = { checkpoint: {}, hasMore: false };
+    await store.completeSession(
+      job,
+      batch,
+      { collectionName: "Portfolio Website", steps: [], map: {} },
+      "test",
+    );
+    assert.equal(
+      sqlite.prepare("SELECT name FROM collections WHERE id='c'").get().name,
+      "Portfolio Website",
+    );
+    add("second");
+    advance(2000);
+    const next = await store.claim();
+    await store.completeSession(
+      next,
+      batch,
+      { collectionName: "Field Notes", steps: [], map: {} },
+      "test",
+    );
+    await store.completeSession(
+      job,
+      batch,
+      { collectionName: "Stale name", steps: [], map: {} },
+      "test",
+    );
+    assert.equal(
+      sqlite.prepare("SELECT name FROM collections WHERE id='c'").get().name,
+      "Field Notes",
+    );
+    assert.equal(
+      sqlite.prepare("SELECT title FROM sessions WHERE id='s'").get().title,
+      "Original session",
+    );
+  } finally {
+    sqlite.close();
+  }
+});
+
+test("manual collection names are kept when generating a story", async () => {
+  const { sqlite, store, add } = fixture();
+  try {
+    add();
+    const job = await store.claim();
+    await store.completeSession(
+      job,
+      { checkpoint: {}, hasMore: false },
+      { collectionName: "Model suggestion", steps: [], map: {} },
+      "test",
+    );
+    assert.equal(
+      sqlite.prepare("SELECT name FROM collections WHERE id='c'").get().name,
+      "Quiet",
+    );
+  } finally {
+    sqlite.close();
+  }
+});

@@ -23,6 +23,7 @@ import type {
   Session,
   WorkspaceData,
 } from "@/lib/types";
+import { MAX_FAVORITES, overlayFavorites } from "@/lib/favorites.mjs";
 import { SAMPLE } from "@/lib/sample";
 import { sessionLabel } from "./buddy";
 import { MediaDetail } from "./media-card";
@@ -131,11 +132,29 @@ export default function Workspace({
     ids: string[];
     previous?: WorkspaceData;
   } | null>(null);
+  const favoriteRevision = useRef(0);
+  const favoritePending = useRef(new Map<string, boolean>());
   const previewBusy = useRef(false);
   const refresh = useCallback(async () => {
+    const revision = favoriteRevision.current;
     try {
       const result = await api<WorkspaceData>("/api/workspace");
-      setData(result);
+      setData((current) =>
+        overlayFavorites(
+          revision === favoriteRevision.current
+            ? result
+            : {
+                ...result,
+                collections: result.collections.map((c) => ({
+                  ...c,
+                  favorite:
+                    current.collections.find((old) => old.id === c.id)
+                      ?.favorite ?? c.favorite,
+                })),
+              },
+          favoritePending.current,
+        ),
+      );
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to load your space.");
@@ -149,7 +168,7 @@ export default function Workspace({
     api<WorkspaceData>("/api/workspace")
       .then((result) => {
         if (!cancelled) {
-          setData(result);
+          setData(overlayFavorites(result, favoritePending.current));
           setError("");
         }
       })
@@ -330,11 +349,19 @@ export default function Workspace({
     setUndo({ kind: "items", ids, previous });
     setToast(`${ids.length} ${ids.length === 1 ? "block" : "blocks"} deleted`);
   }
-  const favoriteBusy = useRef(new Set<string>());
   async function favoriteCollection(collection: Collection) {
-    if (favoriteBusy.current.has(collection.id)) return;
-    favoriteBusy.current.add(collection.id);
+    if (favoritePending.current.has(collection.id)) return;
     const favorite = !collection.favorite;
+    if (
+      favorite &&
+      data.collections.filter((c) => c.favorite).length >= MAX_FAVORITES
+    ) {
+      setToast("You can star up to five collections.");
+      return;
+    }
+    favoriteRevision.current++;
+    favoritePending.current.set(collection.id, favorite);
+    setData((d) => overlayFavorites(d, favoritePending.current));
     try {
       if (!demo)
         await api("/api/collections", "PATCH", {
@@ -342,16 +369,19 @@ export default function Workspace({
           action: "favorite",
           favorite,
         });
+    } catch (e) {
       setData((d) => ({
         ...d,
         collections: d.collections.map((c) =>
-          c.id === collection.id ? { ...c, favorite } : c,
+          c.id === collection.id
+            ? { ...c, favorite: !!collection.favorite }
+            : c,
         ),
       }));
-    } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save favorite.");
     } finally {
-      favoriteBusy.current.delete(collection.id);
+      favoriteRevision.current++;
+      favoritePending.current.delete(collection.id);
     }
   }
   async function deleteCollection(id: string) {
@@ -525,23 +555,15 @@ export default function Workspace({
             {!demo && ready && data.user && (
               <OpenBuddy onSetup={() => openModal("setup")} />
             )}
-            <button
-              className="button new-collection"
-              onClick={() =>
-                openModal(
-                  screen === "collection" && selected !== "all"
-                    ? "item"
-                    : "collection",
-                )
-              }
-            >
-              <Plus size={16} strokeWidth={1.5} />
-              <span>
-                {screen === "collection" && selected !== "all"
-                  ? "Add block"
-                  : "New collection"}
-              </span>
-            </button>
+            {(screen !== "collection" || selected === "all") && (
+              <button
+                className="button new-collection"
+                onClick={() => openModal("collection")}
+              >
+                <Plus size={16} strokeWidth={1.5} />
+                <span>New collection</span>
+              </button>
+            )}
           </div>
         </header>
         {!demo &&
