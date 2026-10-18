@@ -13,6 +13,7 @@ import {
   clipboard,
 } from "electron";
 import path from "node:path";
+import { pointerDirection } from "../lib/nox-motion.mjs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { resolveLocalTarget } from "./target.mjs";
@@ -255,13 +256,10 @@ function buddyMenu() {
 function pointerGaze() {
   const cursor = screen.getCursorScreenPoint(),
     bounds = win.getBounds();
-  return {
-    x: Math.max(-2, Math.min(2, (cursor.x - bounds.x - 52) / 180)),
-    y: Math.max(
-      -1.5,
-      Math.min(1.5, (cursor.y - bounds.y - buddyOffsetY - 54) / 180),
-    ),
-  };
+  return pointerDirection(
+    cursor.x - bounds.x - 52,
+    cursor.y - bounds.y - buddyOffsetY - 54,
+  );
 }
 function buddySnapshot() {
   return {

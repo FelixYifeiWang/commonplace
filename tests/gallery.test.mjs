@@ -69,3 +69,88 @@ test("wrapped outlines follow only occupied cells without moving the cover", () 
     ],
   );
 });
+
+import { curateGalleryItems } from "../lib/gallery.mjs";
+test("gallery collapses tracking and anchor variants but keeps distinct pages and meaningful queries", () => {
+  const urls = [
+    "https://www.example.com/design/?utm_source=mail#top",
+    "https://example.com/design",
+    "https://example.com/design?version=2",
+    "https://example.com/other",
+  ];
+  assert.equal(
+    curateGalleryItems(
+      urls.map((url, i) => ({ id: String(i), url, sessionId: "s" })),
+    ).length,
+    3,
+  );
+});
+test("gallery hides workflow navigation but keeps documentation, public products and manually saved sources", () => {
+  const urls = [
+    "https://vercel.com/team/~/integrations/accept-terms/test",
+    "https://console.cloud.google.com/auth/branding",
+    "https://github.com/me/project/commit/abcd",
+    "https://newron.app/?collection=x&view=gallery",
+    "https://newron.app/setup.md",
+    "https://openai.com/research",
+    "https://developers.google.com/identity",
+    "https://github.com/Allenz5/dave",
+  ];
+  const items = urls.map((url, i) => ({ id: String(i), url, sessionId: "s" }));
+  assert.deepEqual(
+    curateGalleryItems(items).map((i) => i.id),
+    ["5", "6", "7"],
+  );
+  assert.equal(
+    curateGalleryItems([{ ...items[2], sessionId: null }]).length,
+    1,
+  );
+});
+test("duplicate gallery entries choose a visual representative without mutating stored items", () => {
+  const items = [
+    { id: "a", url: "https://example.com" },
+    {
+      id: "b",
+      url: "https://example.com/",
+      imageUrl: "https://example.com/cover.png",
+    },
+  ];
+  assert.equal(curateGalleryItems(items)[0].id, "b");
+  assert.equal(items.length, 2);
+});
+
+import { galleryDeletionIds } from "../lib/gallery.mjs";
+test("deleting a consolidated tile includes its duplicates but not another page", () => {
+  const items = [
+    { id: "a", url: "https://example.com/page" },
+    { id: "b", url: "https://www.example.com/page#section" },
+    { id: "c", url: "https://example.com/other" },
+  ];
+  assert.deepEqual(galleryDeletionIds(items, ["a"]), ["a", "b"]);
+});
+
+test("a stack uses an available picture instead of a text-only cover", () => {
+  const items = [
+    { id: "a", url: "https://example.com/a" },
+    {
+      id: "b",
+      url: "https://example.com/b",
+      imageUrl: "https://example.com/cover.png",
+    },
+  ];
+  assert.equal(groupItems(items)[0].items[0].id, "b");
+  assert.equal(items[0].id, "a");
+});
+
+test("hash routes keep distinct documents while demo variants share a cover", () => {
+  const urls = [
+    "https://example.com/#/one",
+    "https://example.com/#/two",
+    "https://example.com/?demo=1",
+    "https://example.com/",
+  ];
+  assert.equal(
+    curateGalleryItems(urls.map((url, i) => ({ id: String(i), url }))).length,
+    3,
+  );
+});

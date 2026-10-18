@@ -50,6 +50,7 @@ export type Item = {
   imageUrl: string | null;
   groupName?: string;
   fileKey?: string | null;
+  previewVersion?: number;
   previewStatus?: "pending" | "ready" | "unavailable";
   mimeType?: string | null;
   embedUrl?: string | null;

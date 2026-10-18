@@ -116,7 +116,9 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
   // inside toward the lower right.
   const pose = new THREE.Euler(1.02, 2.86, -0.4);
   neuron.rotation.copy(pose);
-  scene.add(neuron);
+  const pointerTilt = new THREE.Group();
+  pointerTilt.add(neuron);
+  scene.add(pointerTilt);
 
   // Flat, unlit materials: colour only, like ink on paper.
   const membraneMaterial = new THREE.MeshBasicMaterial({
@@ -197,6 +199,7 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
   let mood: NeuronMood = "rest";
   let frame = 0;
   let last = 0;
+  let spin = 0;
   const gaze = { x: 0, y: 0, tx: 0, ty: 0 };
   const reducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
@@ -232,8 +235,13 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
     const working = mood === "working" && !reducedMotion;
     gaze.x = followGaze(gaze.x, gaze.tx, dt);
     gaze.y = followGaze(gaze.y, gaze.ty, dt);
-    if (working) pose.y += dt * 0.55;
-    neuron.rotation.set(pose.x + gaze.y, pose.y + gaze.x, pose.z);
+    spin = working
+      ? ((spin + dt * 0.55 + Math.PI) % (Math.PI * 2)) - Math.PI
+      : followGaze(spin, 0, dt);
+    // Tilt around screen axes, outside the model's resting rotation.
+    pointerTilt.rotation.set(gaze.y, gaze.x, 0);
+    pointerTilt.position.set(gaze.x * 0.35, -gaze.y * 0.35, 0);
+    neuron.rotation.set(pose.x, pose.y + spin, pose.z);
 
     if (working && pulses.length === 0)
       fire(Math.floor(Math.random() * CORNERS.length));
@@ -276,6 +284,7 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
     const settling =
       Math.abs(gaze.tx - gaze.x) > 0.001 ||
       Math.abs(gaze.ty - gaze.y) > 0.001 ||
+      Math.abs(spin) > 0.001 ||
       pulses.length > 0 ||
       flash.some((f) => f > 0.01) ||
       strokeMaterials.some((m) => Math.abs(m.color.r - ink.r) > 0.002);
@@ -293,11 +302,11 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
       paint(INK[next]);
       wake();
     },
-    // Gaze is in pixels (about ±3); Nox turns a little toward the pointer.
+    // Gaze is a normalized screen direction, bounded to a radius of two.
     setGaze(x: number, y: number) {
       if (reducedMotion) return;
-      gaze.tx = Math.max(-0.3, Math.min(0.3, x * 0.08));
-      gaze.ty = Math.max(-0.3, Math.min(0.3, y * 0.08));
+      gaze.tx = Math.max(-0.3, Math.min(0.3, x * 0.13));
+      gaze.ty = Math.max(-0.3, Math.min(0.3, y * 0.13));
       wake();
     },
     dispose() {

@@ -34,6 +34,7 @@ type Engine = {
   focusOn: (key: string) => void;
   zoomBy: (f: number) => void;
   reset: () => void;
+  setMode: (guided: boolean) => void;
 };
 type Widget = {
   el: HTMLElement;
@@ -67,6 +68,7 @@ export function SessionMap({
     pctRef = useRef<HTMLElement>(null),
     dotsRef = useRef<HTMLSpanElement>(null),
     engine = useRef<Engine | null>(null);
+  const modeRef = useRef(guided);
   const guidedFocus = useRef<{ nodeKey: string; detail?: string } | null>(null);
   const [focusedNode, setFocusedNode] = useState(-1);
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
@@ -119,6 +121,7 @@ export function SessionMap({
         y: 0,
       };
     });
+    let guidedMode = modeRef.current;
     let glideTimer: ReturnType<typeof setTimeout> | undefined;
     let fit = 1,
       cx0 = 0,
@@ -240,7 +243,8 @@ export function SessionMap({
       for (let i = 0; i < count; i++) {
         const m = W["m" + i];
         if (!m || !W.core) continue;
-        const highlight = guided && i === selectedIndex ? " is-current" : "";
+        const highlight =
+          guidedMode && i === selectedIndex ? " is-current" : "";
         lines.push({
           d: radialPath(at(W.core), at(m)),
           c: "trunk" + highlight,
@@ -281,7 +285,7 @@ export function SessionMap({
       stage!.style.setProperty("--dx", `${stage!.clientWidth / 2}px`);
       stage!.style.setProperty("--dy", `${stage!.clientHeight / 2}px`);
       const rel = z / fit,
-        level = guided ? (guidedFocus.current ? 2 : 0) : zoomLevel(rel);
+        level = guidedMode ? (guidedFocus.current ? 2 : 0) : zoomLevel(rel);
       if (world!.dataset.lvl !== String(level)) {
         world!.dataset.lvl = String(level);
         draw(false);
@@ -314,14 +318,18 @@ export function SessionMap({
         ? nodes.findIndex((n) => nodeKey(n) === selected.nodeKey)
         : -1;
       if (index < 0 && selected?.nodeKey !== "core") guidedFocus.current = null;
-      setFocusedKey(key || (index >= 0 ? `m${index}` : null));
+      const exactKey = key || (index >= 0 ? `m${index}` : null);
+      setFocusedKey(exactKey);
       setFocusedNode(index);
       // The exact same three layers as free mode: output, references, evidence.
       world!.dataset.lvl = index < 0 ? "0" : "2";
       if (index < 0) delete world!.dataset.focus;
       else world!.dataset.focus = String(index);
-      Object.values(W).forEach((w) => {
+      Object.entries(W).forEach(([widgetKey, w]) => {
         w.el.classList.toggle("gm-current", w.node === index && index >= 0);
+        w.el.classList.toggle("gm-focused", widgetKey === exactKey);
+        if (widgetKey === exactKey) w.el.setAttribute("aria-current", "true");
+        else w.el.removeAttribute("aria-current");
       });
       let group = Object.values(W).filter((w) =>
         index < 0 ? !w.det : w.node === index,
@@ -351,13 +359,13 @@ export function SessionMap({
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
     const onWheel = (e: WheelEvent) => {
-      if (guided) return;
+      if (guidedMode) return;
       e.preventDefault();
       const p = local(e);
       zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)), p.x, p.y);
     };
     const onDown = (e: PointerEvent) => {
-      if (guided || (e.target as Element).closest(".gm-toolbar")) return;
+      if (guidedMode || (e.target as Element).closest(".gm-toolbar")) return;
       clearTimeout(glideTimer);
       world!.classList.remove("glide");
       pts.set(e.pointerId, e);
@@ -464,7 +472,7 @@ export function SessionMap({
             Math.min(1.7, Math.max(0.55, img.naturalWidth / img.naturalHeight)),
           ),
         );
-      if (guided) {
+      if (guidedMode) {
         layout();
         guidedFrame(guidedFocus.current?.detail, false);
       } else if (!touched) {
@@ -476,7 +484,7 @@ export function SessionMap({
       draw(false);
     };
     const resize = new ResizeObserver(() => {
-      if (guided) {
+      if (guidedMode) {
         layout();
         guidedFrame(guidedFocus.current?.detail, false);
       } else {
@@ -493,9 +501,41 @@ export function SessionMap({
     window.addEventListener("pointercancel", onUp);
     resize.observe(stage);
     engine.current = {
+      setMode(next) {
+        if (guidedMode === next) return;
+        guidedMode = next;
+        // Keep positions and camera alive. Free movement starts exactly where the tour left off.
+        if (!next) {
+          touched = true;
+          delete world.dataset.focus;
+          Object.values(W).forEach((w) => {
+            w.el.classList.remove("gm-current", "gm-focused");
+            w.el.removeAttribute("aria-current");
+          });
+          view();
+          draw(false);
+          return;
+        }
+        // Rejoin the tour at the closest visible node, instead of flying back to the start.
+        const cameraX = cx0 - px / z,
+          cameraY = cy0 - py / z;
+        const nearest = Object.entries(W)
+          .filter(([, w]) => !w.det || zoomLevel(z / fit) >= 1)
+          .sort(
+            ([, a], [, b]) =>
+              Math.hypot(center(a).x - cameraX, center(a).y - cameraY) -
+              Math.hypot(center(b).x - cameraX, center(b).y - cameraY),
+          )[0];
+        if (z / fit < 1.2 || !nearest) {
+          guidedFocus.current = null;
+          guidedFrame();
+        } else {
+          engine.current?.focusOn(nearest[0]);
+        }
+      },
       focusNode(i) {
         if (moved || !nodes[i]) return;
-        if (guided) {
+        if (guidedMode) {
           guidedFocus.current = { nodeKey: nodeKey(nodes[i]) };
           guidedFrame();
           return;
@@ -511,7 +551,7 @@ export function SessionMap({
       },
       focusOn(key) {
         if (moved || !W[key]) return;
-        if (guided) {
+        if (guidedMode) {
           if (key === "core") {
             guidedFocus.current = { nodeKey: "core", detail: "core" };
             guidedFrame("core");
@@ -531,7 +571,7 @@ export function SessionMap({
         zoomAt(f, stage.clientWidth / 2, stage.clientHeight / 2);
       },
       reset() {
-        if (guided) {
+        if (guidedMode) {
           guidedFocus.current = null;
           guidedFrame();
           return;
@@ -551,7 +591,7 @@ export function SessionMap({
     z = fit;
     view();
     draw(true);
-    if (guided) guidedFrame(guidedFocus.current?.detail, false);
+    if (guidedMode) guidedFrame(guidedFocus.current?.detail, false);
     else {
       delete world.dataset.focus;
       Object.values(W).forEach((w) => w.el.classList.remove("gm-current"));
@@ -568,7 +608,11 @@ export function SessionMap({
       resize.disconnect();
       engine.current = null;
     };
-  }, [docKey, mediaKey, guided]);
+  }, [docKey, mediaKey]);
+  useEffect(() => {
+    modeRef.current = guided;
+    engine.current?.setMode(guided);
+  }, [guided]);
   const { center } = map;
   return (
     <section
@@ -774,18 +818,28 @@ export function SessionMap({
           {onToggleMode && (
             <>
               <span className="gm-toolbar-divider" aria-hidden="true" />
-              <button
-                type="button"
-                className="map-navigation-toggle"
-                aria-label={
-                  guided ? "Switch to free movement" : "Switch to guided map"
-                }
-                aria-pressed={!guided}
-                onClick={onToggleMode}
+              <div
+                className="map-mode-switch"
+                role="group"
+                aria-label="Map navigation"
               >
-                {guided ? <Move size={14} /> : <Scan size={14} />}
-                {guided ? "Free move" : "Guided"}
-              </button>
+                <button
+                  type="button"
+                  aria-label="Guided map"
+                  aria-pressed={guided}
+                  onClick={() => !guided && onToggleMode()}
+                >
+                  <Scan size={13} /> Guided
+                </button>
+                <button
+                  type="button"
+                  aria-label="Free movement"
+                  aria-pressed={!guided}
+                  onClick={() => guided && onToggleMode()}
+                >
+                  <Move size={13} /> Free
+                </button>
+              </div>
             </>
           )}
         </div>

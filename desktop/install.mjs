@@ -70,7 +70,7 @@ export function validateManifest(manifest) {
   ];
   for (const f of manifest.files)
     if (
-      !/^(?:desktop\/[a-z-]+\.(?:mjs|cjs)|desktop\/native\/bin\/commonplace-target|desktop\/(?:commonplace\.(?:png|icns)|nox-tray\.png)|lib\/protocol\.mjs|package(?:-lock)?\.json)$/.test(
+      !/^(?:desktop\/[a-z-]+\.(?:mjs|cjs)|desktop\/native\/bin\/commonplace-target|desktop\/(?:commonplace\.(?:png|icns)|nox-tray\.png)|lib\/(?:protocol|nox-motion)\.mjs|package(?:-lock)?\.json)$/.test(
         f.path,
       ) ||
       !Number.isInteger(f.size) ||

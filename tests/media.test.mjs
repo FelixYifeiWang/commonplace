@@ -145,3 +145,30 @@ test("every redirected hostname is resolved and checked again", async () => {
   );
   assert.equal(lookups, 2);
 });
+
+test("missing social covers fall back to substantial article images, not navigation logos", () => {
+  const html =
+    '<nav><img src="/logo.svg" width="900" height="600"></nav><main><img src="/diagram.png" width="1000" height="650"></main>';
+  assert.equal(
+    parsePageMetadata(html, "https://example.com/").imageUrl,
+    "https://example.com/diagram.png",
+  );
+});
+test("an unsafe first social image does not mask a valid alternative", () => {
+  assert.equal(
+    parsePageMetadata(
+      '<meta property="og:image" content="http://127.0.0.1/x"><meta name="twitter:image" content="/real.jpg">',
+      "https://example.com/",
+    ).imageUrl,
+    "https://example.com/real.jpg",
+  );
+});
+test("icons, tracking pixels and hidden images are never fallback covers", () => {
+  assert.equal(
+    parsePageMetadata(
+      '<main><img src="/pixel.gif" width="1" height="1"><img src="/logo.svg"><img src="/hidden.png" hidden width="900" height="500"></main>',
+      "https://example.com/",
+    ).imageUrl,
+    null,
+  );
+});

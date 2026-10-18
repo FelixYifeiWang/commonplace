@@ -18,3 +18,12 @@ test("tracking reversals settle without overshoot", () => {
   }
   assert.ok(Math.abs(value + 0.3) < 0.00001);
 });
+
+import { pointerDirection } from "../lib/nox-motion.mjs";
+test("pointer direction preserves diagonals and has no hard rectangular clamp", () => {
+  const far = pointerDirection(1200, 600);
+  assert.equal(far.x / far.y, 2);
+  assert.ok(Math.hypot(far.x, far.y) < 2);
+  assert.ok(pointerDirection(800, 0).x > pointerDirection(400, 0).x);
+  assert.deepEqual(pointerDirection(0, 0), { x: 0, y: 0 });
+});

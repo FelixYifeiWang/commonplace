@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { deviceDisplayName } from "@/lib/brand.mjs";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -17,6 +18,7 @@ import {
   Radio,
   Star,
 } from "lucide-react";
+import { needsPreview } from "@/lib/preview-policy.mjs";
 import type {
   Collection,
   Item,
@@ -70,10 +72,7 @@ async function api<T = Record<string, unknown>>(
 }
 function Logo() {
   return (
-    <span className="brand-symbol" aria-hidden="true">
-      <span />
-      <span />
-    </span>
+    <Image src="/nox.svg" alt="" width={34} height={34} className="brand-nox" />
   );
 }
 function Provider({ name }: { name: string }) {
@@ -256,9 +255,7 @@ export default function Workspace({
   }, [toast, undo]);
   useEffect(() => {
     if (demo || previewBusy.current) return;
-    const pending = data.items
-      .filter((item) => item.url && item.previewStatus === "pending")
-      .slice(0, 4);
+    const pending = data.items.filter(needsPreview).slice(0, 4);
     if (!pending.length) return;
     previewBusy.current = true;
     void api("/api/previews", "POST", { ids: pending.map((item) => item.id) })

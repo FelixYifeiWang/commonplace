@@ -6,7 +6,6 @@ import {
   Layers2,
   ChevronUp,
   Search,
-  SlidersHorizontal,
   X,
   Trash2,
   Plus,
@@ -16,6 +15,8 @@ import {
 import type { Item } from "@/lib/types";
 import {
   filterItems,
+  curateGalleryItems,
+  galleryDeletionIds,
   groupItems,
   sourceHost,
   stackRows,
@@ -39,20 +40,14 @@ export function Gallery({
   canAdd?: boolean;
 }) {
   const [query, setQuery] = useState(""),
-    [type, setType] = useState("all"),
-    [site, setSite] = useState("all"),
     [expanded, setExpanded] = useState<string[]>([]),
     [selecting, setSelecting] = useState(false),
     [selected, setSelected] = useState<string[]>([]),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [screenshots, setScreenshots] = useState(true),
     [deleting, setDeleting] = useState<string[]>([]);
-  const sites = useMemo(
-    () => [...new Set(items.map(sourceHost).filter(Boolean))].sort(),
-    [items],
-  );
-  const filtered = filterItems(items, { query, type, site }) as Item[];
+  const curated = useMemo(() => curateGalleryItems(items) as Item[], [items]);
+  const filtered = filterItems(curated, { query }) as Item[];
   const groups: Group[] = groupItems(filtered, !selecting);
   const grid = useRef<HTMLDivElement>(null);
   const [outlines, setOutlines] = useState<
@@ -87,12 +82,12 @@ export function Gallery({
       observer.observe(card);
     measure();
     return () => observer.disconnect();
-  }, [expanded, items, selecting, query, type, site]);
+  }, [expanded, items, selecting, query]);
   const toggle = (id: string) =>
     setSelected((s) =>
       s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
     );
-  const filtersActive = type !== "all" || site !== "all" || !!query;
+  const filtersActive = !!query;
   function card(group: Group, cover = false, memberOf = "") {
     const item = group.items[0],
       stack = group.items.length > 1,
@@ -130,7 +125,7 @@ export function Gallery({
               </>
             )}
             <div className="stack-front">
-              <MediaCard key={item.id} item={item} screenshots={screenshots} />
+              <MediaCard key={item.id} item={item} screenshots />
             </div>
             {selecting && (
               <span className="block-select">
@@ -177,7 +172,7 @@ export function Gallery({
               setDeleting((ids) => [...ids, item.id]);
               setError("");
               try {
-                await onDelete([item.id]);
+                await onDelete(galleryDeletionIds(items, [item.id]));
               } catch (e) {
                 setError(
                   e instanceof Error
@@ -200,7 +195,7 @@ export function Gallery({
       <div className="gallery-tools">
         <span className="gallery-count">
           {filtersActive ? `${filtered.length} / ` : ""}
-          {items.length} {items.length === 1 ? "block" : "blocks"}
+          {curated.length} {curated.length === 1 ? "block" : "blocks"}
         </span>
         <div className="gallery-tool-actions">
           <label className="gallery-search">
@@ -217,70 +212,7 @@ export function Gallery({
               </button>
             )}
           </label>
-          <details className="gallery-filters">
-            <summary aria-label="Filter sources" title="Filter sources">
-              <SlidersHorizontal size={16} />
-              {filtersActive && <i />}
-            </summary>
-            <div className="gallery-filter-panel">
-              <label>
-                Type
-                <select
-                  aria-label="Media type"
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                >
-                  {[
-                    ["all", "Everything"],
-                    ["link", "Websites"],
-                    ["image", "Images"],
-                    ["text", "Text"],
-                    ["video", "Video"],
-                    ["audio", "Audio"],
-                    ["file", "Files"],
-                  ].map(([v, l]) => (
-                    <option value={v} key={v}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Source
-                <select
-                  aria-label="Source website"
-                  value={site}
-                  onChange={(e) => setSite(e.target.value)}
-                >
-                  <option value="all">All sites</option>
-                  {sites.map((host) => (
-                    <option key={host}>{host}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Web previews
-                <select
-                  aria-label="Website preview style"
-                  value={screenshots ? "page" : "cover"}
-                  onChange={(e) => setScreenshots(e.target.value === "page")}
-                >
-                  <option value="page">Page screenshots</option>
-                  <option value="cover">Cover images</option>
-                </select>
-              </label>
-              <button
-                className="text-button"
-                onClick={() => {
-                  setType("all");
-                  setSite("all");
-                  setQuery("");
-                }}
-              >
-                Clear filters
-              </button>
-            </div>
-          </details>
+
           <button
             className={`gallery-tool ${selecting ? "active" : ""}`}
             aria-label={selecting ? "Cancel selection" : "Select blocks"}
@@ -317,7 +249,7 @@ export function Gallery({
             onClick={async () => {
               setBusy(true);
               try {
-                await onDelete(selected);
+                await onDelete(galleryDeletionIds(items, selected));
                 setSelected([]);
                 setSelecting(false);
               } catch (e) {
@@ -370,17 +302,15 @@ export function Gallery({
           </Fragment>
         ))}
       </div>
-      {!groups.length && items.length > 0 && (
+      {!groups.length && !!query && (
         <div className="gallery-empty">
           <p>No matching blocks</p>
           <button
             onClick={() => {
               setQuery("");
-              setType("all");
-              setSite("all");
             }}
           >
-            Clear filters
+            Clear search
           </button>
         </div>
       )}

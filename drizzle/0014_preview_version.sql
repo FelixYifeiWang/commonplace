@@ -1,0 +1,1 @@
+ALTER TABLE items ADD COLUMN preview_version INTEGER NOT NULL DEFAULT 0;

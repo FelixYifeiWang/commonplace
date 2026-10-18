@@ -9,6 +9,7 @@ import {
   HttpError,
 } from "@/lib/server";
 import preview from "@/lib/runtime-preview";
+import { PREVIEW_VERSION, needsPreview } from "@/lib/preview-policy.mjs";
 import { publicUrl } from "@/lib/media.mjs";
 export async function POST(request: Request) {
   try {
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
       .where(and(eq(items.ownerId, user.userId), inArray(items.id, body.ids)));
     await Promise.all(
       rows.map(async (item) => {
-        if (!item.url || item.previewStatus === "ready") return;
+        if (!item.url || item.deletedAt || !needsPreview(item)) return;
         let data;
         try {
           data = await preview.preview(item.url);
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
         await db
           .update(items)
           .set({
+            previewVersion: PREVIEW_VERSION,
             previewStatus:
               data.previewStatus === "ready" ? "ready" : "unavailable",
             ...(data.title ? { title: data.title.slice(0, 240) } : {}),

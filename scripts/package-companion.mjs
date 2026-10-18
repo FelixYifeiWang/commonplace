@@ -10,6 +10,7 @@ const sources = {
   "package-lock.json": "desktop/release/package-lock.json",
   "desktop/native/bin/commonplace-target": "desktop/release/commonplace-target",
   "lib/protocol.mjs": "lib/protocol.mjs",
+  "lib/nox-motion.mjs": "lib/nox-motion.mjs",
 };
 for (const file of [
   "main.mjs",
