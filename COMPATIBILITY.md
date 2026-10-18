@@ -1,6 +1,6 @@
 # Permission-free session connections
 
-Checked locally on 17 October 2026. These findings do not imply that all adapters are implemented.
+Checked locally on 17 October 2026. Window targeting and prompt-based identification are separate connection routes.
 
 | App | Local evidence | Current boundary |
 | --- | --- | --- |
@@ -14,3 +14,15 @@ The connection target detector uses window geometry and the owner process, witho
 Following an identified session is a separate problem from identifying the connection target. A local watcher can forward new turns for the explicitly subscribed ID. Both [Claude Code hooks](https://code.claude.com/docs/en/hooks) and [Cursor hooks](https://cursor.com/docs/hooks) expose session identifiers and transcript paths as potential event-based alternatives. Hooks alone do not identify the tab under a drop; installing them is additional setup and is not part of the current preview.
 
 No Claude or Cursor configuration was changed, and no conversation was subscribed or uploaded during this investigation. Read-only local schema checks inspected field names and ID joins. These local formats are undocumented and version-dependent.
+
+## Implemented setup-prompt route
+
+The one-prompt installer matches the private setup URL in a user message, then follows the resulting file every 15 seconds. It does not depend on the selected window, terminal tab, hooks, or Accessibility.
+
+| Provider | Supported local transcript |
+| --- | --- |
+| Codex | `.codex/sessions/**/*.jsonl` (or the configured `CODEX_HOME`) |
+| Claude Code | `.claude/projects/<project>/<session>.jsonl` |
+| Cursor | `.cursor/projects/<project>/agent-transcripts/<session>/<session>.jsonl` |
+
+Synthetic transcripts for all three passed initial and incremental capture through the local API. Cursor's outer-role JSONL format was also checked against local field names. These tests do not establish compatibility with every app version. Old Cursor text logs, unsaved prompts, disabled transcripts and cloud-only conversations fail with an explanation. No real Claude or Cursor conversation was connected during verification.

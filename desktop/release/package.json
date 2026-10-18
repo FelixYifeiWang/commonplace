@@ -1,0 +1,1 @@
+{"name":"commonplace-buddy","version":"0.1.0","private":true,"type":"module","main":"desktop/main.mjs","dependencies":{"electron":"44.9.0"}}

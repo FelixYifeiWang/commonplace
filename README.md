@@ -11,7 +11,7 @@ The collection starts with a picker, square blocks, and an add button. Click a b
 ## Connection routes
 
 - **Desktop (macOS preview):** open one Codex window, open the conversation, then move the buddy over the conversation area, click it and choose Connect. It connects and follows new turns while the companion runs. No Accessibility or screen-recording permission is requested. It checks the selected transcript every 15 seconds; the webpage refreshes every four seconds.
-- **Coding agent:** copy the setup sentence from Connect. The current implementation imports a conversation once through a scoped API token. Automatic setup of a persistent local connector is planned; this draft does not claim an agent keeps monitoring after its turn ends.
+- **One prompt (recommended):** choose Connections → Connect a session → Copy setup prompt, then paste into a local Codex, Claude Code or Cursor conversation. The agent downloads the buddy, pairs it with the space, and follows that exact conversation. macOS 13+, Node.js 22.13+ and npm are required. A prebuilt universal helper avoids an Xcode requirement. The buddy runs now and at login; later prompts reuse it. Agent or macOS approval prompts may still occur. Cloud agents and disabled/local text-only transcripts are not supported.
 
 Both routes use the same device/subscription APIs. A device token is scoped to writes for its owner; pause stops ingestion and revocation disables the device. Server tokens are hashed; desktop credentials are encrypted using Electron safeStorage. Only explicitly selected transcripts are uploaded.
 
@@ -21,7 +21,7 @@ Collections, manual blocks, source passages, account sign-in, revocable connecti
 
 ## Unfinished
 
-The example collection is sample content, not a live extraction. Direct connection currently supports Codex only. Inactive sidebar rows must be opened first. Claude Code and Cursor feasibility findings are in `COMPATIBILITY.md`; they are not yet connected to the connection handler. There is no signed desktop installer or freely editable mind map yet.
+The example collection is sample content, not a live extraction. Clicking the desktop buddy to identify an open window currently supports Codex only. Inactive sidebar rows must be opened first. The setup-prompt route supports local Codex, Claude Code and Cursor JSONL transcripts; see `COMPATIBILITY.md`. There is no signed desktop installer or freely editable mind map yet.
 
 The older Sites preview has an additional Sites authentication boundary. The Vercel deployment uses its own private access code. Desktop hosted sign-in and unattended hosted syncing still need an end-to-end companion check; local companion syncing is the tested development path.
 
@@ -87,8 +87,16 @@ vercel deploy --prod
 
 The migration runner records applied SQL files and batches each migration atomically. Hosted uploads use scoped presigned URLs and OIDC, then authenticated file delivery. The OpenAI key is only used by server functions. Source changes schedule background Story work after the response; durable leases and checkpoints prevent duplicate continuations. Each invocation is bounded; pending work resumes on subsequent updates, Story visits, or the daily recovery cron. Very long imports may need more than one invocation.
 
-Hosted website cards use metadata covers. The native browser screenshot renderer remains local. No Electron or session-history reader runs on Vercel. To connect the desktop companion to the hosted space, launch it with `COMMONPLACE_ORIGIN` set to the deployment URL and sign in there; this explicitly selects a different destination for future subscriptions.
+Hosted website cards use metadata covers. The native browser screenshot renderer remains local. No Electron or session-history reader runs on Vercel. To connect to the hosted space, copy its setup prompt and paste it into a local agent. The pairing link selects that destination; existing local subscriptions are not migrated.
 
 Vercel Hobby and Turso Starter were selected for the prototype; OpenAI requests consume paid API credits. No paid infrastructure plan is required for this deployment. Monitor each provider's free quotas before scaling.
 
 `tests/hosted.integration.mjs` is an explicit live check using `COMMONPLACE_TEST_URL`, the access code, and hosted database credentials from the environment. It verifies authentication, automatic GPT-6 Luna continuation, direct private uploads, downloads, byte ranges and deletion, then removes only its database fixtures. It makes paid model calls; remove its reported Blob fixture with the Vercel CLI afterward.
+
+## One-prompt setup internals
+
+`/setup` and `/SKILL.md` serve agent-readable instructions. An authenticated copy action issues a single-use, 30-minute pairing code in a URL fragment. The installer finds that exact code in a user message in local transcript tails; ambiguous matches fail rather than guessing. Only the matched transcript is subscribed. Setup links are redacted before ingestion.
+
+The client-only release at `/companion/` is generated by `npm run companion:package` before local and hosted builds. Its manifest carries SHA-256 hashes; the Electron dependency is pinned with npm integrity checks. The committed universal helper in `desktop/release/` is built from `desktop/native/Target.swift`; it is ad-hoc signed, not a notarized app distribution. Device keys are encrypted by Electron; setup request files are removed after processing. No MCP servers, hooks, global packages or agent settings are installed.
+
+The per-space installation lives in `~/Library/Application Support/Commonplace/<space-id>`. Its generated `uninstall.mjs` stops automatic launch while retaining saved collections and local credentials. Connections settings can revoke the device. A full fresh-Mac install still needs real-world validation; tests exercise the installer with process launch mocked and all three providers with disposable transcripts through the real API.

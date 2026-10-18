@@ -1,12 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  ChevronDown,
   Copy,
   ExternalLink,
   Loader2,
@@ -88,7 +86,6 @@ export default function Workspace({
 }: {
   initialDemo?: boolean;
 }) {
-  const router = useRouter();
   const demo = initialDemo;
   const [data, setData] = useState<WorkspaceData>(() =>
       initialDemo ? structuredClone(SAMPLE) : EMPTY,
@@ -105,7 +102,6 @@ export default function Workspace({
     [detail, setDetail] = useState<Item | null>(null);
   const [busy, setBusy] = useState(false),
     [toast, setToast] = useState(""),
-    [copyText, setCopyText] = useState(""),
     [copied, setCopied] = useState(false),
     [modalError, setModalError] = useState("");
   const [view, setView] = useState<"gallery" | "story">("gallery");
@@ -245,22 +241,12 @@ export default function Workspace({
     setBusy(true);
     setModalError("");
     try {
-      let sentence = copyText;
-      if (!sentence) {
-        if (demo) {
-          sentence =
-            "Connect this computer to my Commonplace space using [your private connection link], then import this conversation once.";
-        } else {
-          const device = await api<{ id: string; token: string }>(
-            "/api/devices",
-            "POST",
-            { name: "My computer" },
-          );
-          sentence = `Connect this computer to my Commonplace space using ${window.location.origin}/agent#${device.token}, then import this conversation once.`;
-          await refresh();
-        }
-        setCopyText(sentence);
-      }
+      const setup = demo
+        ? null
+        : await api<{ link: string }>("/api/setup", "POST");
+      const sentence = setup
+        ? `Set up ${setup.link} — install the buddy and keep this conversation connected to my Commonplace space.`
+        : "Set up [your private Commonplace setup link] — install the buddy and keep this conversation connected.";
       await navigator.clipboard.writeText(sentence);
       setCopied(true);
       setToast(
@@ -555,6 +541,16 @@ export default function Workspace({
                   <button onClick={() => void refresh()}>Try again</button>
                 </div>
               )}
+              {screen === "collection" && !collections.length && !demo && (
+                <div className="welcome">
+                  <button
+                    className="button primary"
+                    onClick={() => openModal("connect")}
+                  >
+                    Connect a session <ArrowRight size={15} />
+                  </button>
+                </div>
+              )}
               {screen === "collection" &&
                 (view === "gallery" || selected === "all") && (
                   <Gallery
@@ -695,7 +691,6 @@ export default function Workspace({
                                     id: device.id,
                                   });
                                   await refresh();
-                                  setCopyText("");
                                   setToast("Computer disconnected.");
                                 } catch (e) {
                                   setToast(
@@ -732,76 +727,28 @@ export default function Workspace({
       )}
       {modal === "connect" && (
         <Modal title="Connect a session" onClose={() => setModal(null)}>
+          <p className="companion-build-note">
+            Paste into Codex, Claude Code, or Cursor.
+          </p>
           <button
             className="button primary full"
+            onClick={() => void connect()}
             disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              setModalError("");
-              try {
-                if (demo) {
-                  router.push("/");
-                  return;
-                }
-                const device = await api<{ id: string; token: string }>(
-                  "/api/devices",
-                  "POST",
-                  { name: "Desktop companion" },
-                );
-                window.location.href = `commonplace://pair?origin=${encodeURIComponent(window.location.origin)}#${device.token}`;
-                setCopied(true);
-                await refresh();
-              } catch (e) {
-                setModalError(
-                  e instanceof Error ? e.message : "Could not open companion.",
-                );
-              } finally {
-                setBusy(false);
-              }
-            }}
           >
-            {busy ? (
-              <Loader2 className="spin" size={15} />
-            ) : (
-              <Monitor size={15} />
-            )}
-            Open buddy
-            <ArrowUpRight size={14} />
+            {busy ? <Loader2 className="spin" size={15} /> : <Copy size={15} />}
+            {copied ? "Copy again" : "Copy setup prompt"}
           </button>
-          {copied && (
-            <p className="connection-wait">
-              <span className="live-dot" />
-              Open a conversation, then drop the desktop buddy over it.
-            </p>
-          )}
+          <p className="companion-build-note">
+            Mac · installs once · follows this session
+          </p>
           {modalError && (
             <p className="form-error" role="alert">
               {modalError}
             </p>
           )}
-          <p className="companion-build-note">
-            Drag the desktop buddy over an open Codex conversation.
-          </p>
-          <details className="advanced-connection">
-            <summary>
-              Use a coding agent <ChevronDown size={12} />
-            </summary>
-            <p>
-              Paste one sentence into your agent. This preview imports the
-              current conversation once; automatic background setup is coming
-              next.
-            </p>
-            <button
-              className="button subtle full"
-              onClick={() => void connect()}
-              disabled={busy}
-            >
-              <Copy size={13} />
-              {copyText ? "Copy connection again" : "Copy setup sentence"}
-            </button>
-          </details>
         </Modal>
       )}
+
       {modal === "collection" && (
         <Modal title="New collection" onClose={() => setModal(null)}>
           <form onSubmit={createCollection} className="form">

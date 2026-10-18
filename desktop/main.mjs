@@ -14,6 +14,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { resolveLocalTarget } from "./target.mjs";
+import { consumeSetupRequest } from "./setup-inbox.mjs";
 import { connectSession } from "./connect.mjs";
 import { createDragController, buddyBounds } from "./drag.mjs";
 const exec = promisify(execFile);
@@ -21,6 +22,32 @@ import fs from "node:fs/promises";
 import { pathToFileURL, fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ORIGIN = process.env.COMMONPLACE_ORIGIN || "http://127.0.0.1:3100";
+if (process.env.COMMONPLACE_DATA_DIR) {
+  if (!path.isAbsolute(process.env.COMMONPLACE_DATA_DIR))
+    throw new Error("Invalid companion storage path.");
+  app.setPath("userData", process.env.COMMONPLACE_DATA_DIR);
+}
+let setupBusy = false;
+async function processSetup() {
+  if (setupBusy || busy) return;
+  setupBusy = true;
+  try {
+    await consumeSetupRequest(app.getPath("userData"), {
+      origin: ORIGIN,
+      connection,
+      pair,
+      subscribe: subscribeSource,
+      capture: captureSource,
+      report: showDropFeedback,
+      request,
+    });
+  } catch (error) {
+    lastError = error.message;
+    status = "error";
+  } finally {
+    setupBusy = false;
+  }
+}
 let win,
   feedbackWindow,
   feedbackTimer,
@@ -54,14 +81,14 @@ async function persist() {
     mode: 0o600,
   });
 }
-async function pair({ token, origin }) {
+async function pair({ token, origin, id }) {
   if (origin !== ORIGIN || !/^[a-f0-9]{64}$/.test(token))
     throw new Error("This connection does not belong to the configured space.");
   if (!safeStorage.isEncryptionAvailable())
     throw new Error(
       "Secure credential storage is unavailable on this computer.",
     );
-  connection = { origin, token };
+  connection = { origin, token, id };
   await fs.mkdir(app.getPath("userData"), { recursive: true });
   await fs.writeFile(
     configPath(),
@@ -79,7 +106,7 @@ async function request(url, options) {
   });
 }
 async function tick() {
-  if (!connection || busy || dragController?.isDragging()) return;
+  if (!connection || setupBusy || busy || dragController?.isDragging()) return;
   busy = true;
   try {
     for (const subscription of subscriptions.filter(
@@ -315,7 +342,7 @@ if (!lock) {
       }
       if (process.defaultApp) {
         app.setAsDefaultProtocolClient("commonplace", process.execPath, [
-          path.resolve(__dirname),
+          app.getAppPath(),
         ]);
       } else app.setAsDefaultProtocolClient("commonplace");
       const area = screen.getPrimaryDisplay().workArea;
@@ -486,13 +513,21 @@ if (!lock) {
         event.preventDefault(),
       );
       await feedbackWindow.loadURL(`${ORIGIN}/buddy/feedback`);
+      const hasSetupRequest = await fs
+        .access(path.join(app.getPath("userData"), "setup-request.json"))
+        .then(
+          () => true,
+          () => false,
+        );
       const authCheck = await net.fetch(`${ORIGIN}/api/workspace`, {
         redirect: "manual",
       });
       if (
-        authCheck.status === 401 ||
-        authCheck.status === 302 ||
-        authCheck.status === 303
+        !connection &&
+        !hasSetupRequest &&
+        (authCheck.status === 401 ||
+          authCheck.status === 302 ||
+          authCheck.status === 303)
       ) {
         const login = new BrowserWindow({
           width: 900,
@@ -545,6 +580,8 @@ if (!lock) {
         ]),
       );
       tray.on("click", () => win.show());
+      await processSetup();
+      setInterval(() => void processSetup(), 2000);
       setInterval(() => void tick(), 15000);
       void tick();
     })

@@ -64,3 +64,5 @@ next-env.d.ts
 !/build/local-files.mjs
 
 !/build/story-plugin.mjs
+
+/public/companion/

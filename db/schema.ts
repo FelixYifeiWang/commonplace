@@ -122,3 +122,10 @@ export const storyBeats = sqliteTable(
     uniqueIndex("story_beats_order").on(table.collectionId, table.position),
   ],
 );
+
+export const pairingCodes = sqliteTable("pairing_codes", {
+  codeHash: text("code_hash").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+  claimId: text("claim_id"),
+});
