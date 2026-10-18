@@ -32,7 +32,7 @@ The older Sites preview has an additional Sites authentication boundary. Vercel 
 
 ## Development
 
-React 19, TypeScript, Vinext (Next App Router compatibility), Cloudflare Workers, D1/Drizzle, Electron. Node >=22.13. The desktop buddy requires macOS and Xcode Command Line Tools (`swiftc`).
+React 19, TypeScript, Vinext (Next App Router compatibility), Cloudflare Workers, D1/Drizzle, Electron. Node >=22.13. The desktop buddy requires macOS. Building its native helper from source requires Xcode Command Line Tools (`swiftc`); setup uses the prebuilt universal helper. Rebuild that release binary with `node desktop/build-native.mjs --release`.
 
 ```sh
 npm ci
@@ -117,7 +117,7 @@ Electron 44.9.0 has an on-demand binary installer. After `npm ci`, the installer
 
 Dragging preserves the grab offset. Native mouse events move and release the window before renderer dispatch, so renderer delays cannot extend a drag. Capture loss and focus changes keep the latest position; only Escape cancels back to the start. Connect fades into reserved space above the face without resizing the window.
 
-Right-click the buddy for **Hide buddy** or **Quit and stop syncing**. Hide keeps subscriptions running. The Commonplace menu-bar icon restores it. **Open buddy** in the website header restores a hidden buddy or launches it after Quit. The installer registers a small macOS launcher for this, without modifying Electron’s signed runtime. Existing installations need one setup update to receive it. The browser may ask permission to open Commonplace. If nothing opens, the dialog offers setup. Opening the buddy never connects a session.
+Right-click the buddy for **Hide buddy** or **Quit and stop syncing**. Hide keeps subscriptions running. The Commonplace menu-bar icon restores it. **Open buddy** in the website header restores a hidden buddy or launches it after Quit. The installer registers a small macOS launcher and explicitly makes it the default `commonplace://` handler, without modifying Electron’s signed runtime. Setup verifies that the link resolves to Commonplace, and development Electron never registers itself as the macOS handler. Existing installations need one setup update to receive it. The browser may ask permission to open Commonplace. If nothing opens, the dialog offers setup. Opening the buddy never connects a session.
 
 Native checks: two off-center drags moved by exactly the pointer delta, release coordinates matched the saved position, Connect kept the face fixed, and Hide removed the window. Browser automation blocks the desktop URI, so the complete browser-to-native handoff must also be checked in a regular browser. Installer and one-shot reopen behavior are covered by the remote test suite.
 
@@ -132,3 +132,7 @@ Run `tests/hosted-account.integration.mjs` with `COMMONPLACE_TEST_URL` set to th
 ### Neutral workspace release checks
 
 Production build passed 214 tests, ESLint, TypeScript, and Next.js compilation. Hosted checks covered the simplified picker, manual creation and recoverable deletion, Gallery/Map/Story, Add block, and the buddy setup fallback. Google OAuth and account-isolation integration checks passed against production. The macOS opener compiled without registering or launching an app. The automated browser blocked the external-app handoff, and its viewport override did not apply, so native handoff and mobile layout still require manual verification. Local preview was stopped; saved local data and credentials were retained.
+
+### Buddy link repair
+
+The macOS helper explicitly assigns and verifies Commonplace’s URL handler during setup. The development Electron runtime no longer claims it. The universal helper builds for Intel and Apple Silicon on macOS 13+. Vercel passed 215 tests, lint, TypeScript, and compilation. The existing production companion was upgraded without re-pairing; its saved credentials and subscriptions were retained. macOS resolved the URL to Commonplace.app after the companion started, and the running window showed the hosted buddy. Browser-to-app clicks remain a manual check because browser automation blocks external schemes.

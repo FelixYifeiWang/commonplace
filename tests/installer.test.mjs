@@ -81,6 +81,8 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
     kicks = 0,
     data;
   const run = async (command, args, options) => {
+    if (args[0] === "--register-opener")
+      return { stdout: JSON.stringify({ handler: args[1] }) };
     if (command === "npm") {
       installs++;
       assert.deepEqual(args, ["ci", "--omit=dev", "--no-audit", "--no-fund"]);
@@ -213,8 +215,14 @@ test("launcher registers a reveal-only app without modifying Electron", async (t
       service: "gui/501/ai.commonplace.test",
       plist: join(root, "agent.plist"),
       space: "test",
+      helper: join(root, "commonplace-target"),
     },
-    async (...args) => calls.push(args),
+    async (...args) => {
+      calls.push(args);
+      return {
+        stdout: JSON.stringify({ handler: "ai.commonplace.opener.test" }),
+      };
+    },
   );
   const script = await readFile(join(root, "open-buddy.applescript"), "utf8");
   assert.ok(script.includes("on open location incomingURL"));
@@ -226,6 +234,35 @@ test("launcher registers a reveal-only app without modifying Electron", async (t
   assert.ok(!script.includes("incomingURL &"));
   assert.equal(calls[0][0], "/usr/bin/osacompile");
   assert.ok(calls.some(([, args]) => args.includes("CFBundleURLTypes")));
-  assert.deepEqual(calls.at(-1)[1], ["-f", appPath]);
+  assert.deepEqual(calls.at(-2)[1], ["-f", appPath]);
+  assert.deepEqual(calls.at(-1)[1], [
+    "--register-opener",
+    "ai.commonplace.opener.test",
+  ]);
   assert.ok(!JSON.stringify(calls).includes("Electron.app"));
+});
+
+test("setup fails instead of claiming success when the URL handler remains Electron", async (t) => {
+  const { mkdtemp, rm } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const root = await mkdtemp(join(tmpdir(), "buddy-handler-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await assert.rejects(
+    installLauncher(
+      {
+        root,
+        origin: "https://space.example",
+        data: root,
+        service: "gui/501/ai.commonplace.test",
+        plist: join(root, "agent.plist"),
+        space: "test",
+        helper: join(root, "helper"),
+      },
+      async () => ({
+        stdout: JSON.stringify({ handler: "com.github.electron" }),
+      }),
+    ),
+    /Could not register/,
+  );
 });

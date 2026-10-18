@@ -111,7 +111,7 @@ async function download(url) {
 // A small app owns the URL scheme, so Electron's signed runtime stays untouched.
 // All paths are fixed at installation. Incoming URLs never become shell commands.
 export async function installLauncher(
-  { root, origin, data, service, plist, space },
+  { root, origin, data, service, plist, space, helper },
   run = exec,
 ) {
   const quote = (value) => "'" + String(value).replaceAll("'", "'\"'\"'") + "'";
@@ -160,6 +160,16 @@ end revealBuddy
     "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
     ["-f", appPath],
   );
+  const expected = `ai.commonplace.opener.${space}`;
+  const result = await run(helper, ["--register-opener", expected]);
+  let handler;
+  try {
+    handler = JSON.parse(result?.stdout || "{}").handler;
+  } catch {
+    /* Report one clear setup failure below. */
+  }
+  if (handler !== expected)
+    throw new Error("Could not register the buddy launcher. Run setup again.");
   return appPath;
 }
 
@@ -326,7 +336,18 @@ export async function install(
       if (e.code !== "ENOENT") throw e;
     }
     const service = `gui/${process.getuid()}/${label}`;
-    await installLauncher({ root, origin, data, service, plist, space }, run);
+    await installLauncher(
+      {
+        root,
+        origin,
+        data,
+        service,
+        plist,
+        space,
+        helper: join(runtime, "desktop/native/bin/commonplace-target"),
+      },
+      run,
+    );
     if (!same) {
       try {
         await run("/bin/launchctl", ["bootout", service]);

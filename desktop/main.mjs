@@ -478,11 +478,9 @@ if (!lock) {
         if (error.code !== "ENOENT")
           lastError = "Saved subscriptions could not be restored.";
       }
-      if (!process.env.COMMONPLACE_LAUNCHER && process.defaultApp) {
-        app.setAsDefaultProtocolClient("commonplace", process.execPath, [
-          app.getAppPath(),
-        ]);
-      } else if (!process.env.COMMONPLACE_LAUNCHER)
+      // macOS setup registers Commonplace.app. Registering bare Electron here
+      // discards the app entry path and opens Electron's welcome screen.
+      if (process.platform !== "darwin" && !process.defaultApp)
         app.setAsDefaultProtocolClient("commonplace");
       const area = screen.getPrimaryDisplay().workArea;
       win = new BrowserWindow({
