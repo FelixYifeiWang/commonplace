@@ -20,6 +20,8 @@ import { consumeSetupRequest, consumeShowRequest } from "./setup-inbox.mjs";
 import { connectSession, SUPPORTED_APPS } from "./connect.mjs";
 import {
   createDragController,
+  createHoverController,
+  buddyHoverRegion,
   buddyBounds,
   handleBuddyMouse,
 } from "./drag.mjs";
@@ -71,6 +73,7 @@ let win,
   subscriptions = [],
   cursors = {},
   dragController,
+  hoverController,
   expanded = false,
   targetTitle = "",
   busy = false,
@@ -201,6 +204,7 @@ function showBuddy() {
   notifyBuddy();
 }
 function hideBuddy() {
+  hoverController?.reset();
   dragController?.cancel();
   candidateRevision++;
   setExpanded(false);
@@ -296,7 +300,7 @@ async function toggleControls() {
   candidateRevision++;
   candidate = null;
   candidateConnected = false;
-  setExpanded(!expanded);
+  setExpanded(true);
   if (expanded && connection) await findCandidate();
 }
 async function captureSource(_source, subscription) {
@@ -568,13 +572,41 @@ if (!lock) {
         polling: false,
         cursor: () => screen.getCursorScreenPoint(),
         onMoveStart: () => {
+          hoverController?.reset();
           candidateRevision++;
           setExpanded(false);
         },
       });
+      hoverController = createHoverController({
+        onChange: (open) => {
+          if (open) void toggleControls();
+          else {
+            candidateRevision++;
+            setExpanded(false);
+          }
+        },
+      });
+      const hoverTimer = setInterval(() => {
+        if (
+          win.isDestroyed() ||
+          !win.isVisible() ||
+          connecting ||
+          dragController.isDragging()
+        )
+          return;
+        const cursor = screen.getCursorScreenPoint(),
+          bounds = win.getBounds();
+        hoverController.update(
+          buddyHoverRegion(
+            { x: cursor.x - bounds.x, y: cursor.y - bounds.y },
+            expanded,
+          ),
+        );
+      }, 60);
+      win.once("closed", () => clearInterval(hoverTimer));
       const finishDrag = (result) => {
         notifyBuddy();
-        if (result.click) void toggleControls();
+        if (result.click) hoverController.show();
         if (result.moved) void persist();
       };
       win.webContents.on("before-mouse-event", (_event, mouse) => {
@@ -589,6 +621,7 @@ if (!lock) {
       win.webContents.on("before-input-event", (_event, input) => {
         if (input.type === "keyDown" && input.key === "Escape") {
           dragController.cancel({ restore: true });
+          hoverController.reset();
           notifyBuddy();
         }
       });
@@ -602,7 +635,7 @@ if (!lock) {
       register("companion:drag-start", () => dragController.isDragging());
       register("companion:drag-end", () => ({ click: false }));
       register("companion:drag-cancel", () => {});
-      register("companion:toggle", toggleControls);
+      register("companion:toggle", () => hoverController.show());
       register("companion:hit-test", (interactive) => {
         if (!dragController.isDragging())
           win.setIgnoreMouseEvents(!interactive, { forward: true });

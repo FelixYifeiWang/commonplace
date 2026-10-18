@@ -42,7 +42,6 @@ function safeURL(value: string | null | undefined) {
 
 export function SessionView({
   collectionId,
-  name,
   items,
   mode,
   onOpen,
@@ -130,7 +129,7 @@ export function SessionView({
               Retry
             </button>
           </>
-        ) : working ? (
+        ) : working && session ? (
           <span className="session-updating">
             <i />
             {session ? "Updating" : "Reading the session"}
@@ -146,36 +145,18 @@ export function SessionView({
       ) : mode === "story" && !!story?.beats.length ? (
         <StoryView collectionId={collectionId} items={items} onOpen={onOpen} />
       ) : (
-        <div className="session-await">
-          <div className="session-await-mark" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </div>
-          <h2>{name}</h2>
-          <p>
-            {demo
-              ? "Connect a session to see its story and map."
-              : !story
-                ? "Opening…"
+        <div className="session-await" role="status" aria-live="polite">
+          {!problem && (
+            <p className={working || !story ? "session-updating" : ""}>
+              {(working || !story) && <i />}
+              {!story
+                ? "Loading…"
                 : story.enabled === false
-                  ? "Story generation is not configured."
+                  ? "Not available yet."
                   : working
-                    ? "Reading…"
-                    : "No story yet."}
-          </p>
-          {!!items.length && (
-            <div className="session-await-sources">
-              {items.slice(0, 4).map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => onOpen(item)}
-                  aria-label={item.title}
-                >
-                  <SheetMedia item={item} screenshots={false} />
-                </button>
-              ))}
-            </div>
+                    ? `Creating ${mode === "gallery" ? "map" : "story"}…`
+                    : "Add sources or connect a session to begin."}
+            </p>
           )}
         </div>
       )}

@@ -86,7 +86,7 @@ export function handleBuddyMouse(
       !enabled ||
       mouse.x < 0 ||
       mouse.x > 104 ||
-      mouse.y < 54 ||
+      mouse.y < 74 ||
       mouse.y > 166
     )
       return;
@@ -100,4 +100,53 @@ export function handleBuddyMouse(
       onFinish({ click: false, moved: true });
     } else drag.move(point);
   }
+}
+
+// A single corridor spans the face and controls. Keep window geometry unchanged.
+export function buddyHoverRegion(point, expanded) {
+  return (
+    point.x >= 0 &&
+    point.x <= 104 &&
+    point.y >= (expanded ? 12 : 54) &&
+    point.y <= 166
+  );
+}
+export function createHoverController({ onChange, now = Date.now }) {
+  let open = false,
+    leftAt = null,
+    suppressed = false,
+    pinned = false;
+  const set = (value) => {
+    if (open === value) return;
+    open = value;
+    onChange(value);
+  };
+  return {
+    update(inside) {
+      if (suppressed) {
+        if (!inside) suppressed = false;
+        return;
+      }
+      if (inside) {
+        pinned = false;
+        leftAt = null;
+        set(true);
+      } else if (open && !pinned) {
+        leftAt ??= now();
+        if (now() - leftAt >= 280) set(false);
+      }
+    },
+    show() {
+      pinned = true;
+      suppressed = false;
+      leftAt = null;
+      set(true);
+    },
+    reset() {
+      pinned = false;
+      suppressed = true;
+      leftAt = null;
+      set(false);
+    },
+  };
 }

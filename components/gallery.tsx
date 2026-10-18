@@ -1,9 +1,10 @@
 "use client";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   Check,
   CheckSquare2,
   Layers2,
+  ChevronUp,
   Search,
   SlidersHorizontal,
   X,
@@ -11,7 +12,6 @@ import {
   Plus,
   ArrowUp,
   Paperclip,
-  ChevronDown,
 } from "lucide-react";
 import type { Item } from "@/lib/types";
 import { filterItems, groupItems, sourceHost } from "@/lib/gallery.mjs";
@@ -53,14 +53,15 @@ export function Gallery({
       s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
     );
   const filtersActive = type !== "all" || site !== "all" || !!query;
-  function card(group: Group, cover = false) {
+  function card(group: Group, cover = false, memberOf = "") {
     const item = group.items[0],
       stack = group.items.length > 1,
       open = expanded.includes(group.key);
     return (
       <button
-        className={`gallery-card ${stack ? "is-stack" : ""} ${open && stack ? "stack-open" : ""} ${selected.includes(item.id) ? "is-selected" : ""}`}
+        className={`gallery-card ${stack ? "is-stack" : ""} ${open && stack ? "stack-open" : ""} ${memberOf ? "stack-member" : ""} ${selected.includes(item.id) ? "is-selected" : ""}`}
         key={group.key}
+        data-stack={memberOf || (stack ? group.key : undefined)}
         aria-label={
           stack
             ? `${open ? "Fold" : "Expand"} ${group.title}, ${group.items.length} sources`
@@ -95,8 +96,8 @@ export function Gallery({
           )}
           {stack && (
             <span className="stack-count">
-              {open ? <ChevronDown size={12} /> : <Layers2 size={12} />}{" "}
-              {group.items.length}
+              {open ? <ChevronUp size={12} /> : <Layers2 size={12} />}{" "}
+              {open ? "Fold" : group.items.length}
             </span>
           )}
         </div>
@@ -272,32 +273,26 @@ export function Gallery({
         {!selecting && (
           <AddTile canAdd={canAdd} onAdd={onAdd} onSave={onQuickAdd} />
         )}
-        {groups.map((group) =>
-          expanded.includes(group.key) &&
-          group.items.length > 1 &&
-          !selecting ? (
-            <div
-              className="gallery-cluster"
-              role="group"
-              aria-label={`${group.title} sources`}
-              key={group.key}
-            >
-              <div className="gallery-group-grid">
-                {card(group, true)}
-                {group.items.map((item) =>
-                  card({
-                    key: item.id,
+        {groups.map((group) => (
+          <Fragment key={group.key}>
+            {card(group, expanded.includes(group.key))}
+            {expanded.includes(group.key) &&
+              group.items.length > 1 &&
+              !selecting &&
+              group.items.map((item) =>
+                card(
+                  {
+                    key: `${group.key}:${item.id}`,
                     title: item.title,
                     topic: false,
                     items: [item],
-                  }),
-                )}
-              </div>
-            </div>
-          ) : (
-            card(group)
-          ),
-        )}
+                  },
+                  false,
+                  group.key,
+                ),
+              )}
+          </Fragment>
+        ))}
       </div>
       {!groups.length && items.length > 0 && (
         <div className="gallery-empty">

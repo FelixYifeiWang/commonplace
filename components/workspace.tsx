@@ -14,6 +14,7 @@ import {
   Monitor,
   Trash2,
   Radio,
+  Star,
 } from "lucide-react";
 import type {
   Collection,
@@ -199,8 +200,10 @@ export default function Workspace({
         previewBusy.current = false;
       });
   }, [data.items, demo, refresh]);
-  const collections = [...data.collections].sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt),
+  const collections = [...data.collections].sort(
+    (a, b) =>
+      Number(!!b.favorite) - Number(!!a.favorite) ||
+      b.createdAt.localeCompare(a.createdAt),
   );
   const hasBuddy = data.devices.some((device) => !device.revoked);
   const connectionLabel = hasBuddy ? "Connect a session" : "Set up buddy";
@@ -326,6 +329,30 @@ export default function Workspace({
     setDetail(null);
     setUndo({ kind: "items", ids, previous });
     setToast(`${ids.length} ${ids.length === 1 ? "block" : "blocks"} deleted`);
+  }
+  const favoriteBusy = useRef(new Set<string>());
+  async function favoriteCollection(collection: Collection) {
+    if (favoriteBusy.current.has(collection.id)) return;
+    favoriteBusy.current.add(collection.id);
+    const favorite = !collection.favorite;
+    try {
+      if (!demo)
+        await api("/api/collections", "PATCH", {
+          id: collection.id,
+          action: "favorite",
+          favorite,
+        });
+      setData((d) => ({
+        ...d,
+        collections: d.collections.map((c) =>
+          c.id === collection.id ? { ...c, favorite } : c,
+        ),
+      }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save favorite.");
+    } finally {
+      favoriteBusy.current.delete(collection.id);
+    }
   }
   async function deleteCollection(id: string) {
     try {
@@ -469,6 +496,7 @@ export default function Workspace({
             screen={screen}
             onChoose={chooseCollection}
             onManage={setScreen}
+            onFavorite={(c) => void favoriteCollection(c)}
             onDelete={(id) => void deleteCollection(id)}
           />
           {screen === "collection" && selected !== "all" && (
@@ -650,6 +678,19 @@ export default function Workspace({
                               )}
                             </span>
                             <span>{collection.name}</span>
+                          </button>
+                          <button
+                            className="collection-favorite"
+                            aria-label={`${collection.favorite ? "Unfavorite" : "Favorite"} ${collection.name}`}
+                            aria-pressed={!!collection.favorite}
+                            onClick={() => void favoriteCollection(collection)}
+                          >
+                            <Star
+                              size={15}
+                              fill={
+                                collection.favorite ? "currentColor" : "none"
+                              }
+                            />
                           </button>
                           <button
                             className="collection-overview-delete"

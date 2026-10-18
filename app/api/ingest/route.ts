@@ -1,5 +1,5 @@
 import { storyResponse } from "@/lib/story-response";
-import { isReferenceUrl } from "@/lib/source-policy.mjs";
+import { isReferenceItem } from "@/lib/source-policy.mjs";
 import { getDb } from "@/db";
 import { sessions, items } from "@/db/schema";
 import { and, eq, isNull, notInArray } from "drizzle-orm";
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       db = getDb();
     const statements = [];
     for (const item of body.items) {
-      if (item.url && !isReferenceUrl(item.url)) continue;
+      if (!isReferenceItem(item)) continue;
       const identity = await hash(itemIdentity(item));
       const row = {
         id: crypto.randomUUID(),

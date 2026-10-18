@@ -95,7 +95,8 @@ export default function Companion() {
       onPointerMove={(e) => {
         if (pointer.current === null)
           void window.commonplaceDesktop?.hitTest?.(
-            !!(e.target as HTMLElement).closest("button"),
+            !!(e.target as HTMLElement).closest("button") ||
+              (panelVisible && e.clientY >= 12 && e.clientY <= 166),
           );
       }}
       onPointerLeave={() => {
@@ -112,7 +113,7 @@ export default function Companion() {
     >
       <button
         className={`native-buddy-grab ${dragging ? "dragging" : ""}`}
-        aria-label="Move buddy. Click for connection."
+        aria-label="Move buddy. Hover or click to connect."
         title={error || "Move buddy. Click to connect."}
         onPointerDown={(e) => {
           if (e.button !== 0 || snapshot?.connecting) return;
@@ -180,7 +181,7 @@ export default function Companion() {
               ? "Open Commonplace to set up the buddy."
               : snapshot?.error ||
                 snapshot?.candidateTitle ||
-                "Move the buddy over an open Codex conversation or Claude Code session, then click it."
+                "Move the buddy over an open Codex conversation or Claude Code session, then choose Connect."
           }
           aria-label={
             needsSetup

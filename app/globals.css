@@ -6123,3 +6123,55 @@ body.desktop-feedback-page {
   text-align: center;
   line-height: 1.6;
 }
+
+/* Expanded stack members stay in the parent grid, immediately after their cover. */
+.gallery-card.stack-member .gallery-card-art {
+  outline: 1px solid #e5e5e5;
+  outline-offset: 7px;
+}
+.gallery-card.stack-member .gallery-caption {
+  border-left: 2px solid #dedede;
+  padding-left: 10px;
+}
+.gallery-card.stack-open .stack-front {
+  border: 2px solid #555;
+}
+.gallery-card.stack-open .stack-count {
+  background: #222;
+  color: #fff;
+}
+.collection-favorite {
+  position: absolute;
+  top: 12px;
+  right: 44px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  color: #777;
+}
+.collection-favorite[aria-pressed="true"],
+.channel-favorite[aria-pressed="true"] {
+  color: #222;
+}
+.channel-menu-row .channel-favorite {
+  flex: 0 0 28px;
+  padding: 6px;
+  color: #999;
+  justify-content: center;
+}
+.collection-favorite:hover,
+.channel-favorite:hover {
+  background: #f2f2f2;
+  color: #222;
+}
+.native-connect-panel.above {
+  top: 34px;
+}
+.session-await .session-updating {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

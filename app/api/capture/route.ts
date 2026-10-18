@@ -3,7 +3,7 @@ import { getDb } from "@/db";
 import { sessions, items, turns, devices } from "@/db/schema";
 import { and, eq, notInArray } from "drizzle-orm";
 import { agentSession, jsonBody, fail, HttpError, hash } from "@/lib/server";
-import { isReferenceUrl } from "@/lib/source-policy.mjs";
+import { isReferenceUrl, referenceText } from "@/lib/source-policy.mjs";
 import { classifyMedia } from "@/lib/media.mjs";
 import { itemIdentity, safeUrl, trimUrl } from "@/lib/protocol.mjs";
 export async function POST(request: Request) {
@@ -47,7 +47,8 @@ export async function POST(request: Request) {
           })
           .onConflictDoNothing({ target: [turns.sessionId, turns.externalId] }),
       );
-      const matches = turn.text.match(/https?:\/\/[^\s<>"'`\]\)]+/g) || [];
+      const matches =
+        referenceText(turn.text).match(/https?:\/\/[^\s<>"'`\]\)]+/g) || [];
       for (const raw of [...new Set<string>(matches)]) {
         const url = safeUrl(trimUrl(raw));
         if (!url) continue;
