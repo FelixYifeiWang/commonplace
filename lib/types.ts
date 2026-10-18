@@ -19,6 +19,7 @@ export type SessionState =
   | "error"
   | "revoked";
 export type Collection = {
+  favorite?: boolean;
   id: string;
   name: string;
   description: string;

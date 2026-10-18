@@ -5,7 +5,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  Copy,
   ExternalLink,
   Loader2,
   Pause,
@@ -15,6 +14,7 @@ import {
   Monitor,
   Trash2,
   Radio,
+  Star,
 } from "lucide-react";
 import type {
   Collection,
@@ -35,6 +35,7 @@ import { AddBlock } from "./add-block";
 import { AccountControls, AccountTransition } from "./account-controls";
 import { Modal } from "./modal";
 import { OpenBuddy } from "./open-buddy";
+import { SetupDialog } from "./setup-dialog";
 
 const EMPTY: WorkspaceData = {
   collections: [],
@@ -105,7 +106,6 @@ export default function Workspace({
     [detail, setDetail] = useState<Item | null>(null);
   const [busy, setBusy] = useState(false),
     [toast, setToast] = useState(""),
-    [copied, setCopied] = useState(false),
     [modalError, setModalError] = useState("");
   const [view, setView] = useState<"gallery" | "map" | "story">("gallery");
   useEffect(() => {
@@ -200,8 +200,10 @@ export default function Workspace({
         previewBusy.current = false;
       });
   }, [data.items, demo, refresh]);
-  const collections = [...data.collections].sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt),
+  const collections = [...data.collections].sort(
+    (a, b) =>
+      Number(!!b.favorite) - Number(!!a.favorite) ||
+      b.createdAt.localeCompare(a.createdAt),
   );
   const hasBuddy = data.devices.some((device) => !device.revoked);
   const connectionLabel = hasBuddy ? "Connect a session" : "Set up buddy";
@@ -216,7 +218,6 @@ export default function Workspace({
     setDroppedFiles([]);
     setDroppedText("");
     setModalError("");
-    setCopied(false);
     setModal(value === "connect" && !hasBuddy ? "setup" : value);
   }
   function chooseCollection(id: string) {
@@ -258,36 +259,6 @@ export default function Workspace({
       );
     } catch (e) {
       setToast(e instanceof Error ? e.message : "Could not update session.");
-    }
-  }
-  async function connect() {
-    setBusy(true);
-    setModalError("");
-    try {
-      const setup = demo
-        ? null
-        : await api<{ link: string }>("/api/setup", "POST");
-      const setupOnly = modal === "setup";
-      const link = setup
-        ? setup.link.replace(
-            /\/setup(?:\.md)?#/,
-            setupOnly ? "/setup.md#" : "/connect#",
-          )
-        : "[your private link]";
-      const sentence = setupOnly ? `Set up ${link}` : `Connect ${link}`;
-      await navigator.clipboard.writeText(sentence);
-      setCopied(true);
-      setToast(
-        demo
-          ? "Example sentence copied. Open your own space to connect."
-          : "Prompt copied.",
-      );
-    } catch (e) {
-      setModalError(
-        e instanceof Error ? e.message : "Could not copy. Try again.",
-      );
-    } finally {
-      setBusy(false);
     }
   }
   async function createCollection(event: React.FormEvent<HTMLFormElement>) {
@@ -358,6 +329,30 @@ export default function Workspace({
     setDetail(null);
     setUndo({ kind: "items", ids, previous });
     setToast(`${ids.length} ${ids.length === 1 ? "block" : "blocks"} deleted`);
+  }
+  const favoriteBusy = useRef(new Set<string>());
+  async function favoriteCollection(collection: Collection) {
+    if (favoriteBusy.current.has(collection.id)) return;
+    favoriteBusy.current.add(collection.id);
+    const favorite = !collection.favorite;
+    try {
+      if (!demo)
+        await api("/api/collections", "PATCH", {
+          id: collection.id,
+          action: "favorite",
+          favorite,
+        });
+      setData((d) => ({
+        ...d,
+        collections: d.collections.map((c) =>
+          c.id === collection.id ? { ...c, favorite } : c,
+        ),
+      }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save favorite.");
+    } finally {
+      favoriteBusy.current.delete(collection.id);
+    }
   }
   async function deleteCollection(id: string) {
     try {
@@ -501,6 +496,7 @@ export default function Workspace({
             screen={screen}
             onChoose={chooseCollection}
             onManage={setScreen}
+            onFavorite={(c) => void favoriteCollection(c)}
             onDelete={(id) => void deleteCollection(id)}
           />
           {screen === "collection" && selected !== "all" && (
@@ -684,6 +680,19 @@ export default function Workspace({
                             <span>{collection.name}</span>
                           </button>
                           <button
+                            className="collection-favorite"
+                            aria-label={`${collection.favorite ? "Unfavorite" : "Favorite"} ${collection.name}`}
+                            aria-pressed={!!collection.favorite}
+                            onClick={() => void favoriteCollection(collection)}
+                          >
+                            <Star
+                              size={15}
+                              fill={
+                                collection.favorite ? "currentColor" : "none"
+                              }
+                            />
+                          </button>
+                          <button
                             className="collection-overview-delete"
                             aria-label={`Delete ${collection.name}`}
                             title="Delete and disconnect collection"
@@ -846,38 +855,13 @@ export default function Workspace({
         </div>
       )}
       {(modal === "connect" || modal === "setup") && (
-        <Modal
-          title={modal === "setup" ? "Set up buddy" : "Connect a session"}
+        <SetupDialog
+          key={modal}
+          mode={modal}
+          demo={demo}
           onClose={() => setModal(null)}
-        >
-          <p className="companion-build-note">
-            {modal === "setup"
-              ? "Paste into your coding agent."
-              : "Paste into the session you want to save."}
-          </p>
-          <button
-            className="button primary full"
-            onClick={() => void connect()}
-            disabled={busy}
-          >
-            {busy ? <Loader2 className="spin" size={15} /> : <Copy size={15} />}
-            {copied
-              ? "Copy again"
-              : modal === "setup"
-                ? "Copy setup prompt"
-                : "Copy connection prompt"}
-          </button>
-          <p className="companion-build-note">
-            {modal === "setup"
-              ? "Mac · choose a session after setup"
-              : "Codex · Claude Code · Cursor"}
-          </p>
-          {modalError && (
-            <p className="form-error" role="alert">
-              {modalError}
-            </p>
-          )}
-        </Modal>
+          onConnect={() => setModal("connect")}
+        />
       )}
 
       {modal === "collection" && (

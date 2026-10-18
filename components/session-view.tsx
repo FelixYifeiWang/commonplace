@@ -42,7 +42,6 @@ function safeURL(value: string | null | undefined) {
 
 export function SessionView({
   collectionId,
-  name,
   items,
   mode,
   onOpen,
@@ -132,7 +131,7 @@ export function SessionView({
               {retrying ? "Retrying…" : "Retry"}
             </button>
           </span>
-        ) : working ? (
+        ) : working && session ? (
           <span className="session-updating">
             <i />
             {session ? "Updating" : "Reading the session"}
@@ -148,45 +147,26 @@ export function SessionView({
       ) : mode === "story" && !!story?.beats.length ? (
         <StoryView collectionId={collectionId} items={items} onOpen={onOpen} />
       ) : (
-        <div className="session-await">
-          <div className="session-await-mark" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </div>
-          <h2>{name}</h2>
+        <div className="session-await" role="status" aria-live="polite">
           {problem ? (
-            <div className="session-await-problem" role="alert">
+            // With no view to fall back on, the failure is the page's message.
+            <div className="session-await-problem">
               <p>{problem}</p>
               <button onClick={() => void retry()} disabled={retrying}>
                 {retrying ? "Retrying…" : "Retry"}
               </button>
             </div>
           ) : (
-            <p>
-              {demo
-                ? "Connect a session to see its story and map."
-                : !story
-                  ? "Opening…"
-                  : story.enabled === false
-                    ? "Story generation is not configured."
-                    : working
-                      ? "Reading…"
-                      : "No story yet."}
+            <p className={working || !story ? "session-updating" : ""}>
+              {(working || !story) && <i />}
+              {!story
+                ? "Loading…"
+                : story.enabled === false
+                  ? "Not available yet."
+                  : working
+                    ? `Creating ${mode === "gallery" ? "map" : "story"}…`
+                    : "Add sources or connect a session to begin."}
             </p>
-          )}
-          {!!items.length && (
-            <div className="session-await-sources">
-              {items.slice(0, 4).map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => onOpen(item)}
-                  aria-label={item.title}
-                >
-                  <SheetMedia item={item} screenshots={false} />
-                </button>
-              ))}
-            </div>
           )}
         </div>
       )}

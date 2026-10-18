@@ -177,3 +177,68 @@ test("click toggles once while the Connect area never starts a drag", () => {
   assert.deepEqual(f.results, [{ click: true }]);
   assert.equal(f.window.getBounds().x, 400);
 });
+
+import { createHoverController, buddyHoverRegion } from "../desktop/drag.mjs";
+test("hover opens controls, keeps the bridge active, and waits before closing", () => {
+  let now = 0;
+  const changes = [];
+  const hover = createHoverController({
+    now: () => now,
+    onChange: (open) => changes.push(open),
+  });
+  hover.update(true);
+  assert.deepEqual(changes, [true]);
+  assert.equal(buddyHoverRegion({ x: 52, y: 52 }, true), true);
+  hover.update(false);
+  now = 200;
+  hover.update(true);
+  assert.deepEqual(changes, [true]);
+  hover.update(false);
+  now = 500;
+  hover.update(false);
+  assert.deepEqual(changes, [true, false]);
+});
+test("drag suppresses hover until pointer leaves; it never opens controls on release", () => {
+  const changes = [];
+  const hover = createHoverController({
+    onChange: (open) => changes.push(open),
+  });
+  hover.update(true);
+  hover.reset();
+  hover.update(true);
+  assert.deepEqual(changes, [true, false]);
+  hover.update(false);
+  hover.update(true);
+  assert.deepEqual(changes, [true, false, true]);
+});
+test("collapsed hover ignores empty control space and accepts the face", () => {
+  assert.equal(buddyHoverRegion({ x: 52, y: 20 }, false), false);
+  assert.equal(buddyHoverRegion({ x: 52, y: 100 }, false), true);
+  assert.equal(buddyHoverRegion({ x: 105, y: 100 }, true), false);
+});
+test("the closer Connect button never becomes a drag handle", () => {
+  const f = nativeFixture();
+  f.send("mouseDown", 452, 312);
+  f.send("mouseMove", 700, 500);
+  f.send("mouseUp", 700, 500, []);
+  assert.deepEqual(f.results, []);
+  assert.equal(f.window.getBounds().x, 400);
+});
+test("keyboard activation stays open until the pointer enters or controls are dismissed", () => {
+  let now = 0;
+  const changes = [];
+  const hover = createHoverController({
+    now: () => now,
+    onChange: (value) => changes.push(value),
+  });
+  hover.show();
+  hover.update(false);
+  now = 500;
+  hover.update(false);
+  assert.deepEqual(changes, [true]);
+  hover.update(true);
+  hover.update(false);
+  now = 1000;
+  hover.update(false);
+  assert.deepEqual(changes, [true, false]);
+});

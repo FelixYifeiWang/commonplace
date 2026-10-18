@@ -58,13 +58,26 @@ export async function consumeSetupRequest(
       const subscription = await subscribe(source);
       report({ state: "collecting", target: source.title, error: "" });
       await capture(source, subscription);
-      report({ state: "following", target: source.title, error: "" });
       result = {
         ok: true,
         provider: source.provider,
         sessionId: source.sessionId,
       };
     }
+    const acknowledged = await request(origin + "/api/setup/ready", {
+      method: "POST",
+      redirect: "error",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${device.token}`,
+      },
+      body: JSON.stringify({ code: input.code }),
+    });
+    if (!acknowledged.ok)
+      throw new Error(
+        "Could not confirm setup. Copy a fresh prompt and try again.",
+      );
+    if (source) report({ state: "following", target: source.title, error: "" });
   } catch (e) {
     const error = e instanceof Error ? e.message : "Setup failed.";
     report({ state: "error", error });

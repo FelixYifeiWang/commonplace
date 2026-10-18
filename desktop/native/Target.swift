@@ -1,10 +1,32 @@
 import AppKit
 import CoreGraphics
+import CoreServices
 
 func emit(_ value: [String: Any]) {
     if let data = try? JSONSerialization.data(withJSONObject: value), let text = String(data: data, encoding: .utf8) { print(text) }
 }
 let args = CommandLine.arguments
+// URL ownership belongs to the installed launcher, never the bare Electron runtime.
+func urlHandler() -> String {
+    guard let url = NSWorkspace.shared.urlForApplication(toOpen: URL(string: "commonplace://show")!) else { return "" }
+    return Bundle(url: url)?.bundleIdentifier ?? ""
+}
+if args.count == 2 && args[1] == "--url-handler" {
+    let url = URL(string: "commonplace://show")!
+    emit(["handler": urlHandler(), "application": NSWorkspace.shared.urlForApplication(toOpen: url)?.path ?? ""])
+    exit(0)
+}
+if args.count == 3 && args[1] == "--register-opener" {
+    let identifier = args[2]
+    guard identifier.range(of: "^ai\\.commonplace\\.opener\\.[a-f0-9]{16}$", options: .regularExpression) != nil else {
+        emit(["error": "Invalid Commonplace launcher identifier."]); exit(1)
+    }
+    let status = LSSetDefaultHandlerForURLScheme("commonplace" as CFString, identifier as CFString)
+    guard status == noErr && urlHandler().lowercased() == identifier.lowercased() else {
+        emit(["error": "Could not make Commonplace the buddy link handler.", "status": status]); exit(1)
+    }
+    emit(["handler": urlHandler()]); exit(0)
+}
 guard args.count == 4, let x = Double(args[1]), let y = Double(args[2]),
       let companionPID = Int32(args[3]), companionPID > 0 else { emit(["error": "coordinates"]); exit(0) }
 let point = CGPoint(x: x, y: y)

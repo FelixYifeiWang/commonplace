@@ -1,6 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, LayoutGrid, Search, Trash2 } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  LayoutGrid,
+  Search,
+  Star,
+  Trash2,
+} from "lucide-react";
 import type { Collection } from "@/lib/types";
 export function CollectionPicker({
   collections,
@@ -9,6 +16,7 @@ export function CollectionPicker({
   onChoose,
   onManage,
   onDelete,
+  onFavorite,
 }: {
   collections: Collection[];
   selected: string;
@@ -16,6 +24,7 @@ export function CollectionPicker({
   onChoose: (id: string) => void;
   onManage: (screen: "sessions" | "settings") => void;
   onDelete: (id: string) => void;
+  onFavorite: (collection: Collection) => void;
 }) {
   const [open, setOpen] = useState(false),
     [query, setQuery] = useState("");
@@ -96,6 +105,17 @@ export function CollectionPicker({
                     {selected === c.id && screen === "collection" && (
                       <Check size={13} />
                     )}
+                  </button>
+                  <button
+                    className="channel-favorite"
+                    aria-label={`${c.favorite ? "Unfavorite" : "Favorite"} ${c.name}`}
+                    aria-pressed={!!c.favorite}
+                    onClick={() => onFavorite(c)}
+                  >
+                    <Star
+                      size={13}
+                      fill={c.favorite ? "currentColor" : "none"}
+                    />
                   </button>
                   <button
                     className="channel-delete"

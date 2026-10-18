@@ -174,3 +174,39 @@ test("a credential crossing batch boundaries never leaks either half", async () 
   assert.equal(combined.length, body.length);
   assert.ok(combined.endsWith(" after"));
 });
+
+test("previously processed media remains available for richer visual connections", async () => {
+  const item = {
+    id: "earlier",
+    title: "A reference",
+    url: "https://example.com/research",
+    kind: "link",
+    body: "",
+    sourceText: "Use this reference",
+    sourceTurn: "",
+  };
+  const job = {
+    title: "Research",
+    turns: [],
+    items: [item],
+    previous: [],
+    checkpoint: {},
+  };
+  const first = await prepareStoryBatch(job);
+  const next = await prepareStoryBatch({
+    ...job,
+    checkpoint: first.checkpoint,
+    turns: [
+      {
+        id: "new-turn",
+        sequence: 1,
+        role: "user",
+        body: "Keep that reference for the visual direction.",
+      },
+    ],
+  });
+  assert.equal(
+    next.input.media.some((m) => m.id === "earlier" && !m.new),
+    true,
+  );
+});

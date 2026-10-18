@@ -1,4 +1,4 @@
-import { isReferenceUrl } from "@/lib/source-policy.mjs";
+import { isReferenceItem } from "@/lib/source-policy.mjs";
 import { getDb } from "@/db";
 import { collections, sessions, items, devices } from "@/db/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";
@@ -53,9 +53,7 @@ export async function GET() {
         collections: cs,
         sessions: ss.filter((s) => visibleCollections.has(s.collectionId)),
         items: ii.filter(
-          (i) =>
-            visibleCollections.has(i.collectionId) &&
-            (!i.url || isReferenceUrl(i.url)),
+          (i) => visibleCollections.has(i.collectionId) && isReferenceItem(i),
         ),
         devices: ds,
         user: { displayName: user.displayName, email: user.email },

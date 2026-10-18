@@ -1,6 +1,6 @@
 import { storyResponse } from "@/lib/story-response";
 import { getDb } from "@/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { collections, sessions } from "@/db/schema";
 import {
   userRequired,
@@ -78,6 +78,23 @@ export async function PATCH(request: Request) {
     checkOrigin(request);
     const user = await userRequired(),
       body = await jsonBody(request);
+    if (body.action === "favorite") {
+      if (typeof body.favorite !== "boolean" || typeof body.id !== "string")
+        throw new HttpError(400, "Invalid favorite.");
+      const changed = await getDb()
+        .update(collections)
+        .set({ favorite: body.favorite })
+        .where(
+          and(
+            eq(collections.id, body.id),
+            eq(collections.ownerId, user.userId),
+            isNull(collections.deletedAt),
+          ),
+        )
+        .returning({ id: collections.id });
+      if (!changed.length) throw new HttpError(404, "Collection not found.");
+      return storyResponse({ ok: true });
+    }
     if (body.action !== "restore") throw new HttpError(400, "Unknown action.");
     await getDb()
       .update(collections)

@@ -7,6 +7,8 @@ import {
   install,
   verifyRuntime,
   installLauncher,
+  bootstrapBuddy,
+  installAppShortcut,
 } from "../desktop/install.mjs";
 import { redactSetupLinks } from "../desktop/setup-session.mjs";
 test("installer accepts only a private setup link on HTTPS or local development", () => {
@@ -57,12 +59,18 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
   const { tmpdir } = await import("node:os");
   const { createServer } = await import("node:http");
   const home = await mkdtemp(join(tmpdir(), "buddy-install-"));
+  let releaseChanged = false,
+    manifestDownloads = 0;
   const server = createServer(async (req, res) => {
     try {
       const content = await readFile(
         "public" + new URL(req.url, "http://local").pathname,
       );
-      res.end(content);
+      if (req.url.endsWith("manifest.json")) manifestDownloads++;
+      if (req.url.endsWith("desktop/main.mjs") && !releaseChanged) {
+        releaseChanged = true;
+        res.end(Buffer.concat([content, Buffer.from("\n")]));
+      } else res.end(content);
     } catch {
       res.statusCode = 404;
       res.end();
@@ -81,6 +89,8 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
     kicks = 0,
     data;
   const run = async (command, args, options) => {
+    if (args[0] === "--register-opener")
+      return { stdout: JSON.stringify({ handler: args[1] }) };
     if (command === "npm") {
       installs++;
       assert.deepEqual(args, ["ci", "--omit=dev", "--no-audit", "--no-fund"]);
@@ -152,6 +162,11 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
     );
   }
   assert.deepEqual([installs, boots, kicks], [1, 1, 1]);
+  assert.equal(
+    manifestDownloads,
+    3,
+    "The first install retries a changed release; repeat setup reads it once",
+  );
   let launched = false;
   await assert.rejects(
     install(
@@ -213,8 +228,14 @@ test("launcher registers a reveal-only app without modifying Electron", async (t
       service: "gui/501/ai.commonplace.test",
       plist: join(root, "agent.plist"),
       space: "test",
+      helper: join(root, "commonplace-target"),
     },
-    async (...args) => calls.push(args),
+    async (...args) => {
+      calls.push(args);
+      return {
+        stdout: JSON.stringify({ handler: "ai.commonplace.opener.test" }),
+      };
+    },
   );
   const script = await readFile(join(root, "open-buddy.applescript"), "utf8");
   assert.ok(script.includes("on open location incomingURL"));
@@ -226,6 +247,76 @@ test("launcher registers a reveal-only app without modifying Electron", async (t
   assert.ok(!script.includes("incomingURL &"));
   assert.equal(calls[0][0], "/usr/bin/osacompile");
   assert.ok(calls.some(([, args]) => args.includes("CFBundleURLTypes")));
-  assert.deepEqual(calls.at(-1)[1], ["-f", appPath]);
+  assert.deepEqual(calls.at(-2)[1], ["-f", appPath]);
+  assert.deepEqual(calls.at(-1)[1], [
+    "--register-opener",
+    "ai.commonplace.opener.test",
+  ]);
   assert.ok(!JSON.stringify(calls).includes("Electron.app"));
+});
+
+test("setup fails instead of claiming success when the URL handler remains Electron", async (t) => {
+  const { mkdtemp, rm } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const root = await mkdtemp(join(tmpdir(), "buddy-handler-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await assert.rejects(
+    installLauncher(
+      {
+        root,
+        origin: "https://space.example",
+        data: root,
+        service: "gui/501/ai.commonplace.test",
+        plist: join(root, "agent.plist"),
+        space: "test",
+        helper: join(root, "helper"),
+      },
+      async () => ({
+        stdout: JSON.stringify({ handler: "com.github.electron" }),
+      }),
+    ),
+    /Could not register/,
+  );
+});
+
+test("launch retries the macOS teardown race, but never retries unrelated failures", async () => {
+  let attempts = 0;
+  const delays = [];
+  await bootstrapBuddy(
+    "/buddy.plist",
+    async () => {
+      if (++attempts < 3)
+        throw Object.assign(
+          new Error("Bootstrap failed: 5: Input/output error"),
+          { stderr: "Bootstrap failed: 5" },
+        );
+    },
+    async (ms) => delays.push(ms),
+  );
+  assert.equal(attempts, 3);
+  assert.deepEqual(delays, [300, 600]);
+  await assert.rejects(
+    bootstrapBuddy(
+      "/buddy.plist",
+      async () => {
+        throw new Error("Permission denied");
+      },
+      async () => assert.fail("Must not retry permission denial"),
+    ),
+    /Permission denied/,
+  );
+});
+test("Commonplace app shortcut is repeatable and preserves an existing app", async (t) => {
+  const { mkdtemp, readlink, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const home = await mkdtemp(join(tmpdir(), "buddy-shortcut-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  await installAppShortcut(home, "/first/Commonplace.app");
+  await installAppShortcut(home, "/other/Commonplace.app");
+  assert.equal(
+    await readlink(join(home, "Applications/Commonplace.app")),
+    "/first/Commonplace.app",
+  );
 });

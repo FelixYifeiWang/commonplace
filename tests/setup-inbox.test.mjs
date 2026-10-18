@@ -29,7 +29,10 @@ test("setup acknowledges Connected only after pairing and first capture; removes
   const result = await consumeSetupRequest(data, {
     origin: "https://space.example",
     validate: async (source) => ({ ...source, sessionId: "s" }),
-    request: async () => Response.json({ token: "b".repeat(64) }),
+    request: async (url) => {
+      if (url.endsWith("/ready")) events.push("acknowledge");
+      return Response.json({ token: "b".repeat(64) });
+    },
     pair: async () => events.push("pair"),
     subscribe: async () => {
       events.push("subscribe");
@@ -45,6 +48,7 @@ test("setup acknowledges Connected only after pairing and first capture; removes
     "subscribe",
     "collecting",
     "capture",
+    "acknowledge",
     "following",
   ]);
   await assert.rejects(readFile(join(data, "setup-request.json")), {
@@ -106,4 +110,23 @@ test("reopen consumes one signal without touching a pending setup or session", a
   assert.equal(await consumeShowRequest(data, () => shown++), false);
   assert.equal(shown, 1);
   assert.equal(await readFile(join(data, "setup-request.json"), "utf8"), setup);
+});
+
+test("failed website acknowledgment never reports setup complete", async (t) => {
+  const data = await fixture(t),
+    states = [];
+  const result = await consumeSetupRequest(data, {
+    origin: "https://space.example",
+    validate: async (s) => s,
+    request: async (url) =>
+      url.endsWith("/ready")
+        ? new Response(null, { status: 503 })
+        : Response.json({ token: "b".repeat(64) }),
+    pair: async () => {},
+    subscribe: async () => ({ id: "s" }),
+    capture: async () => {},
+    report: (s) => states.push(s.state),
+  });
+  assert.equal(result.ok, false);
+  assert.equal(states.includes("following"), false);
 });
