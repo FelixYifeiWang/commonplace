@@ -5906,6 +5906,68 @@ body.desktop-feedback-page {
 .session-evidence[open] blockquote {
   animation: evidence-in 240ms var(--session-ease) both;
 }
+/* Panning or zooming can carry tiles past the stage edge. Fade them out there
+   so they read as continuing beyond the frame, not as sliced off. The default
+   framing keeps 40px clear, so nothing fades until the map is moved. */
+.session-map::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(to bottom, var(--paper), transparent) top / 100% 32px
+      no-repeat,
+    linear-gradient(to top, var(--paper), transparent) bottom / 100% 32px
+      no-repeat,
+    linear-gradient(to right, var(--paper), transparent) left / 32px 100%
+      no-repeat,
+    linear-gradient(to left, var(--paper), transparent) right / 32px 100%
+      no-repeat;
+}
+.map-controls {
+  z-index: 2;
+}
+/* A node above the center has its edge running through its own caption;
+   the same paper plate as the center keeps the line under the words. */
+.map-node .map-caption,
+.map-detail .map-caption {
+  width: auto;
+  max-width: 100%;
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: var(--paper);
+  border-radius: 6px;
+}
+/* Rectangular pictures (photos, page captures) get a translucent hairline so
+   their edge stays crisp against the sheet's shadow. Cut-out objects and ink
+   on white are fitted separately and stay unframed. Photos size to their own
+   box so the hairline traces the picture, not the empty slot around it. */
+.sheet-media .block-image,
+.map-tile .block-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The breathing room the image used to carry as its own padding. */
+  padding: 14px;
+}
+.sheet-media .block-image img,
+.map-tile .block-image img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  padding: 0;
+}
+.sheet-media .block-image img,
+.map-tile .block-image img,
+.sheet-media .block-link img,
+.map-tile .block-link img {
+  border-radius: 2px;
+  outline: 1px solid rgb(0 0 0 / 0.08);
+  outline-offset: -1px;
+}
 .collection-overview {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
