@@ -1,6 +1,8 @@
 // Commonplace's agent installer. No global packages, MCP, or agent settings are modified.
 import {
   mkdir,
+  copyFile,
+  symlink,
   readFile,
   writeFile,
   rename,
@@ -67,7 +69,7 @@ export function validateManifest(manifest) {
   ];
   for (const f of manifest.files)
     if (
-      !/^(?:desktop\/[a-z-]+\.(?:mjs|cjs)|desktop\/native\/bin\/commonplace-target|lib\/protocol\.mjs|package(?:-lock)?\.json)$/.test(
+      !/^(?:desktop\/[a-z-]+\.(?:mjs|cjs)|desktop\/native\/bin\/commonplace-target|desktop\/commonplace\.(?:png|icns)|lib\/protocol\.mjs|package(?:-lock)?\.json)$/.test(
         f.path,
       ) ||
       !Number.isInteger(f.size) ||
@@ -102,16 +104,53 @@ export async function verifyRuntime(runtime) {
 async function download(url) {
   const r = await fetch(url, {
     redirect: "error",
+    cache: "no-store",
     signal: AbortSignal.timeout(30000),
   });
   if (!r.ok)
     throw new Error("Could not download companion (" + r.status + ").");
   return Buffer.from(await r.arrayBuffer());
 }
+export async function bootstrapBuddy(
+  plist,
+  run = exec,
+  wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await run("/bin/launchctl", [
+        "bootstrap",
+        `gui/${process.getuid()}`,
+        plist,
+      ]);
+      return;
+    } catch (error) {
+      // bootout can return before macOS has released the previous service.
+      if (
+        attempt === 2 ||
+        !/Bootstrap failed: 5|Input\/output error/i.test(
+          error.stderr || error.message || "",
+        )
+      )
+        throw error;
+      await wait(300 * (attempt + 1));
+    }
+  }
+}
+export async function installAppShortcut(home, appPath) {
+  const applications = join(home, "Applications");
+  await mkdir(applications, { recursive: true });
+  try {
+    await symlink(appPath, join(applications, "Commonplace.app"));
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
+}
+
 // A small app owns the URL scheme, so Electron's signed runtime stays untouched.
 // All paths are fixed at installation. Incoming URLs never become shell commands.
 export async function installLauncher(
-  { root, origin, data, service, plist, space, helper },
+  { root, origin, data, service, plist, space, helper, icon },
   run = exec,
 ) {
   const quote = (value) => "'" + String(value).replaceAll("'", "'\"'\"'") + "'";
@@ -135,7 +174,20 @@ end revealBuddy
   );
   await run("/usr/bin/osacompile", ["-o", appPath, source]);
   const info = join(appPath, "Contents/Info.plist");
+  if (icon) {
+    await mkdir(join(appPath, "Contents/Resources"), { recursive: true });
+    await copyFile(icon, join(appPath, "Contents/Resources/commonplace.icns"));
+    await run("/usr/bin/plutil", [
+      "-replace",
+      "CFBundleIconFile",
+      "-string",
+      "commonplace.icns",
+      info,
+    ]);
+  }
   for (const args of [
+    ["-replace", "CFBundleName", "-string", "Commonplace"],
+    ["-replace", "CFBundleDisplayName", "-string", "Commonplace"],
     [
       "-replace",
       "CFBundleIdentifier",
@@ -209,30 +261,47 @@ export async function install(
     throw e;
   }
   try {
-    const manifest = validateManifest(
-      JSON.parse(
-        (await download(origin + "/companion/manifest.json")).toString(),
-      ),
-    );
-    const runtime = join(root, "releases", manifest.release);
-    onProgress("Preparing buddy…");
-    for (const file of manifest.files) {
-      const target = join(runtime, file.path);
-      let valid = false;
+    let runtime;
+    for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        valid = digest(await readFile(target)) === file.sha256;
-      } catch (e) {
-        if (e.code !== "ENOENT") throw e;
-      }
-      if (!valid) {
-        const contents = await download(
-          origin + "/companion/files/" + file.path,
+        const manifest = validateManifest(
+          JSON.parse(
+            (await download(origin + "/companion/manifest.json")).toString(),
+          ),
         );
-        if (contents.length !== file.size || digest(contents) !== file.sha256)
-          throw new Error("Companion download checksum mismatch.");
-        await mkdir(dirname(target), { recursive: true, mode: 0o700 });
-        await writeFile(target + ".tmp", contents, { mode: 0o600 });
-        await rename(target + ".tmp", target);
+        runtime = join(root, "releases", manifest.release);
+        onProgress("Preparing buddy…");
+        for (const file of manifest.files) {
+          const target = join(runtime, file.path);
+          let valid = false;
+          try {
+            valid = digest(await readFile(target)) === file.sha256;
+          } catch (e) {
+            if (e.code !== "ENOENT") throw e;
+          }
+          if (!valid) {
+            const contents = await download(
+              origin + "/companion/files/" + file.path,
+            );
+            if (
+              contents.length !== file.size ||
+              digest(contents) !== file.sha256
+            )
+              throw Object.assign(
+                new Error(
+                  "The buddy release changed during setup. Try setup again.",
+                ),
+                { code: "RELEASE_CHANGED" },
+              );
+            await mkdir(dirname(target), { recursive: true, mode: 0o700 });
+            await writeFile(target + ".tmp", contents, { mode: 0o600 });
+            await rename(target + ".tmp", target);
+          }
+        }
+        break;
+      } catch (error) {
+        if (attempt || error.code !== "RELEASE_CHANGED") throw error;
+        onProgress("Getting the latest buddy…");
       }
     }
     await chmod(join(runtime, "desktop/native/bin/commonplace-target"), 0o755);
@@ -345,9 +414,11 @@ export async function install(
         plist,
         space,
         helper: join(runtime, "desktop/native/bin/commonplace-target"),
+        icon: join(runtime, "desktop/commonplace.icns"),
       },
       run,
     );
+    await installAppShortcut(home, join(root, "Commonplace.app"));
     if (!same) {
       try {
         await run("/bin/launchctl", ["bootout", service]);
@@ -355,20 +426,12 @@ export async function install(
         /* A first installation has no service. */
       }
       await writeFile(plist, xml, { mode: 0o600 });
-      await run("/bin/launchctl", [
-        "bootstrap",
-        `gui/${process.getuid()}`,
-        plist,
-      ]);
+      await bootstrapBuddy(plist, run);
     } else {
       try {
         await run("/bin/launchctl", ["kickstart", service]);
       } catch {
-        await run("/bin/launchctl", [
-          "bootstrap",
-          `gui/${process.getuid()}`,
-          plist,
-        ]);
+        await bootstrapBuddy(plist, run);
       }
     }
     await writeFile(

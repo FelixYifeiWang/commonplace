@@ -128,6 +128,7 @@ export const pairingCodes = sqliteTable("pairing_codes", {
   ownerId: text("owner_id").notNull(),
   expiresAt: integer("expires_at").notNull(),
   claimId: text("claim_id"),
+  readyAt: integer("ready_at"),
 });
 
 export const accountSpaces = sqliteTable("account_spaces", {

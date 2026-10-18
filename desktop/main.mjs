@@ -9,6 +9,7 @@ import {
   Tray,
   Menu,
   nativeImage,
+  dialog,
 } from "electron";
 import path from "node:path";
 import { execFile } from "node:child_process";
@@ -26,6 +27,7 @@ const exec = promisify(execFile);
 import fs from "node:fs/promises";
 import { pathToFileURL, fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const appIcon = path.join(__dirname, "commonplace.png");
 const ORIGIN = process.env.COMMONPLACE_ORIGIN || "http://127.0.0.1:3100";
 if (process.env.COMMONPLACE_DATA_DIR) {
   if (!path.isAbsolute(process.env.COMMONPLACE_DATA_DIR))
@@ -295,7 +297,7 @@ async function toggleControls() {
   candidate = null;
   candidateConnected = false;
   setExpanded(!expanded);
-  if (expanded) await findCandidate();
+  if (expanded && connection) await findCandidate();
 }
 async function captureSource(_source, subscription) {
   while (busy) await new Promise((resolve) => setTimeout(resolve, 50));
@@ -453,6 +455,51 @@ if (!lock) {
   app
     .whenReady()
     .then(async () => {
+      // Keep the original encryption service so upgrading does not orphan paired devices.
+      // The app's display identity is configured after Chromium's storage key is cached.
+      if (safeStorage.isEncryptionAvailable()) safeStorage.encryptString("");
+      app.setName("Commonplace");
+      app.dock?.setIcon(nativeImage.createFromPath(appIcon));
+      app.setAboutPanelOptions({
+        applicationName: "Commonplace",
+        applicationVersion: "0.1.0",
+        iconPath: appIcon,
+      });
+      Menu.setApplicationMenu(
+        Menu.buildFromTemplate([
+          {
+            label: "Commonplace",
+            submenu: [
+              {
+                label: "About Commonplace",
+                click: () =>
+                  dialog.showMessageBox({
+                    type: "none",
+                    icon: nativeImage.createFromPath(appIcon),
+                    title: "About Commonplace",
+                    message: "Commonplace",
+                    detail: "Version 0.1.0",
+                    buttons: ["Done"],
+                  }),
+              },
+              { type: "separator" },
+              { label: "Show buddy", click: showBuddy },
+              { label: "Hide buddy", click: hideBuddy },
+              {
+                label: "Open my space",
+                click: () => shell.openExternal(ORIGIN),
+              },
+              { type: "separator" },
+              {
+                label: "Quit and stop syncing",
+                accelerator: "CommandOrControl+Q",
+                click: () => app.quit(),
+              },
+            ],
+          },
+          { role: "editMenu" },
+        ]),
+      );
       collector = await import(
         pathToFileURL(path.join(__dirname, "collector.mjs")).href
       );
@@ -644,59 +691,10 @@ if (!lock) {
         event.preventDefault(),
       );
       await feedbackWindow.loadURL(`${ORIGIN}/buddy/feedback`);
-      const hasSetupRequest = await fs
-        .access(path.join(app.getPath("userData"), "setup-request.json"))
-        .then(
-          () => true,
-          () => false,
-        );
-      const authCheck = await net.fetch(`${ORIGIN}/api/workspace`, {
-        redirect: "manual",
-      });
-      if (
-        !connection &&
-        !hasSetupRequest &&
-        (authCheck.status === 401 ||
-          authCheck.status === 302 ||
-          authCheck.status === 303)
-      ) {
-        const login = new BrowserWindow({
-          width: 900,
-          height: 700,
-          title: "Sign in to Commonplace",
-          webPreferences: {
-            contextIsolation: true,
-            nodeIntegration: false,
-            sandbox: true,
-          },
-        });
-        login.webContents.on("did-finish-load", async () => {
-          const url = login.webContents.getURL();
-          if (
-            url.startsWith(ORIGIN) &&
-            !url.includes("signin") &&
-            !url.includes("callback")
-          ) {
-            try {
-              const check = await net.fetch(`${ORIGIN}/api/workspace`);
-              if (
-                check.ok &&
-                check.headers.get("content-type")?.includes("application/json")
-              ) {
-                login.close();
-                await win.loadURL(`${ORIGIN}/buddy`);
-                win.show();
-              }
-            } catch (error) {
-              lastError = error.message;
-            }
-          }
-        });
-        await login.loadURL(`${ORIGIN}/signin-with-chatgpt?return_to=%2F`);
-      } else {
-        await win.loadURL(`${ORIGIN}/buddy`);
-        win.show();
-      }
+      // Account sign-in belongs in the browser. The native shell is always available,
+      // including before pairing and while recovering a connection.
+      await win.loadURL(`${ORIGIN}/buddy`);
+      win.show();
       const icon = nativeImage.createFromDataURL(
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAACRElEQVRYhe2XPU8VQRSGn6s0ytUeKz6iXjuB1gSwko9KI6WNSusvUED+APIV/gWCNVAQQI39cm0MoiYqFoAWQMI1k7ybTJbZ3Zld6HiTSW7mnPOes/Nx5r1wAX9UgG7gNbAKRMBfjUhz40DXeSQeBupAw3MY38eKLYUO4L1F/BWYBh4ANaBZo6a5GWDH8jex7UWT3wN+iugbMAI0ecRd0td/Uewf4H5o8j7gSAQLQLXAB1wDFsVxCPSGLPuuAif1RUVhYt+I6zfQlhdQAT5YX14muV1EvBIbeQdz2NrzvGU3ROvAmud2fBf3oyzCupyeepB2yncbPzyXv+kZTnRbV+1ywmau2e3E3Kj851L4kjFNWtmGij+FCRmnHETHGjbhJ/kPpCR3xcwqZsxVwKqM/R5kLcAJ8A+4GlDAoHIsuwr4LONNh82Q3HLs51sXUUpMPGfitlwBBzL6NJ2lgMNqo6o4k+sU9mU0VyYLV7T0ZgtuBBZwXTn2XMa6jMllS2JIfh8JRy3rKq6kHMIk5uX3skABmYdwXEbz3GZhO0MH5HXFOfm9chm7ZNxxNCIbawULsBvR3bRWvCWHZ5w9RvJaMRIS8WOUdxtCT/8PcT/McqwAm1aTOavnOO4b6z46sV3ioSExUVaQTFmCpNU3sNeSZIsFt8Ms+ztLkvWUEaW/gBcBovSJtee7RURpjDbJqIZ1OGf1BN9Rb6/q96DueXzV4j3P1YF5qEhGRQF/TCKd9tJ/TJLolJhYVpIDjUhzY2lq5wKk4D+X1s9iWaDrGgAAAABJRU5ErkJggg==",
       );

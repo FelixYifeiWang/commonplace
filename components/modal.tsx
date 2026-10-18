@@ -16,6 +16,11 @@ export function Modal({
   useEffect(() => {
     const dialog = ref.current;
     dialog?.showModal();
+    dialog
+      ?.querySelector<HTMLElement>(
+        "input:not([disabled]), textarea:not([disabled]), .button.primary:not([disabled])",
+      )
+      ?.focus();
     return () => dialog?.close();
   }, []);
   return (

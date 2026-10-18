@@ -7,6 +7,8 @@ import {
   install,
   verifyRuntime,
   installLauncher,
+  bootstrapBuddy,
+  installAppShortcut,
 } from "../desktop/install.mjs";
 import { redactSetupLinks } from "../desktop/setup-session.mjs";
 test("installer accepts only a private setup link on HTTPS or local development", () => {
@@ -57,12 +59,18 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
   const { tmpdir } = await import("node:os");
   const { createServer } = await import("node:http");
   const home = await mkdtemp(join(tmpdir(), "buddy-install-"));
+  let releaseChanged = false,
+    manifestDownloads = 0;
   const server = createServer(async (req, res) => {
     try {
       const content = await readFile(
         "public" + new URL(req.url, "http://local").pathname,
       );
-      res.end(content);
+      if (req.url.endsWith("manifest.json")) manifestDownloads++;
+      if (req.url.endsWith("desktop/main.mjs") && !releaseChanged) {
+        releaseChanged = true;
+        res.end(Buffer.concat([content, Buffer.from("\n")]));
+      } else res.end(content);
     } catch {
       res.statusCode = 404;
       res.end();
@@ -154,6 +162,11 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
     );
   }
   assert.deepEqual([installs, boots, kicks], [1, 1, 1]);
+  assert.equal(
+    manifestDownloads,
+    3,
+    "The first install retries a changed release; repeat setup reads it once",
+  );
   let launched = false;
   await assert.rejects(
     install(
@@ -264,5 +277,46 @@ test("setup fails instead of claiming success when the URL handler remains Elect
       }),
     ),
     /Could not register/,
+  );
+});
+
+test("launch retries the macOS teardown race, but never retries unrelated failures", async () => {
+  let attempts = 0;
+  const delays = [];
+  await bootstrapBuddy(
+    "/buddy.plist",
+    async () => {
+      if (++attempts < 3)
+        throw Object.assign(
+          new Error("Bootstrap failed: 5: Input/output error"),
+          { stderr: "Bootstrap failed: 5" },
+        );
+    },
+    async (ms) => delays.push(ms),
+  );
+  assert.equal(attempts, 3);
+  assert.deepEqual(delays, [300, 600]);
+  await assert.rejects(
+    bootstrapBuddy(
+      "/buddy.plist",
+      async () => {
+        throw new Error("Permission denied");
+      },
+      async () => assert.fail("Must not retry permission denial"),
+    ),
+    /Permission denied/,
+  );
+});
+test("Commonplace app shortcut is repeatable and preserves an existing app", async (t) => {
+  const { mkdtemp, readlink, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const home = await mkdtemp(join(tmpdir(), "buddy-shortcut-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  await installAppShortcut(home, "/first/Commonplace.app");
+  await installAppShortcut(home, "/other/Commonplace.app");
+  assert.equal(
+    await readlink(join(home, "Applications/Commonplace.app")),
+    "/first/Commonplace.app",
   );
 });

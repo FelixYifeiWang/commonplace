@@ -4,6 +4,7 @@ import { Check, Loader2, Plus } from "lucide-react";
 import { Buddy } from "@/components/buddy";
 import type { SessionState } from "@/lib/types";
 type Snapshot = {
+  connected?: boolean;
   revision?: number;
   dragging?: boolean;
   gaze?: { x: number; y: number };
@@ -82,6 +83,7 @@ export default function Companion() {
     };
   }, []);
   const offset = snapshot?.buddyOffsetY ?? 54;
+  const needsSetup = snapshot?.connected === false;
   const panelVisible = !!snapshot?.expanded && !dragging;
   return (
     <div
@@ -168,23 +170,32 @@ export default function Companion() {
         <button
           className={`native-connect ${snapshot?.candidateConnected ? "connected" : ""}`}
           disabled={
-            snapshot?.connecting ||
-            !snapshot?.candidateTitle ||
-            snapshot?.candidateConnected
+            !needsSetup &&
+            (snapshot?.connecting ||
+              !snapshot?.candidateTitle ||
+              snapshot?.candidateConnected)
           }
           title={
-            snapshot?.error ||
-            snapshot?.candidateTitle ||
-            "Move the buddy over an open Codex conversation or Claude Code session, then click it."
+            needsSetup
+              ? "Open Commonplace to set up the buddy."
+              : snapshot?.error ||
+                snapshot?.candidateTitle ||
+                "Move the buddy over an open Codex conversation or Claude Code session, then click it."
           }
           aria-label={
-            snapshot?.candidateConnected
-              ? "Connected"
-              : snapshot?.connecting
-                ? "Connecting"
-                : "Connect session"
+            needsSetup
+              ? "Set up buddy"
+              : snapshot?.candidateConnected
+                ? "Connected"
+                : snapshot?.connecting
+                  ? "Connecting"
+                  : "Connect session"
           }
           onClick={async () => {
+            if (needsSetup) {
+              window.commonplaceDesktop?.openSpace();
+              return;
+            }
             try {
               setSnapshot((s) => (s ? { ...s, connecting: true } : s));
               await window.commonplaceDesktop?.connect();
@@ -203,11 +214,13 @@ export default function Companion() {
             <Plus size={12} />
           )}
           <span>
-            {snapshot?.candidateConnected
-              ? "Connected"
-              : snapshot?.connecting
-                ? "Connecting"
-                : "Connect"}
+            {needsSetup
+              ? "Set up"
+              : snapshot?.candidateConnected
+                ? "Connected"
+                : snapshot?.connecting
+                  ? "Connecting"
+                  : "Connect"}
           </span>
         </button>
       </div>

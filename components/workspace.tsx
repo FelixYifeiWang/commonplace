@@ -5,7 +5,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  Copy,
   ExternalLink,
   Loader2,
   Pause,
@@ -35,6 +34,7 @@ import { AddBlock } from "./add-block";
 import { AccountControls, AccountTransition } from "./account-controls";
 import { Modal } from "./modal";
 import { OpenBuddy } from "./open-buddy";
+import { SetupDialog } from "./setup-dialog";
 
 const EMPTY: WorkspaceData = {
   collections: [],
@@ -105,7 +105,6 @@ export default function Workspace({
     [detail, setDetail] = useState<Item | null>(null);
   const [busy, setBusy] = useState(false),
     [toast, setToast] = useState(""),
-    [copied, setCopied] = useState(false),
     [modalError, setModalError] = useState("");
   const [view, setView] = useState<"gallery" | "map" | "story">("gallery");
   useEffect(() => {
@@ -216,7 +215,6 @@ export default function Workspace({
     setDroppedFiles([]);
     setDroppedText("");
     setModalError("");
-    setCopied(false);
     setModal(value === "connect" && !hasBuddy ? "setup" : value);
   }
   function chooseCollection(id: string) {
@@ -258,36 +256,6 @@ export default function Workspace({
       );
     } catch (e) {
       setToast(e instanceof Error ? e.message : "Could not update session.");
-    }
-  }
-  async function connect() {
-    setBusy(true);
-    setModalError("");
-    try {
-      const setup = demo
-        ? null
-        : await api<{ link: string }>("/api/setup", "POST");
-      const setupOnly = modal === "setup";
-      const link = setup
-        ? setup.link.replace(
-            /\/setup(?:\.md)?#/,
-            setupOnly ? "/setup.md#" : "/connect#",
-          )
-        : "[your private link]";
-      const sentence = setupOnly ? `Set up ${link}` : `Connect ${link}`;
-      await navigator.clipboard.writeText(sentence);
-      setCopied(true);
-      setToast(
-        demo
-          ? "Example sentence copied. Open your own space to connect."
-          : "Prompt copied.",
-      );
-    } catch (e) {
-      setModalError(
-        e instanceof Error ? e.message : "Could not copy. Try again.",
-      );
-    } finally {
-      setBusy(false);
     }
   }
   async function createCollection(event: React.FormEvent<HTMLFormElement>) {
@@ -846,38 +814,13 @@ export default function Workspace({
         </div>
       )}
       {(modal === "connect" || modal === "setup") && (
-        <Modal
-          title={modal === "setup" ? "Set up buddy" : "Connect a session"}
+        <SetupDialog
+          key={modal}
+          mode={modal}
+          demo={demo}
           onClose={() => setModal(null)}
-        >
-          <p className="companion-build-note">
-            {modal === "setup"
-              ? "Paste into your coding agent."
-              : "Paste into the session you want to save."}
-          </p>
-          <button
-            className="button primary full"
-            onClick={() => void connect()}
-            disabled={busy}
-          >
-            {busy ? <Loader2 className="spin" size={15} /> : <Copy size={15} />}
-            {copied
-              ? "Copy again"
-              : modal === "setup"
-                ? "Copy setup prompt"
-                : "Copy connection prompt"}
-          </button>
-          <p className="companion-build-note">
-            {modal === "setup"
-              ? "Mac · choose a session after setup"
-              : "Codex · Claude Code · Cursor"}
-          </p>
-          {modalError && (
-            <p className="form-error" role="alert">
-              {modalError}
-            </p>
-          )}
-        </Modal>
+          onConnect={() => setModal("connect")}
+        />
       )}
 
       {modal === "collection" && (

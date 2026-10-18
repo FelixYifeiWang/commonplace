@@ -57,7 +57,18 @@ test("setup codes expire, can be claimed once, and mint only the issuing owner d
       db.prepare("SELECT owner_id FROM devices").get().owner_id,
       "alice",
     );
+    assert.equal(await store.status("hash", "alice", 202), "pending");
+    assert.equal(await store.status("hash", "bob", 202), null);
+    assert.equal(await store.ready("hash", "d2", 203), false);
+    assert.equal(await store.ready("hash", "d1", 204), true);
+    assert.equal(await store.ready("hash", "d1", 205), true);
+    assert.equal(await store.status("hash", "alice", 206), "ready");
     await store.issue("expired", "bob", 100);
+    assert.equal(
+      await store.status("expired", "bob", 100 + PAIRING_TTL),
+      "expired",
+    );
+    assert.equal(await store.ready("expired", "d3", 100 + PAIRING_TTL), false);
     assert.equal(
       await store.claim({
         codeHash: "expired",

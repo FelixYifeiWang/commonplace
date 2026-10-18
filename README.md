@@ -136,3 +136,7 @@ Production build passed 214 tests, ESLint, TypeScript, and Next.js compilation. 
 ### Buddy link repair
 
 The macOS helper explicitly assigns and verifies Commonplace’s URL handler during setup. The development Electron runtime no longer claims it. The universal helper builds for Intel and Apple Silicon on macOS 13+. Vercel passed 215 tests, lint, TypeScript, and compilation. The existing production companion was upgraded without re-pairing; its saved credentials and subscriptions were retained. macOS resolved the URL to Commonplace.app after the companion started, and the running window showed the hosted buddy. Browser-to-app clicks remain a manual check because browser automation blocks external schemes.
+
+### Current onboarding checks
+
+See [the onboarding QA report](docs/ONBOARDING_QA.md) for the latest production walkthrough, native checks, cleanup and remaining verification limits. Setup now confirms completion on the website, and the installed launcher is available as Commonplace in your Applications folder.
