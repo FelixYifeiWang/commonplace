@@ -5669,12 +5669,16 @@ body.desktop-feedback-page {
   cursor: pointer;
   transition:
     box-shadow 0.2s,
-    background 0.2s;
+    border-color 0.2s;
   color: #575757;
 }
+/* Darken with an inset wash instead of swapping the sheet's gradient for a
+   flat color: a gradient can't transition, so the swap flashed the page
+   white for a frame while the new color faded in from transparent. */
 .map-tile:hover {
-  box-shadow: 0 4px 20px #3b3b3b10;
-  background: #e9e9e9;
+  box-shadow:
+    0 4px 20px #3b3b3b10,
+    inset 0 0 0 999px rgb(0 0 0 / 0.025);
 }
 .map-tile:disabled {
   cursor: default;
@@ -5735,7 +5739,7 @@ body.desktop-feedback-page {
   pointer-events: none;
 }
 .map-center .map-tile:hover {
-  background: var(--paper);
+  box-shadow: 0 4px 20px #3b3b3b10;
   border-color: #cfcfcf;
 }
 .map-center .map-tile strong {
