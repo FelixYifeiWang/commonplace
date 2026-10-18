@@ -1,5 +1,4 @@
 "use client";
-import { useId } from "react";
 import type { SessionState } from "@/lib/types";
 export function Buddy({
   state = "following",
@@ -8,20 +7,12 @@ export function Buddy({
   state?: SessionState;
   small?: boolean;
 }) {
-  const shade = useId();
   return (
     <span
       className={`buddy-creature ${small ? "small" : ""} state-${state}`}
       aria-hidden="true"
     >
       <svg className="nosy-face" viewBox="0 0 80 80" fill="none">
-        <defs>
-          <radialGradient id={shade} cx="32%" cy="23%" r="86%">
-            <stop offset="0" stopColor="#fff" />
-            <stop offset=".72" stopColor="#fffefa" />
-            <stop offset="1" stopColor="#e8e6e1" />
-          </radialGradient>
-        </defs>
         <circle
           className="nosy-orbit"
           cx="40"
@@ -34,7 +25,7 @@ export function Buddy({
         <path
           className="nosy-outline"
           d="M71 40C71 58 58 71 40 71C22 71 9 58 9 40C9 22 22 9 40 9C58 9 71 22 71 40Z"
-          fill={`url(#${shade})`}
+          fill="#fffefa"
           stroke="currentColor"
           strokeWidth="1.8"
         />

@@ -46,3 +46,31 @@ Automatic generation requires the local server to stay running. The production b
 Hosted cards currently use metadata covers; full-page screenshot capture remains a local feature. The companion was not switched to the hosted destination, so existing subscriptions continue writing locally. Hosted Story work is bounded per invocation with durable checkpoints and daily recovery; very long imports may continue on a subsequent update or Story visit.
 
 QA cleanup limitation: CLI attempts exposed missing paired OIDC/store configuration and a development-environment authorization error. Adding a development connection did not resolve the provider authorization; the direct SDK returned the same error. Cleanup was stopped rather than changing production permissions. The fixture contains only “Commonplace hosted upload QA” and is absent from the gallery.
+
+## One-prompt buddy setup — 17 October 2026
+
+- Added one Copy setup prompt action for local Codex, Claude Code and Cursor. The browser reached the success state after copying; the browser tool's clipboard reader returned an empty value, so clipboard contents were not independently verified through that tool.
+- All three disposable transcript formats passed exact prompt matching, initial capture, incremental updates, single-use pairing rejection and device reuse through the local API. Test records were removed; existing user collections were preserved.
+- Installer tests verify client-bundle checksums, confined paths, private per-space files, initial setup and repeated setup. npm and LaunchAgent execution are mocked in these tests. A fresh-Mac install, Electron credential storage and real background launch still need an end-to-end user check.
+- The universal macOS helper is included explicitly in the client release. No Xcode, MCP configuration or agent hooks are required for a new installation. macOS 13+, Node 22.13+ and npm are required; cloud-only agents cannot install a buddy on the user's laptop.
+- 110 unit tests, typecheck, ESLint and the Next production build passed. Configured secret values were absent from 64 generated client files. The new pairing migration was applied locally and to Turso.
+
+- Deployed to https://commonplace-pearl.vercel.app. Public setup instructions and every bundled file passed hosted checksum checks. Anonymous setup issuance was rejected; authenticated pairing, single-use replay rejection and device reuse passed. Hosted pairing fixtures were removed without importing transcripts or making model calls.
+- The prebuilt native helper executed successfully on this Mac and passed signature verification. This is a helper smoke test, not a complete fresh-install test.
+
+## Separate buddy setup from the first collection
+
+- Setup now pairs and launches only. It does not search transcripts, import the setup conversation or create a collection, even if an old request includes a source. A separate `/connect` prompt explicitly selects a meaningful conversation. Existing Codex buddy click-to-connect remains available.
+- Setup and connection instructions are separate, brief, and contain no em dash. The setup response directs users to choose their first session. Reviewed the new setup modal in the local browser.
+- Fixed a runtime installation assumption exposed by the user's attempt: Electron 44.9.0 requires its official on-demand installer after npm ci. Verify the executable, plist and framework before writing a success marker or registering automatic launch. Tests cover a missing executable and a simulated permission denial with no LaunchAgent registered.
+- The actual macOS App Management denial during Electron extraction remains unverified after this change. No permissions were changed and the blocked extraction was not retried through another tool or location. No signing identity is available locally for a signed distribution.
+- 114 tests, ESLint, typecheck and the local API integration passed. The API test confirms setup does not access a transcript, then separately checks initial and ongoing capture for all three providers. Temporary fixtures were removed.
+
+- Production build and hosted checks passed for both setup and connection instructions, release checksums and pairing. Published to https://commonplace-pearl.vercel.app.
+
+## Markdown setup instructions and short copy
+
+- The user reports that buddy setup and launch now work on their Mac.
+- New setup prompts contain only `Set up <private setup.md link>`. `/setup.md` serves the full Markdown instructions, including the rule against collecting the setup conversation. Existing setup links remain supported.
+- Instructions prescribe a short success reply with one next step. Codex gets buddy Connect guidance; other agents get the session-prompt route. No project recommendations, recap or em dash.
+- 115 tests, lint, typecheck and local API checks passed. New Markdown links are accepted and redacted before ingestion; setup still creates no session. Local Markdown content type and response were checked.

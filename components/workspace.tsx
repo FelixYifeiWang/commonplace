@@ -1,12 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  ChevronDown,
   Copy,
   ExternalLink,
   Loader2,
@@ -88,7 +86,6 @@ export default function Workspace({
 }: {
   initialDemo?: boolean;
 }) {
-  const router = useRouter();
   const demo = initialDemo;
   const [data, setData] = useState<WorkspaceData>(() =>
       initialDemo ? structuredClone(SAMPLE) : EMPTY,
@@ -99,13 +96,12 @@ export default function Workspace({
     [screen, setScreen] = useState<"collection" | "sessions" | "settings">(
       "collection",
     );
-  const [modal, setModal] = useState<"connect" | "collection" | "item" | null>(
-      null,
-    ),
+  const [modal, setModal] = useState<
+      "setup" | "connect" | "collection" | "item" | null
+    >(null),
     [detail, setDetail] = useState<Item | null>(null);
   const [busy, setBusy] = useState(false),
     [toast, setToast] = useState(""),
-    [copyText, setCopyText] = useState(""),
     [copied, setCopied] = useState(false),
     [modalError, setModalError] = useState("");
   const [view, setView] = useState<"gallery" | "story">("gallery");
@@ -186,6 +182,8 @@ export default function Workspace({
       });
   }, [data.items, demo, refresh]);
   const collections = data.collections;
+  const hasBuddy = data.devices.some((device) => !device.revoked);
+  const connectionLabel = hasBuddy ? "Connect a session" : "Set up buddy";
   const allItems =
     selected === "all"
       ? data.items
@@ -198,7 +196,7 @@ export default function Workspace({
     setDroppedText("");
     setModalError("");
     setCopied(false);
-    setModal(value);
+    setModal(value === "connect" && !hasBuddy ? "setup" : value);
   }
   function chooseCollection(id: string) {
     setSelected(id);
@@ -245,28 +243,23 @@ export default function Workspace({
     setBusy(true);
     setModalError("");
     try {
-      let sentence = copyText;
-      if (!sentence) {
-        if (demo) {
-          sentence =
-            "Connect this computer to my Commonplace space using [your private connection link], then import this conversation once.";
-        } else {
-          const device = await api<{ id: string; token: string }>(
-            "/api/devices",
-            "POST",
-            { name: "My computer" },
-          );
-          sentence = `Connect this computer to my Commonplace space using ${window.location.origin}/agent#${device.token}, then import this conversation once.`;
-          await refresh();
-        }
-        setCopyText(sentence);
-      }
+      const setup = demo
+        ? null
+        : await api<{ link: string }>("/api/setup", "POST");
+      const setupOnly = modal === "setup";
+      const link = setup
+        ? setup.link.replace(
+            /\/setup(?:\.md)?#/,
+            setupOnly ? "/setup.md#" : "/connect#",
+          )
+        : "[your private link]";
+      const sentence = setupOnly ? `Set up ${link}` : `Connect ${link}`;
       await navigator.clipboard.writeText(sentence);
       setCopied(true);
       setToast(
         demo
           ? "Example sentence copied. Open your own space to connect."
-          : "Setup sentence copied. Paste it into your agent.",
+          : "Prompt copied.",
       );
     } catch (e) {
       setModalError(
@@ -555,6 +548,16 @@ export default function Workspace({
                   <button onClick={() => void refresh()}>Try again</button>
                 </div>
               )}
+              {screen === "collection" && !collections.length && !demo && (
+                <div className="welcome">
+                  <button
+                    className="button primary"
+                    onClick={() => openModal("connect")}
+                  >
+                    {connectionLabel} <ArrowRight size={15} />
+                  </button>
+                </div>
+              )}
               {screen === "collection" &&
                 (view === "gallery" || selected === "all") && (
                   <Gallery
@@ -595,7 +598,7 @@ export default function Workspace({
                       onClick={() => openModal("connect")}
                     >
                       <Plus size={15} />
-                      Connect a session
+                      {connectionLabel}
                     </button>
                   </div>
                   <div className="sessions-table">
@@ -613,7 +616,7 @@ export default function Workspace({
                           className="button subtle"
                           onClick={() => openModal("connect")}
                         >
-                          Connect a session <ArrowRight size={14} />
+                          {connectionLabel} <ArrowRight size={14} />
                         </button>
                       </div>
                     )}
@@ -663,12 +666,22 @@ export default function Workspace({
                       <h2>Connected computers</h2>
                       <button
                         className="text-button"
-                        onClick={() => openModal("connect")}
+                        onClick={() => openModal("setup")}
                       >
                         <Plus size={13} />
                         Connect a computer
                       </button>
                     </div>
+                    {hasBuddy && (
+                      <button
+                        className="text-button"
+                        onClick={() => {
+                          window.location.href = `commonplace://show?origin=${encodeURIComponent(window.location.origin)}`;
+                        }}
+                      >
+                        Show buddy
+                      </button>
+                    )}
                     <p className="section-description">
                       One connection per computer. Your companion remembers it
                       for next time.
@@ -695,7 +708,6 @@ export default function Workspace({
                                     id: device.id,
                                   });
                                   await refresh();
-                                  setCopyText("");
                                   setToast("Computer disconnected.");
                                 } catch (e) {
                                   setToast(
@@ -730,79 +742,41 @@ export default function Workspace({
           {undo && <button onClick={() => void undoDelete()}>Undo</button>}
         </div>
       )}
-      {modal === "connect" && (
-        <Modal title="Connect a session" onClose={() => setModal(null)}>
+      {(modal === "connect" || modal === "setup") && (
+        <Modal
+          title={modal === "setup" ? "Set up buddy" : "Connect a session"}
+          onClose={() => setModal(null)}
+        >
+          <p className="companion-build-note">
+            {modal === "setup"
+              ? "Paste into your coding agent."
+              : "Paste into the session you want to save."}
+          </p>
           <button
             className="button primary full"
+            onClick={() => void connect()}
             disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              setModalError("");
-              try {
-                if (demo) {
-                  router.push("/");
-                  return;
-                }
-                const device = await api<{ id: string; token: string }>(
-                  "/api/devices",
-                  "POST",
-                  { name: "Desktop companion" },
-                );
-                window.location.href = `commonplace://pair?origin=${encodeURIComponent(window.location.origin)}#${device.token}`;
-                setCopied(true);
-                await refresh();
-              } catch (e) {
-                setModalError(
-                  e instanceof Error ? e.message : "Could not open companion.",
-                );
-              } finally {
-                setBusy(false);
-              }
-            }}
           >
-            {busy ? (
-              <Loader2 className="spin" size={15} />
-            ) : (
-              <Monitor size={15} />
-            )}
-            Open buddy
-            <ArrowUpRight size={14} />
+            {busy ? <Loader2 className="spin" size={15} /> : <Copy size={15} />}
+            {copied
+              ? "Copy again"
+              : modal === "setup"
+                ? "Copy setup prompt"
+                : "Copy connection prompt"}
           </button>
-          {copied && (
-            <p className="connection-wait">
-              <span className="live-dot" />
-              Open a conversation, then drop the desktop buddy over it.
-            </p>
-          )}
+          <p className="companion-build-note">
+            {modal === "setup"
+              ? "Mac · choose a session after setup"
+              : "Codex · Claude Code · Cursor"}
+          </p>
           {modalError && (
             <p className="form-error" role="alert">
               {modalError}
             </p>
           )}
-          <p className="companion-build-note">
-            Move the desktop buddy over an open Codex conversation or a Claude
-            Code session in the Claude app, click it, then click Connect.
-          </p>
-          <details className="advanced-connection">
-            <summary>
-              Use a coding agent <ChevronDown size={12} />
-            </summary>
-            <p>
-              Paste one sentence into your agent. This preview imports the
-              current conversation once; automatic background setup is coming
-              next.
-            </p>
-            <button
-              className="button subtle full"
-              onClick={() => void connect()}
-              disabled={busy}
-            >
-              <Copy size={13} />
-              {copyText ? "Copy connection again" : "Copy setup sentence"}
-            </button>
-          </details>
         </Modal>
       )}
+
       {modal === "collection" && (
         <Modal title="New collection" onClose={() => setModal(null)}>
           <form onSubmit={createCollection} className="form">

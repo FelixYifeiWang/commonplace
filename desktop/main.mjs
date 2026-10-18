@@ -15,13 +15,45 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { resolveLocalTarget } from "./target.mjs";
 import { claudeProjectSource } from "./claude.mjs";
+import { consumeSetupRequest } from "./setup-inbox.mjs";
 import { connectSession, SUPPORTED_APPS } from "./connect.mjs";
-import { createDragController, buddyBounds } from "./drag.mjs";
+import {
+  createDragController,
+  buddyBounds,
+  handleBuddyMouse,
+} from "./drag.mjs";
 const exec = promisify(execFile);
 import fs from "node:fs/promises";
 import { pathToFileURL, fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ORIGIN = process.env.COMMONPLACE_ORIGIN || "http://127.0.0.1:3100";
+if (process.env.COMMONPLACE_DATA_DIR) {
+  if (!path.isAbsolute(process.env.COMMONPLACE_DATA_DIR))
+    throw new Error("Invalid companion storage path.");
+  app.setPath("userData", process.env.COMMONPLACE_DATA_DIR);
+}
+let setupBusy = false;
+async function processSetup() {
+  if (setupBusy || busy) return;
+  setupBusy = true;
+  try {
+    const result = await consumeSetupRequest(app.getPath("userData"), {
+      origin: ORIGIN,
+      connection,
+      pair,
+      subscribe: subscribeSource,
+      capture: captureSource,
+      report: showDropFeedback,
+      request,
+    });
+    if (result?.ok && result.action === "setup") win?.show();
+  } catch (error) {
+    lastError = error.message;
+    status = "error";
+  } finally {
+    setupBusy = false;
+  }
+}
 let win,
   feedbackWindow,
   feedbackTimer,
@@ -37,6 +69,9 @@ let win,
   busy = false,
   status = "waiting",
   lastError = "";
+let savedPosition = null,
+  candidateRevision = 0,
+  stateRevision = 0;
 const configPath = () => path.join(app.getPath("userData"), "connection.enc");
 const statePath = () =>
   path.join(app.getPath("userData"), "subscriptions.json");
@@ -51,18 +86,26 @@ function register(name, handler) {
 }
 async function persist() {
   await fs.mkdir(app.getPath("userData"), { recursive: true });
-  await fs.writeFile(statePath(), JSON.stringify({ subscriptions, cursors }), {
-    mode: 0o600,
-  });
+  await fs.writeFile(
+    statePath(),
+    JSON.stringify({
+      subscriptions,
+      cursors,
+      position: win && !win.isDestroyed() ? win.getBounds() : savedPosition,
+    }),
+    {
+      mode: 0o600,
+    },
+  );
 }
-async function pair({ token, origin }) {
+async function pair({ token, origin, id }) {
   if (origin !== ORIGIN || !/^[a-f0-9]{64}$/.test(token))
     throw new Error("This connection does not belong to the configured space.");
   if (!safeStorage.isEncryptionAvailable())
     throw new Error(
       "Secure credential storage is unavailable on this computer.",
     );
-  connection = { origin, token };
+  connection = { origin, token, id };
   await fs.mkdir(app.getPath("userData"), { recursive: true });
   await fs.writeFile(
     configPath(),
@@ -80,7 +123,7 @@ async function request(url, options) {
   });
 }
 async function tick() {
-  if (!connection || busy || dragController?.isDragging()) return;
+  if (!connection || setupBusy || busy || dragController?.isDragging()) return;
   busy = true;
   try {
     for (const subscription of subscriptions.filter(
@@ -116,8 +159,8 @@ async function tick() {
     busy = false;
   }
 }
-let buddyOffsetY = 0,
-  candidate = null,
+const buddyOffsetY = 54;
+let candidate = null,
   candidateConnected = false,
   connecting = false;
 function anchorPoint() {
@@ -125,13 +168,83 @@ function anchorPoint() {
   return { x: b.x + 52, y: b.y + buddyOffsetY + 54 };
 }
 function setExpanded(value) {
-  const b = win.getBounds(),
-    anchor = { x: b.x, y: b.y + buddyOffsetY },
-    area = screen.getDisplayMatching(b).workArea;
-  const layout = buddyBounds(anchor, area, value);
   expanded = value;
-  buddyOffsetY = layout.offsetY;
-  win.setBounds(layout.bounds, false);
+  notifyBuddy();
+}
+function notifyBuddy() {
+  stateRevision++;
+  if (win && !win.isDestroyed())
+    win.webContents.send("companion:state", buddySnapshot());
+}
+function showBuddy() {
+  if (!win || win.isDestroyed()) return;
+  const b = win.getBounds(),
+    area = screen.getDisplayMatching(b).workArea;
+  if (!win.isVisible())
+    win.setPosition(
+      Math.round(
+        Math.max(area.x, Math.min(b.x, area.x + area.width - b.width)),
+      ),
+      Math.round(
+        Math.max(area.y, Math.min(b.y, area.y + area.height - b.height)),
+      ),
+      false,
+    );
+  win.show();
+  notifyBuddy();
+}
+function hideBuddy() {
+  dragController?.cancel();
+  candidateRevision++;
+  setExpanded(false);
+  win?.hide();
+  void persist();
+}
+function buddyMenu() {
+  return Menu.buildFromTemplate([
+    { label: "Hide buddy", click: hideBuddy },
+    { label: "Open Commonplace", click: () => shell.openExternal(ORIGIN) },
+    { type: "separator" },
+    { label: "Quit and stop syncing", click: () => app.quit() },
+  ]);
+}
+function buddySnapshot() {
+  const cursor = screen.getCursorScreenPoint(),
+    bounds = win.getBounds();
+  const gaze = {
+    x: Math.max(-2, Math.min(2, (cursor.x - bounds.x - 52) / 180)),
+    y: Math.max(
+      -1.5,
+      Math.min(1.5, (cursor.y - bounds.y - buddyOffsetY - 54) / 180),
+    ),
+  };
+  return {
+    gaze,
+    revision: stateRevision,
+    dragging: dragController?.hasMoved() || false,
+    buddyOffsetY,
+    candidateTitle: candidate?.title || "",
+    candidateConnected,
+    connecting,
+    connected: !!connection,
+    expanded,
+    targetTitle,
+    feedbackPoint,
+    feedbackActive: !!feedbackWindow?.isVisible(),
+    subscriptions: subscriptions.map((s) => ({
+      id: s.id,
+      title: s.title,
+      provider: s.provider,
+      mode: s.mode,
+      paused: s.paused,
+      done: s.done,
+      turns: s.turns,
+      error: s.error,
+    })),
+    state: status,
+    error: lastError,
+    origin: ORIGIN,
+  };
 }
 async function inspectPoint(point) {
   const { stdout } = await exec(
@@ -142,25 +255,40 @@ async function inspectPoint(point) {
   return JSON.parse(stdout);
 }
 async function findCandidate() {
+  const revision = ++candidateRevision;
   candidate = null;
   candidateConnected = false;
   lastError = "";
   try {
     const target = await inspectPoint(anchorPoint());
     if (target.error || !SUPPORTED_APPS.has(target.bundleId)) return;
-    candidate = await resolveLocalTarget(target);
+    const found = await resolveLocalTarget(target);
+    let connected = false;
     if (connection) {
       const r = await request(
-        `${connection.origin}/api/device-session?externalId=${encodeURIComponent(candidate.sessionId)}`,
+        `${connection.origin}/api/device-session?externalId=${encodeURIComponent(found.sessionId)}`,
         { headers: { Authorization: `Bearer ${connection.token}` } },
       );
-      if (r.ok) candidateConnected = !!(await r.json()).connected;
+      if (r.ok) connected = !!(await r.json()).connected;
+    }
+    if (
+      revision === candidateRevision &&
+      expanded &&
+      !dragController?.isDragging()
+    ) {
+      candidate = found;
+      candidateConnected = connected;
     }
   } catch (e) {
-    lastError = e.message;
+    if (revision === candidateRevision) lastError = e.message;
+  } finally {
+    notifyBuddy();
   }
 }
 async function toggleControls() {
+  candidateRevision++;
+  candidate = null;
+  candidateConnected = false;
   setExpanded(!expanded);
   if (expanded) await findCandidate();
 }
@@ -285,7 +413,12 @@ async function followClaudeProject(folder) {
 async function handleProtocol(raw) {
   try {
     const url = new URL(raw);
-    if (url.protocol !== "commonplace:" || url.hostname !== "pair") return;
+    if (url.protocol !== "commonplace:") return;
+    if (url.hostname === "show") {
+      if (url.searchParams.get("origin") === ORIGIN) showBuddy();
+      return;
+    }
+    if (url.hostname !== "pair") return;
     await pair({
       origin: url.searchParams.get("origin"),
       token: url.hash.slice(1),
@@ -331,21 +464,26 @@ if (!lock) {
         const saved = JSON.parse(await fs.readFile(statePath(), "utf8"));
         subscriptions = saved.subscriptions || [];
         cursors = saved.cursors || {};
+        if (
+          Number.isFinite(saved.position?.x) &&
+          Number.isFinite(saved.position?.y)
+        )
+          savedPosition = saved.position;
       } catch (error) {
         if (error.code !== "ENOENT")
           lastError = "Saved subscriptions could not be restored.";
       }
       if (process.defaultApp) {
         app.setAsDefaultProtocolClient("commonplace", process.execPath, [
-          path.resolve(__dirname),
+          app.getAppPath(),
         ]);
       } else app.setAsDefaultProtocolClient("commonplace");
       const area = screen.getPrimaryDisplay().workArea;
       win = new BrowserWindow({
-        width: 104,
-        height: 112,
-        x: area.x + area.width - 128,
-        y: area.y + area.height - 136,
+        ...buddyBounds({
+          x: savedPosition?.x ?? area.x + area.width - 128,
+          y: savedPosition ? savedPosition.y + 54 : area.y + area.height - 136,
+        }).bounds,
         frame: false,
         transparent: true,
         backgroundColor: "#00000000",
@@ -372,68 +510,61 @@ if (!lock) {
           void shell.openExternal(url);
         }
       });
-      register("companion:snapshot", () => {
-        const cursor = screen.getCursorScreenPoint(),
-          bounds = win.getBounds();
-        const gaze = {
-          x: Math.max(-2, Math.min(2, (cursor.x - bounds.x - 52) / 180)),
-          y: Math.max(
-            -1.5,
-            Math.min(1.5, (cursor.y - bounds.y - buddyOffsetY - 54) / 180),
-          ),
-        };
-        return {
-          gaze,
-          buddyOffsetY,
-          candidateTitle: candidate?.title || "",
-          candidateConnected,
-          connecting,
-          connected: !!connection,
-          expanded,
-          targetTitle,
-          feedbackPoint,
-          feedbackActive: !!feedbackWindow?.isVisible(),
-          subscriptions: subscriptions.map((s) => ({
-            id: s.id,
-            title: s.title,
-            provider: s.provider,
-            mode: s.mode,
-            paused: s.paused,
-            done: s.done,
-            turns: s.turns,
-            error: s.error,
-          })),
-          state: status,
-          error: lastError,
-          origin: ORIGIN,
-        };
-      });
+      register("companion:snapshot", buddySnapshot);
       register("companion:pair", pair);
       dragController = createDragController({
         window: win,
+        polling: false,
         cursor: () => screen.getCursorScreenPoint(),
+        onMoveStart: () => {
+          candidateRevision++;
+          setExpanded(false);
+        },
       });
-      register("companion:drag-start", (point) => {
-        if (connecting) return false;
-        candidate = null;
-        candidateConnected = false;
-        const origin =
-          point && Number.isFinite(point.x) && Number.isFinite(point.y)
-            ? point
-            : screen.getCursorScreenPoint();
-        return dragController.start(origin);
+      const finishDrag = (result) => {
+        notifyBuddy();
+        if (result.click) void toggleControls();
+        if (result.moved) void persist();
+      };
+      win.webContents.on("before-mouse-event", (_event, mouse) => {
+        handleBuddyMouse(
+          dragController,
+          mouse,
+          win.getBounds(),
+          finishDrag,
+          !connecting,
+        );
       });
-      register("companion:drag-end", async () => {
-        const result = await dragController.end();
-        if (result.click) await toggleControls();
-        else if (result.moved && expanded) setExpanded(false);
-        return result;
+      win.webContents.on("before-input-event", (_event, input) => {
+        if (input.type === "keyDown" && input.key === "Escape") {
+          dragController.cancel({ restore: true });
+          notifyBuddy();
+        }
       });
-      register("companion:drag-cancel", () => dragController.cancel());
+      win.on("blur", () => {
+        if (dragController.isDragging()) {
+          dragController.cancel();
+          finishDrag({ click: false, moved: true });
+        }
+      });
+      // Older hosted renderers may still call these. Native events own the drag.
+      register("companion:drag-start", () => dragController.isDragging());
+      register("companion:drag-end", () => ({ click: false }));
+      register("companion:drag-cancel", () => {});
       register("companion:toggle", toggleControls);
+      register("companion:hit-test", (interactive) => {
+        if (!dragController.isDragging())
+          win.setIgnoreMouseEvents(!interactive, { forward: true });
+      });
+      register("companion:context-menu", () => {
+        dragController.cancel();
+        notifyBuddy();
+        buddyMenu().popup({ window: win });
+      });
       register("companion:connect", async () => {
         if (connecting) return { connected: false };
         connecting = true;
+        notifyBuddy();
         try {
           const result = await connectSession({
             inspect: inspectPoint,
@@ -448,6 +579,7 @@ if (!lock) {
           return result;
         } finally {
           connecting = false;
+          notifyBuddy();
         }
       });
       register("companion:pause", async (id) => {
@@ -477,7 +609,7 @@ if (!lock) {
         return { ok: true };
       });
       register("companion:open-space", () => shell.openExternal(ORIGIN));
-      register("companion:hide", () => win.hide());
+      register("companion:hide", hideBuddy);
       win.on("closed", () => dragController?.cancel());
       feedbackWindow = new BrowserWindow({
         ...screen.getPrimaryDisplay().bounds,
@@ -508,13 +640,21 @@ if (!lock) {
         event.preventDefault(),
       );
       await feedbackWindow.loadURL(`${ORIGIN}/buddy/feedback`);
+      const hasSetupRequest = await fs
+        .access(path.join(app.getPath("userData"), "setup-request.json"))
+        .then(
+          () => true,
+          () => false,
+        );
       const authCheck = await net.fetch(`${ORIGIN}/api/workspace`, {
         redirect: "manual",
       });
       if (
-        authCheck.status === 401 ||
-        authCheck.status === 302 ||
-        authCheck.status === 303
+        !connection &&
+        !hasSetupRequest &&
+        (authCheck.status === 401 ||
+          authCheck.status === 302 ||
+          authCheck.status === 303)
       ) {
         const login = new BrowserWindow({
           width: 900,
@@ -554,19 +694,25 @@ if (!lock) {
         win.show();
       }
       const icon = nativeImage.createFromDataURL(
-        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGElEQVQ4T2NkaGD4z0ABYBxVMGoAagAAj18CEf5T+nMAAAAASUVORK5CYII=",
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAACRElEQVRYhe2XPU8VQRSGn6s0ytUeKz6iXjuB1gSwko9KI6WNSusvUED+APIV/gWCNVAQQI39cm0MoiYqFoAWQMI1k7ybTJbZ3Zld6HiTSW7mnPOes/Nx5r1wAX9UgG7gNbAKRMBfjUhz40DXeSQeBupAw3MY38eKLYUO4L1F/BWYBh4ANaBZo6a5GWDH8jex7UWT3wN+iugbMAI0ecRd0td/Uewf4H5o8j7gSAQLQLXAB1wDFsVxCPSGLPuuAif1RUVhYt+I6zfQlhdQAT5YX14muV1EvBIbeQdz2NrzvGU3ROvAmud2fBf3oyzCupyeepB2yncbPzyXv+kZTnRbV+1ywmau2e3E3Kj851L4kjFNWtmGij+FCRmnHETHGjbhJ/kPpCR3xcwqZsxVwKqM/R5kLcAJ8A+4GlDAoHIsuwr4LONNh82Q3HLs51sXUUpMPGfitlwBBzL6NJ2lgMNqo6o4k+sU9mU0VyYLV7T0ZgtuBBZwXTn2XMa6jMllS2JIfh8JRy3rKq6kHMIk5uX3skABmYdwXEbz3GZhO0MH5HXFOfm9chm7ZNxxNCIbawULsBvR3bRWvCWHZ5w9RvJaMRIS8WOUdxtCT/8PcT/McqwAm1aTOavnOO4b6z46sV3ioSExUVaQTFmCpNU3sNeSZIsFt8Ms+ztLkvWUEaW/gBcBovSJtee7RURpjDbJqIZ1OGf1BN9Rb6/q96DueXzV4j3P1YF5qEhGRQF/TCKd9tJ/TJLolJhYVpIDjUhzY2lq5wKk4D+X1s9iWaDrGgAAAABJRU5ErkJggg==",
       );
-      tray = new Tray(icon);
-      tray.setToolTip("Commonplace");
+      const trayIcon = icon.resize({ width: 18, height: 18 });
+      trayIcon.setTemplateImage(true);
+      tray = new Tray(trayIcon);
+      tray.setToolTip("Commonplace · Show buddy");
       tray.setContextMenu(
         Menu.buildFromTemplate([
-          { label: "Show companion", click: () => win.show() },
+          { label: "Show buddy", click: showBuddy },
+          { label: "Hide buddy", click: hideBuddy },
           { label: "Open my space", click: () => shell.openExternal(ORIGIN) },
           { type: "separator" },
-          { label: "Quit", click: () => app.quit() },
+          { label: "Quit and stop syncing", click: () => app.quit() },
         ]),
       );
-      tray.on("click", () => win.show());
+      tray.on("click", showBuddy);
+      app.on("activate", showBuddy);
+      await processSetup();
+      setInterval(() => void processSetup(), 2000);
       setInterval(() => void tick(), 15000);
       void tick();
       const folder = projectArg(process.argv);

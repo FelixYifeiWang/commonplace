@@ -182,7 +182,7 @@ test("pointer-down origin is retained across IPC delay", async () => {
   const f = dragFixture(),
     d = createDragController(f.args);
   f.move();
-  d.start({ x: 100, y: 100 });
+  d.start({ offset: { x: 100, y: 100 } });
   await d.end();
   assert.equal(f.args.window.getBounds().x, 100);
 });
@@ -191,6 +191,6 @@ test("cancel restores the original position", () => {
     d = createDragController(f.args);
   d.start();
   f.move();
-  d.cancel();
+  d.cancel({ restore: true });
   assert.equal(d.isDragging(), false);
 });

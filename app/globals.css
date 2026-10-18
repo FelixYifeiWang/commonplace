@@ -4165,11 +4165,11 @@ body.desktop-feedback-page {
   filter: drop-shadow(0 5px 4px #00000018);
 }
 .native-buddy-grab:hover .buddy-creature {
-  transform: translateY(-2px) rotate(-4deg) scale(1.02);
+  transform: scale(0.96);
   filter: drop-shadow(0 8px 5px #00000020);
 }
 .native-buddy-grab.dragging .buddy-creature {
-  transform: translateY(-5px) rotate(9deg) scale(1.08, 0.98);
+  transform: scale(0.96);
   filter: drop-shadow(-3px 12px 6px #00000025);
 }
 .native-buddy-grab:focus-visible {
@@ -4203,7 +4203,7 @@ body.desktop-feedback-page {
 }
 .native-buddy-grab .state-waiting .nosy-face,
 .native-buddy-grab .state-following .nosy-face {
-  animation: buddy-idle 6s ease-in-out infinite;
+  animation: none;
 }
 .native-buddy-grab.dragging .nosy-face {
   animation: none;
@@ -4721,6 +4721,18 @@ body.desktop-feedback-page {
   top: 112px;
   left: 3px;
   width: 98px;
+  opacity: 0;
+  transform: translateY(6px) scale(0.94);
+  transform-origin: 50% 100%;
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.native-connect-panel.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
 .native-connect-panel.above {
   top: 3px;
@@ -4738,7 +4750,10 @@ body.desktop-feedback-page {
   align-items: center;
   gap: 5px;
   font-size: 11px;
-  animation: buddy-controls-in 170ms ease-out;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
 }
 .native-connect:disabled {
   opacity: 1;
@@ -5248,4 +5263,21 @@ body.desktop-feedback-page {
 .hosted-signin p {
   font-size: 12px;
   color: #9b5555;
+}
+
+/* Keep the grab point still; expression carries the motion. */
+.native-buddy-grab.dragging .buddy-creature {
+  transition: filter 160ms ease;
+}
+.native-buddy-grab:hover .nosy-brow.right {
+  transform: translateY(-1px);
+}
+.native-buddy-grab .nosy-brow {
+  transition: transform 180ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .native-connect-panel {
+    transition: none;
+    transform: none;
+  }
 }

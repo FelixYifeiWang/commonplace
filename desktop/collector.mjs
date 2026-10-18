@@ -2,6 +2,7 @@ import { open, readdir, realpath, stat } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
+import { redactSetupLinks } from "./setup-session.mjs";
 import { parseTranscript } from "../lib/protocol.mjs";
 
 async function filesUnder(root, depth) {
@@ -200,7 +201,7 @@ export async function syncTranscript({
     : readSelectedTranscript(subscription.file);
   for await (const raw of transcript) {
     total++;
-    const turn = { ...raw, text: raw.text.slice(0, 64000) };
+    const turn = { ...raw, text: redactSetupLinks(raw.text).slice(0, 64000) };
     const key = createHash("sha256")
       .update(`${turn.id}:${turn.text}`)
       .digest("hex");

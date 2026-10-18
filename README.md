@@ -12,7 +12,7 @@ The collection starts with a picker, square blocks, and an add button. Click a b
 
 - **Desktop (macOS preview):** open one Codex window, open the conversation, then move the buddy over the conversation area, click it and choose Connect. It connects and follows new turns while the companion runs. No Accessibility or screen-recording permission is requested. It checks the selected transcript every 15 seconds; the webpage refreshes every four seconds.
 - **Claude Code (macOS preview):** the same buddy connects the session focused in the Claude desktop app's Code tab, with one Claude window open. To follow a whole project folder instead, including sessions started there later, run `npm run desktop -- --follow-claude-project=/full/path/to/folder`. The folder becomes one channel. Every transcript Claude Code stores for that folder is uploaded, so name only folders you want collected. Claude Code in a terminal cannot be targeted by the buddy.
-- **Coding agent:** copy the setup sentence from Connect. The current implementation imports a conversation once through a scoped API token. Automatic setup of a persistent local connector is planned; this draft does not claim an agent keeps monitoring after its turn ends.
+- **Agent setup:** choose Set up buddy and paste the prompt into any local coding agent. Setup pairs and launches the buddy without reading the setup conversation or creating a collection. Then choose Connect a session and paste that separate prompt into a conversation worth saving. Codex and Claude Code in the Claude desktop app can also connect through the buddy's Connect control over an open conversation. macOS 13+, Node.js 22.13+ and npm are required. A prebuilt helper avoids Xcode; cloud agents cannot install a laptop buddy.
 
 Both routes use the same device/subscription APIs. A device token is scoped to writes for its owner; pause stops ingestion and revocation disables the device. Server tokens are hashed; desktop credentials are encrypted using Electron safeStorage. Only explicitly selected transcripts are uploaded.
 
@@ -22,7 +22,7 @@ Collections, manual blocks, source passages, account sign-in, revocable connecti
 
 ## Unfinished
 
-The example collection is sample content, not a live extraction. Direct connection currently supports Codex and Claude Code in the Claude desktop app. Inactive sidebar rows must be opened first. Cursor and terminal Claude Code feasibility findings are in `COMPATIBILITY.md`; they are not yet connected to the connection handler. There is no signed desktop installer or freely editable mind map yet.
+The example collection is sample content, not a live extraction. Clicking the desktop buddy to identify an open window currently supports Codex and Claude Code in the Claude desktop app. Inactive sidebar rows must be opened first. The setup-prompt route supports local Codex, Claude Code and Cursor JSONL transcripts; see `COMPATIBILITY.md`. There is no signed desktop installer or freely editable mind map yet.
 
 The older Sites preview has an additional Sites authentication boundary. The Vercel deployment uses its own private access code. Desktop hosted sign-in and unattended hosted syncing still need an end-to-end companion check; local companion syncing is the tested development path.
 
@@ -88,8 +88,30 @@ vercel deploy --prod
 
 The migration runner records applied SQL files and batches each migration atomically. Hosted uploads use scoped presigned URLs and OIDC, then authenticated file delivery. The OpenAI key is only used by server functions. Source changes schedule background Story work after the response; durable leases and checkpoints prevent duplicate continuations. Each invocation is bounded; pending work resumes on subsequent updates, Story visits, or the daily recovery cron. Very long imports may need more than one invocation.
 
-Hosted website cards use metadata covers. The native browser screenshot renderer remains local. No Electron or session-history reader runs on Vercel. To connect the desktop companion to the hosted space, launch it with `COMMONPLACE_ORIGIN` set to the deployment URL and sign in there; this explicitly selects a different destination for future subscriptions.
+Hosted website cards use metadata covers. The native browser screenshot renderer remains local. No Electron or session-history reader runs on Vercel. To connect to the hosted space, copy its setup prompt and paste it into a local agent. The pairing link selects that destination; existing local subscriptions are not migrated.
 
 Vercel Hobby and Turso Starter were selected for the prototype; OpenAI requests consume paid API credits. No paid infrastructure plan is required for this deployment. Monitor each provider's free quotas before scaling.
 
 `tests/hosted.integration.mjs` is an explicit live check using `COMMONPLACE_TEST_URL`, the access code, and hosted database credentials from the environment. It verifies authentication, automatic GPT-6 Luna continuation, direct private uploads, downloads, byte ranges and deletion, then removes only its database fixtures. It makes paid model calls; remove its reported Blob fixture with the Vercel CLI afterward.
+
+## One-prompt setup internals
+
+`/setup.md` serves the full agent instructions as Markdown. The copied prompt is only `Set up <private setup.md link>`. `/setup` and `/SKILL.md` remain compatible aliases. An authenticated copy action issues a single-use, 30-minute pairing code in a URL fragment. The setup link only installs and pairs. A separate `/connect` link identifies an explicitly selected conversation through its local user message; ambiguous matches fail rather than guessing. Only this explicit connection subscribes a transcript. Setup links are redacted before ingestion.
+
+The client-only release at `/companion/` is generated by `npm run companion:package` before local and hosted builds. Its manifest carries SHA-256 hashes; the Electron dependency is pinned with npm integrity checks. The committed universal helper in `desktop/release/` is built from `desktop/native/Target.swift`; it is ad-hoc signed, not a notarized app distribution. Device keys are encrypted by Electron; setup request files are removed after processing. No MCP servers, hooks, global packages or agent settings are installed.
+
+The per-space installation lives in `~/Library/Application Support/Commonplace/<space-id>`. Its generated `uninstall.mjs` stops automatic launch while retaining saved collections and local credentials. Connections settings can revoke the device. A full fresh-Mac install still needs real-world validation; tests exercise the installer with process launch mocked and all three providers with disposable transcripts through the real API.
+
+### Setup revision
+
+Setup does not create the first collection. It launches the buddy and gives a short next step. Connection prompts remain separate and work across local Codex, Claude Code and Cursor JSONL formats.
+
+Electron 44.9.0 has an on-demand binary installer. After `npm ci`, the installer runs Electron's official `install.js` and verifies the executable, plist and framework before registering a LaunchAgent. A reported macOS App Management denial during extraction remains unresolved on the affected Mac. The app does not change permissions or instruct users to grant broad App Management access as normal onboarding. A signed, notarized distribution remains future work; do not claim permission-free installation.
+
+### Buddy movement and visibility
+
+Dragging preserves the grab offset. Native mouse events move and release the window before renderer dispatch, so renderer delays cannot extend a drag. Capture loss and focus changes keep the latest position; only Escape cancels back to the start. Connect fades into reserved space above the face without resizing the window.
+
+Right-click the buddy for **Hide buddy** or **Quit and stop syncing**. Hide keeps subscriptions running. The Commonplace menu-bar icon restores it. **Settings → Show buddy** opens the registered desktop link, subject to browser permission to open external apps.
+
+Native checks: two off-center drags moved by exactly the pointer delta, release coordinates matched the saved position, Connect kept the face fixed, and Hide removed the window. Browser automation blocks the desktop URI, so the website restore path was not end-to-end verified here.

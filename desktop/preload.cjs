@@ -1,5 +1,14 @@
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("commonplaceDesktop", {
+  nativeDrag: true,
+  onSnapshot: (callback) => {
+    const listener = (_event, value) => callback(value);
+    ipcRenderer.on("companion:state", listener);
+    return () => ipcRenderer.removeListener("companion:state", listener);
+  },
+  hitTest: (interactive) =>
+    ipcRenderer.invoke("companion:hit-test", interactive),
+  contextMenu: () => ipcRenderer.invoke("companion:context-menu"),
   snapshot: () => ipcRenderer.invoke("companion:snapshot"),
   dragStart: (point) => ipcRenderer.invoke("companion:drag-start", point),
   connect: () => ipcRenderer.invoke("companion:connect"),
