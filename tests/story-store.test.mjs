@@ -580,3 +580,23 @@ test("a missing generated view gets a source fallback without altering the saved
     sqlite.close();
   }
 });
+
+test("legacy verified beats remain the Story view while the map gets a source preview", async () => {
+  const { sqlite, store, add } = fixture();
+  try {
+    add();
+    const job = await store.claim();
+    await store.complete(
+      job,
+      await prepareStoryBatch(job),
+      [beat],
+      "gpt-6-luna",
+    );
+    const state = await store.get("c", "u");
+    assert.equal(state.session, null);
+    assert.equal(state.beats[0].text, beat.text);
+    assert.ok(state.previewSession.map.nodes.length);
+  } finally {
+    sqlite.close();
+  }
+});
