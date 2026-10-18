@@ -5721,22 +5721,14 @@ body.desktop-feedback-page {
   max-height: 100%;
   word-break: normal;
 }
-/* The center is the result, not a saved idea: a white box with a hairline and
-   a dotted ring instead of the grey sheet every node uses. */
+/* The center is the result, not a saved idea: a white box with a hairline
+   instead of the grey sheet every node uses. */
 .map-center .map-tile {
   width: 100%;
   position: relative;
   background: var(--paper);
   border: 1px solid #e1e1e1;
   border-radius: 10px;
-}
-.map-center .map-tile::before {
-  content: "";
-  position: absolute;
-  inset: -9px;
-  border: 1.5px dotted #c9c9c9;
-  border-radius: 16px;
-  pointer-events: none;
 }
 .map-center .map-tile:hover {
   box-shadow: 0 4px 20px #3b3b3b10;
