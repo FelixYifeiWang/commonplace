@@ -5306,6 +5306,58 @@ body.desktop-feedback-page {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.session-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #4f4f4f;
+  background: #f6f6f6;
+  border: 1px solid #e6e6e6;
+  border-radius: 999px;
+  padding: 5px 6px 5px 12px;
+}
+.session-notice > i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #b4542f;
+  flex: none;
+}
+.session-notice button,
+.session-await-problem button {
+  text-decoration: none;
+  border: 1px solid #cfcfcf;
+  border-radius: 999px;
+  padding: 3px 11px;
+  background: var(--paper);
+  color: var(--ink);
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+.session-notice button:hover,
+.session-await-problem button:hover {
+  border-color: #9a9a9a;
+}
+.session-notice button:disabled,
+.session-await-problem button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.session-await-problem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.session-await-problem p {
+  color: #5c5c5c;
+  max-width: 420px;
+}
+.session-await-problem button {
+  font-size: 13px;
+  padding: 6px 16px;
+}
 .session-updating {
   display: inline-flex;
   align-items: center;
@@ -5506,21 +5558,52 @@ body.desktop-feedback-page {
   align-items: center;
   gap: 8px;
 }
-.sheet-caption small {
+.sheet-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+/* Solid = stayed (Picked, Kept); outlined = Dropped. */
+.sheet-pill {
   margin-left: auto;
+  flex: none;
   font-size: 9px;
-  color: #868686;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  padding: 3px 7px;
+  border: 1px solid var(--accent);
+}
+.pill-solid {
+  background: var(--accent);
+  color: var(--paper);
+}
+.pill-outline {
+  color: #6f6f6f;
+  border-color: #a8a8a8;
 }
 .role-picked .sheet-media {
-  outline: 1px solid #909090;
+  outline: 1px solid var(--accent);
   outline-offset: 5px;
   border-radius: 2px;
 }
-.role-attempt .sheet-caption {
+/* Unpicked options and dropped attempts fade and are struck through. */
+.role-option .sheet-media,
+.role-attempt .sheet-media {
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+.role-option .sheet-label,
+.role-attempt .sheet-label {
   text-decoration: line-through;
+  text-decoration-color: #b0b0b0;
 }
 .role-attempt .sheet-media {
-  opacity: 0.65;
+  outline: 1px dashed #a8a8a8;
+  outline-offset: 5px;
+  border-radius: 2px;
 }
 .sheet-quote {
   font:
@@ -5632,9 +5715,26 @@ body.desktop-feedback-page {
   max-height: 100%;
   word-break: normal;
 }
+/* The center is the result, not a saved idea: a white box with a hairline and
+   a dotted ring instead of the grey sheet every node uses. */
 .map-center .map-tile {
   width: 100%;
-  background: #e7e7e7;
+  position: relative;
+  background: var(--paper);
+  border: 1px solid #e1e1e1;
+  border-radius: 10px;
+}
+.map-center .map-tile::before {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border: 1.5px dotted #c9c9c9;
+  border-radius: 16px;
+  pointer-events: none;
+}
+.map-center .map-tile:hover {
+  background: var(--paper);
+  border-color: #cfcfcf;
 }
 .map-center .map-tile strong {
   font:
@@ -5642,7 +5742,20 @@ body.desktop-feedback-page {
     serif;
 }
 .map-center .map-caption {
-  display: none;
+  /* Edges run under the caption; a paper plate keeps them off the words. */
+  width: auto;
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: var(--paper);
+  border-radius: 6px;
+}
+.map-caption .map-output,
+.map-condensed .map-caption .map-output {
+  display: block;
+  margin-top: 3px;
+  /* Scales against the map zoom like node names, so it stays legible. */
+  font-size: clamp(11px, calc(10px / var(--map-zoom, 1)), 24px);
+  color: #9c9c9c;
 }
 .map-caption {
   text-align: center;
@@ -5707,6 +5820,91 @@ body.desktop-feedback-page {
 }
 .map-controls button:hover {
   background: #efefef;
+}
+/* Session motion: one easing, matching the map camera. Views fade in when they
+   mount (switching view or collection); story steps rise in as they scroll in.
+   The global reduced-motion rule turns all of it off. */
+.session-view {
+  --session-ease: cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+@keyframes session-view-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.session-view > .session-map,
+.session-view > .session-story-thread,
+.session-view > .session-await,
+.gallery {
+  animation: session-view-in 280ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+.can-reveal .session-step-copy,
+.can-reveal .story-sheet {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 520ms var(--session-ease),
+    transform 640ms var(--session-ease);
+}
+.can-reveal .sheet-object,
+.can-reveal .sheet-quote {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 420ms var(--session-ease),
+    transform 520ms var(--session-ease);
+}
+.can-reveal .is-visible .session-step-copy,
+.can-reveal .is-visible .story-sheet,
+.can-reveal .is-visible .sheet-object,
+.can-reveal .is-visible .sheet-quote {
+  opacity: 1;
+  transform: none;
+}
+.can-reveal .is-visible .story-sheet {
+  transition-delay: 90ms;
+}
+.can-reveal .is-visible .sheet-object,
+.can-reveal .is-visible .sheet-quote {
+  transition-delay: calc(220ms + var(--i, 0) * 70ms);
+}
+.sheet-object .sheet-media {
+  transition:
+    transform 260ms var(--session-ease),
+    opacity 0.2s;
+}
+.sheet-object:hover .sheet-media {
+  transform: translateY(-3px);
+}
+.sheet-object:hover .sheet-label {
+  color: var(--ink);
+}
+.role-option:hover .sheet-media,
+.role-attempt:hover .sheet-media {
+  opacity: 0.85;
+}
+.sheet-object:focus-visible {
+  outline: none;
+}
+.sheet-object:focus-visible .sheet-media {
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+}
+.session-evidence summary {
+  transition: color 0.2s;
+}
+.session-evidence summary:hover {
+  color: #555555;
+}
+@keyframes evidence-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+.session-evidence[open] blockquote {
+  animation: evidence-in 240ms var(--session-ease) both;
 }
 .collection-overview {
   display: grid;

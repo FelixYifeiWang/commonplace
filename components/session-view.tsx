@@ -123,13 +123,15 @@ export function SessionView({
       aria-label={mode === "gallery" ? "Collection map" : "Collection story"}
     >
       <div className="session-feedback" aria-live="polite">
-        {problem ? (
-          <>
-            <span>{problem}</span>
+        {problem && session ? (
+          // The last good view stays below; say so, so it isn't mistaken for new.
+          <span className="session-notice">
+            <i aria-hidden="true" />
+            <span>{problem} Showing the last version.</span>
             <button onClick={() => void retry()} disabled={retrying}>
-              Retry
+              {retrying ? "Retrying…" : "Retry"}
             </button>
-          </>
+          </span>
         ) : working ? (
           <span className="session-updating">
             <i />
@@ -153,17 +155,26 @@ export function SessionView({
             <i />
           </div>
           <h2>{name}</h2>
-          <p>
-            {demo
-              ? "Connect a session to see its story and map."
-              : !story
-                ? "Opening…"
-                : story.enabled === false
-                  ? "Story generation is not configured."
-                  : working
-                    ? "Reading…"
-                    : "No story yet."}
-          </p>
+          {problem ? (
+            <div className="session-await-problem" role="alert">
+              <p>{problem}</p>
+              <button onClick={() => void retry()} disabled={retrying}>
+                {retrying ? "Retrying…" : "Retry"}
+              </button>
+            </div>
+          ) : (
+            <p>
+              {demo
+                ? "Connect a session to see its story and map."
+                : !story
+                  ? "Opening…"
+                  : story.enabled === false
+                    ? "Story generation is not configured."
+                    : working
+                      ? "Reading…"
+                      : "No story yet."}
+            </p>
+          )}
           {!!items.length && (
             <div className="session-await-sources">
               {items.slice(0, 4).map((item) => (
@@ -193,8 +204,38 @@ function SessionStory({
   onOpen: (item: Item) => void;
 }) {
   const media = new Map(items.map((item) => [item.id, item]));
+  const thread = useRef<HTMLDivElement>(null);
+  const stepKeys = document.steps
+    .map((step, index) => `${index}-${step.title}`)
+    .join("|");
+  useEffect(() => {
+    const el = thread.current;
+    if (
+      !el ||
+      typeof IntersectionObserver === "undefined" ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    )
+      return;
+    // Steps rise in as they reach the viewport. Without this class (no
+    // observer, reduced motion) every step simply stays visible.
+    el.classList.add("can-reveal");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries)
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+      },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.15 },
+    );
+    el.querySelectorAll(".session-step:not(.is-visible)").forEach((step) =>
+      observer.observe(step),
+    );
+    return () => observer.disconnect();
+  }, [stepKeys]);
   return (
-    <div className="session-story-thread">
+    <div className="session-story-thread" ref={thread}>
       {!document.steps.length && (
         <p className="session-empty">No decisions yet.</p>
       )}
@@ -202,7 +243,7 @@ function SessionStory({
         <article className="session-step" key={`${index}-${step.title}`}>
           <div className="session-step-copy">
             <span className="session-step-index">
-              {String(index + 1).padStart(2, "0")}
+              Step {String(index + 1).padStart(2, "0")}
             </span>
             <h2>{step.title}</h2>
             <p>{step.text}</p>
@@ -219,6 +260,13 @@ function SessionStory({
     </div>
   );
 }
+// A pill appears only when the role carries meaning: solid for what stayed,
+// outlined for what was dropped. Shape and line style, never color alone.
+const PILLS: Record<string, { label: string; style: "solid" | "outline" }> = {
+  picked: { label: "Picked", style: "solid" },
+  result: { label: "Kept", style: "solid" },
+  attempt: { label: "Dropped", style: "outline" },
+};
 function StorySheet({
   step,
   media,
@@ -235,21 +283,26 @@ function StorySheet({
       className={`soft-sheet story-sheet layout-${step.canvas.layout} count-${entries.length}`}
     >
       <div className="story-sheet-content">
-        {entries.map((entry) => {
+        {entries.map((entry, index) => {
           const item = media.get(entry.itemId)!;
+          const pill = PILLS[entry.role];
           return (
             <button
               className={`sheet-object role-${entry.role} kind-${item.kind}`}
               key={entry.itemId}
+              style={{ "--i": index } as CSSProperties}
               onClick={() => onOpen(item)}
             >
               <span className="sheet-media">
                 <SheetMedia item={item} />
               </span>
               <span className="sheet-caption">
-                {entry.label}
-                {entry.role === "picked" && <small>Picked</small>}
-                {entry.role === "attempt" && <small>Dropped</small>}
+                <span className="sheet-label">{entry.label}</span>
+                {pill && (
+                  <small className={`sheet-pill pill-${pill.style}`}>
+                    {pill.label}
+                  </small>
+                )}
               </span>
             </button>
           );
@@ -535,7 +588,7 @@ export function SessionMap({
               }}
             >
               <button
-                className={`soft-sheet map-tile ${item?.kind === "link" ? "is-page" : ""}`}
+                className={`${box.id === "center" ? "" : "soft-sheet "}map-tile ${item?.kind === "link" ? "is-page" : ""}`}
                 style={{
                   height:
                     box.id === "center"
@@ -575,9 +628,14 @@ export function SessionMap({
                   ) && <ArrowUpRight className="map-external" size={13} />}
               </button>
               <div className="map-caption">
-                <strong>{entry.label}</strong>
-                {detailIndex < 0 && box.group >= 0 && (
-                  <p>{(entry as MapNode).summary}</p>
+                {/* An unpictured center already shows its name in the box. */}
+                {(box.id !== "center" || item) && (
+                  <strong>{entry.label}</strong>
+                )}
+                {box.id === "center" ? (
+                  <p className="map-output">Session output</p>
+                ) : (
+                  detailIndex < 0 && <p>{(entry as MapNode).summary}</p>
                 )}
               </div>
               {view.zoom >= 1.4 && detailIndex >= 0 && item && (
