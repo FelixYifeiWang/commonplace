@@ -12,7 +12,7 @@ import {
 } from "@/lib/session-map.mjs";
 import type { MapNode, SessionDocument } from "@/lib/session-types";
 import { SheetMedia } from "./sheet-media";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Move, Scan } from "lucide-react";
 import { guidedBounds, guidedCamera } from "@/lib/guided-map.mjs";
 // The Gallery tab: do's session map, curated by the model (STORY_CANVAS.md, "Gallery").
 const screenshots = process.env.NEXT_PUBLIC_HOSTED !== "1";
@@ -53,10 +53,12 @@ export function SessionMap({
   doc,
   items,
   guided = false,
+  onToggleMode,
 }: {
   doc: SessionDocument;
   items: Item[];
   guided?: boolean;
+  onToggleMode?: () => void;
 }) {
   const stageRef = useRef<HTMLDivElement>(null),
     worldRef = useRef<HTMLDivElement>(null),
@@ -67,6 +69,7 @@ export function SessionMap({
     engine = useRef<Engine | null>(null);
   const guidedFocus = useRef<{ nodeKey: string; detail?: string } | null>(null);
   const [focusedNode, setFocusedNode] = useState(-1);
+  const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const media = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const map = useMemo(
     () => visibleSessionMap(doc.map, items),
@@ -88,7 +91,6 @@ export function SessionMap({
   );
   useFonts(nodes);
   const nodeKey = (n: MapNode) => `${n.itemId || n.url || ""}:${n.label}`;
-  const focused = nodes[focusedNode];
   // The story and items are polled every few seconds; lay out again only when their content changes,
   // so a refresh never undoes the viewer's zoom or drags.
   const docKey = JSON.stringify(map);
@@ -311,7 +313,8 @@ export function SessionMap({
       const index = selected
         ? nodes.findIndex((n) => nodeKey(n) === selected.nodeKey)
         : -1;
-      if (index < 0) guidedFocus.current = null;
+      if (index < 0 && selected?.nodeKey !== "core") guidedFocus.current = null;
+      setFocusedKey(key || (index >= 0 ? `m${index}` : null));
       setFocusedNode(index);
       // The exact same three layers as free mode: output, references, evidence.
       world!.dataset.lvl = index < 0 ? "0" : "2";
@@ -354,8 +357,7 @@ export function SessionMap({
       zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)), p.x, p.y);
     };
     const onDown = (e: PointerEvent) => {
-      if (guided || (e.target as Element).closest(".gm-navigation, .gm-zoom"))
-        return;
+      if (guided || (e.target as Element).closest(".gm-toolbar")) return;
       clearTimeout(glideTimer);
       world!.classList.remove("glide");
       pts.set(e.pointerId, e);
@@ -510,6 +512,11 @@ export function SessionMap({
       focusOn(key) {
         if (moved || !W[key]) return;
         if (guided) {
+          if (key === "core") {
+            guidedFocus.current = { nodeKey: "core", detail: "core" };
+            guidedFrame("core");
+            return;
+          }
           const i = W[key].node;
           if (i !== undefined && nodes[i]) {
             guidedFocus.current = { nodeKey: nodeKey(nodes[i]), detail: key };
@@ -607,10 +614,13 @@ export function SessionMap({
           <svg className="gm-lines" ref={svgRef} aria-hidden="true" />
           <Target
             url={center.url}
+            focusFirst={guided && focusedKey !== "core"}
             className="gm-core"
             dataKey="core"
             label={center.label}
-            onActivate={() => engine.current?.reset()}
+            onActivate={() =>
+              guided ? engine.current?.focusOn("core") : engine.current?.reset()
+            }
           >
             <span className="gm-box">
               <Ring />
@@ -626,7 +636,8 @@ export function SessionMap({
           {nodes.map((n, i) => (
             <Fragment key={`${i}-${n.label}`}>
               <Target
-                url={guided ? null : n.url}
+                url={n.url}
+                focusFirst={guided && focusedKey !== `m${i}`}
                 className={`gm-tile w-${n.weight}`}
                 dataKey={`m${i}`}
                 node={i}
@@ -641,10 +652,11 @@ export function SessionMap({
               </Target>
               <Target
                 url={n.url}
+                focusFirst={guided && focusedKey !== `b${i}`}
                 className="gm-bubble"
                 dataKey={`b${i}`}
                 node={i}
-                onActivate={() => engine.current?.focusNode(i)}
+                onActivate={() => engine.current?.focusOn(`b${i}`)}
               >
                 <Sheet />
                 <span className="gm-t">{soft(n.summary)}</span>
@@ -657,6 +669,7 @@ export function SessionMap({
                   <Target
                     key={j}
                     url={d.url}
+                    focusFirst={guided && focusedKey !== `d${i}.${j}`}
                     className={`gm-detail ${picture ? "has-pic" : ""}`}
                     dataKey={`d${i}.${j}`}
                     node={i}
@@ -686,84 +699,93 @@ export function SessionMap({
             </Fragment>
           ))}
         </div>
-        {guided ? (
-          <nav className="gm-navigation" aria-label="Map navigation">
-            <button
-              type="button"
-              aria-label="Previous node"
-              onClick={() =>
-                engine.current?.focusNode(
-                  focusedNode < 0
-                    ? nodes.length - 1
-                    : (focusedNode - 1 + nodes.length) % nodes.length,
-                )
-              }
-            >
-              <ArrowLeft size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => engine.current?.reset()}
-              aria-label="Show map overview"
-            >
-              {focusedNode < 0
-                ? "Overview"
-                : `${focusedNode + 1} / ${nodes.length} · Overview`}
-            </button>
-            <button
-              type="button"
-              aria-label="Next node"
-              onClick={() =>
-                engine.current?.focusNode((focusedNode + 1) % nodes.length)
-              }
-            >
-              <ArrowRight size={15} />
-            </button>
-            {focused?.url && (
-              <a
-                href={focused.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Open ${focused.label}`}
+        <div className="gm-toolbar" aria-label="Map controls">
+          {guided ? (
+            <nav className="gm-navigation" aria-label="Map navigation">
+              <button
+                type="button"
+                aria-label="Previous node"
+                onClick={() =>
+                  engine.current?.focusNode(
+                    focusedNode < 0
+                      ? nodes.length - 1
+                      : (focusedNode - 1 + nodes.length) % nodes.length,
+                  )
+                }
               >
-                ↗
-              </a>
-            )}
-          </nav>
-        ) : (
-          <div className="gm-zoom" title="Scroll to zoom, drag to move">
-            <button
-              type="button"
-              aria-label="Zoom out"
-              onClick={() => engine.current?.zoomBy(1 / 1.35)}
-            >
-              −
-            </button>
-            <span className="gm-dots" ref={dotsRef}>
-              <i />
-              <i />
-              <i />
-            </span>
-            <span className="gm-level">
-              <b ref={levelRef}>Overview</b> <em ref={pctRef}>100%</em>
-            </span>
-            <button
-              type="button"
-              aria-label="Zoom in"
-              onClick={() => engine.current?.zoomBy(1.35)}
-            >
-              +
-            </button>
-            <button
-              type="button"
-              aria-label="Reset layout"
-              title="Reset layout"
-              onClick={() => engine.current?.reset()}
-            >
-              ↺
-            </button>
-          </div>
-        )}
+                <ArrowLeft size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => engine.current?.reset()}
+                aria-label="Show map overview"
+              >
+                {focusedNode < 0
+                  ? "Overview"
+                  : `${focusedNode + 1} / ${nodes.length} · Overview`}
+              </button>
+              <button
+                type="button"
+                aria-label="Next node"
+                onClick={() =>
+                  engine.current?.focusNode((focusedNode + 1) % nodes.length)
+                }
+              >
+                <ArrowRight size={15} />
+              </button>
+            </nav>
+          ) : (
+            <div className="gm-zoom" title="Scroll to zoom, drag to move">
+              <button
+                type="button"
+                aria-label="Zoom out"
+                onClick={() => engine.current?.zoomBy(1 / 1.35)}
+              >
+                −
+              </button>
+              <span className="gm-dots" ref={dotsRef}>
+                <i />
+                <i />
+                <i />
+              </span>
+              <span className="gm-level">
+                <b ref={levelRef}>Overview</b> <em ref={pctRef}>100%</em>
+              </span>
+              <button
+                type="button"
+                aria-label="Zoom in"
+                onClick={() => engine.current?.zoomBy(1.35)}
+              >
+                +
+              </button>
+              <button
+                type="button"
+                aria-label="Reset layout"
+                title="Reset layout"
+                onClick={() => engine.current?.reset()}
+              >
+                ↺
+              </button>
+            </div>
+          )}
+          {onToggleMode && (
+            <>
+              <span className="gm-toolbar-divider" aria-hidden="true" />
+              <button
+                type="button"
+                className="map-navigation-toggle"
+                aria-label={
+                  guided ? "Switch to free movement" : "Switch to guided map"
+                }
+                aria-pressed={!guided}
+                onClick={onToggleMode}
+              >
+                {guided ? <Move size={14} /> : <Scan size={14} />}
+                {guided ? "Free move" : "Guided"}
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -771,6 +793,7 @@ export function SessionMap({
 // A reference opens its site in a new tab; anything else zooms to itself. Nothing opens a pop-up.
 function Target({
   url,
+  focusFirst = false,
   className,
   dataKey,
   node,
@@ -779,6 +802,7 @@ function Target({
   children,
 }: {
   url: string | null;
+  focusFirst?: boolean;
   className: string;
   dataKey: string;
   node?: number;
@@ -793,7 +817,32 @@ function Target({
     "aria-label": label,
   };
   return url ? (
-    <a {...common} href={url} target="_blank" rel="noopener noreferrer">
+    <a
+      {...common}
+      href={focusFirst ? undefined : url}
+      target="_blank"
+      rel="noopener noreferrer"
+      role={focusFirst ? "button" : undefined}
+      tabIndex={0}
+      onClick={
+        focusFirst
+          ? (event) => {
+              event.preventDefault();
+              onActivate?.();
+            }
+          : undefined
+      }
+      onKeyDown={
+        focusFirst
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onActivate?.();
+              }
+            }
+          : undefined
+      }
+    >
       {children}
     </a>
   ) : (

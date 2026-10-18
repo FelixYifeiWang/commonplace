@@ -5,7 +5,12 @@ import { and, eq, notInArray } from "drizzle-orm";
 import { agentSession, jsonBody, fail, HttpError, hash } from "@/lib/server";
 import { isReferenceUrl, referenceText } from "@/lib/source-policy.mjs";
 import { classifyMedia } from "@/lib/media.mjs";
-import { itemIdentity, safeUrl, trimUrl } from "@/lib/protocol.mjs";
+import {
+  itemIdentity,
+  safeUrl,
+  trimUrl,
+  redactReferenceLinks,
+} from "@/lib/protocol.mjs";
 export async function POST(request: Request) {
   try {
     const body = await jsonBody(request),
@@ -31,6 +36,7 @@ export async function POST(request: Request) {
       statements = [];
     let references = 0;
     for (const turn of body.turns) {
+      turn.text = redactReferenceLinks(turn.text);
       const turnId = await hash(`${turn.id}:${turn.text}`);
       statements.push(
         db

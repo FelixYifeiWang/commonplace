@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { collectionReferencePrompt } from "../lib/collection-reference.mjs";
-test("reference prompt includes usable sources, redacts keys and excludes navigation", () => {
-  const prompt = collectionReferencePrompt(
+import { collectionReferenceMarkdown } from "../lib/collection-reference.mjs";
+test("reference Markdown includes usable sources, redacts keys and excludes navigation", () => {
+  const prompt = collectionReferenceMarkdown(
     { name: "Quiet", description: "Design references" },
     [
       {

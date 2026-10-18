@@ -252,18 +252,20 @@ function buddyMenu() {
     { label: "Quit and stop syncing", click: () => app.quit() },
   ]);
 }
-function buddySnapshot() {
+function pointerGaze() {
   const cursor = screen.getCursorScreenPoint(),
     bounds = win.getBounds();
-  const gaze = {
+  return {
     x: Math.max(-2, Math.min(2, (cursor.x - bounds.x - 52) / 180)),
     y: Math.max(
       -1.5,
       Math.min(1.5, (cursor.y - bounds.y - buddyOffsetY - 54) / 180),
     ),
   };
+}
+function buddySnapshot() {
   return {
-    gaze,
+    gaze: pointerGaze(),
     separateControls: true,
     favorites,
     revision: stateRevision,
@@ -722,8 +724,17 @@ if (!lock) {
         },
       });
       const hitTest = createBuddyHitTest(win);
+      let lastGaze = { x: Infinity, y: Infinity };
       const hoverTimer = setInterval(() => {
         if (win.isDestroyed() || !win.isVisible()) return;
+        const gaze = pointerGaze();
+        if (
+          Math.abs(gaze.x - lastGaze.x) + Math.abs(gaze.y - lastGaze.y) >
+          0.002
+        ) {
+          win.webContents.send("companion:gaze", gaze);
+          lastGaze = gaze;
+        }
         const cursor = screen.getCursorScreenPoint(),
           bounds = win.getBounds();
         hitTest.update(
@@ -743,7 +754,7 @@ if (!lock) {
                 controlsWindow.getBounds(),
               )),
         );
-      }, 60);
+      }, 33);
       win.once("closed", () => clearInterval(hoverTimer));
       const finishDrag = (result) => {
         notifyBuddy();

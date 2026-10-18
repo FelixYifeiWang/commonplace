@@ -1,6 +1,11 @@
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("commonplaceDesktop", {
   nativeDrag: true,
+  onGaze: (callback) => {
+    const listener = (_event, value) => callback(value);
+    ipcRenderer.on("companion:gaze", listener);
+    return () => ipcRenderer.removeListener("companion:gaze", listener);
+  },
   copyReference: (id) => ipcRenderer.invoke("companion:copy-reference", id),
   onSnapshot: (callback) => {
     const listener = (_event, value) => callback(value);

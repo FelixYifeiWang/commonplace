@@ -1,7 +1,7 @@
 import { readdir, realpath, open, stat } from "node:fs/promises";
 import { join, relative, isAbsolute, basename } from "node:path";
 import { homedir } from "node:os";
-import { parseTranscript } from "../lib/protocol.mjs";
+import { parseTranscript, redactReferenceLinks } from "../lib/protocol.mjs";
 function roots(home, codexHome) {
   return [
     {
@@ -160,7 +160,7 @@ export async function findSetupSession(
   return matches[0];
 }
 export function redactSetupLinks(text) {
-  return text.replace(
+  return redactReferenceLinks(text).replace(
     /(https?:\/\/[^\s<>"']+\/(?:setup(?:\.md)?|SKILL\.md|connect|agent))#[a-f0-9]{64}\b/gi,
     "[private setup link]",
   );

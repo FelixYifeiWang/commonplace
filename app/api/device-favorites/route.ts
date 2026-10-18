@@ -1,8 +1,19 @@
 import { getDb } from "@/db";
-import { collections, items } from "@/db/schema";
-import { and, eq, isNull, desc } from "drizzle-orm";
-import { deviceRequired, fail, jsonBody, HttpError } from "@/lib/server";
-import { collectionReferencePrompt } from "@/lib/collection-reference.mjs";
+import { collections, collectionReferenceLinks } from "@/db/schema";
+import { and, eq, isNull, desc, lt } from "drizzle-orm";
+import {
+  deviceRequired,
+  fail,
+  jsonBody,
+  HttpError,
+  newToken,
+  hash,
+} from "@/lib/server";
+import {
+  referencePrompt,
+  REFERENCE_LINK_LIFETIME,
+} from "@/lib/reference-link.mjs";
+import { PRODUCTION_ORIGIN, LEGACY_ORIGIN } from "@/lib/brand.mjs";
 const headers = { "Cache-Control": "no-store" };
 export async function GET(request: Request) {
   try {
@@ -43,20 +54,30 @@ export async function POST(request: Request) {
         ),
       );
     if (!collection) throw new HttpError(404, "Starred collection not found.");
-    const sources = await db
-      .select()
-      .from(items)
-      .where(
-        and(
-          eq(items.collectionId, collection.id),
-          eq(items.ownerId, device.ownerId),
-          isNull(items.deletedAt),
-        ),
-      )
-      .orderBy(desc(items.createdAt))
-      .limit(80);
+    const token = newToken().slice(0, 48);
+    const now = new Date();
+    // Bound storage for repeat copies without revoking links still in use.
+    await db
+      .delete(collectionReferenceLinks)
+      .where(lt(collectionReferenceLinks.expiresAt, now.toISOString()));
+    await db.insert(collectionReferenceLinks).values({
+      tokenHash: await hash(token),
+      ownerId: device.ownerId,
+      collectionId: collection.id,
+      deviceId: device.id,
+      expiresAt: new Date(
+        now.getTime() + REFERENCE_LINK_LIFETIME,
+      ).toISOString(),
+    });
+    const origin = new URL(request.url).origin;
+
     return Response.json(
-      { prompt: collectionReferencePrompt(collection, sources) },
+      {
+        prompt: referencePrompt(
+          origin === LEGACY_ORIGIN ? PRODUCTION_ORIGIN : origin,
+          token,
+        ),
+      },
       { headers },
     );
   } catch (e) {

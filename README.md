@@ -8,7 +8,7 @@ See [the morning test guide](MORNING_TEST.md) for controls, verified flows and c
 
 Open [Newron](https://newron.app) and sign in with Google. Choose Set up Nox to connect this hosted space to your Mac. Open a conversation, move Nox over it, click it, then click Connect. Dragging only moves Nox. Test on Vercel by default; use localhost only when explicitly requested. Local and hosted collections are separate.
 
-The default collection views are **Gallery** (the free map) and **Story**. Press **Cmd/Ctrl+Shift+G** to toggle Dev mode: **Gallery**, **Map**, and **Story**, opening the saved-media grid first. In Dev mode, Map uses a guided camera. Click a node or use the arrow keys to explore its references; Escape or Overview returns to the full map. **Free move** at the bottom right restores dragging and zooming; **Guided** switches back. Press the shortcut again to leave Dev mode. Nox only appears on the desktop. Connections are in Settings.
+The default collection views are **Gallery** (the free map) and **Story**. Press **Cmd/Ctrl+Shift+G** to toggle Dev mode: **Gallery**, **Map**, and **Story**, opening the saved-media grid first. In Dev mode, Map uses a guided camera. Click any node, including a leaf, to focus it. Click a focused URL node again to open its source. Use the arrow keys to explore branches; Escape or Overview returns to the full map. **Free move** inside the bottom control bar restores dragging and zooming; **Guided** switches back. Press the shortcut again to leave Dev mode. Nox only appears on the desktop. Connections are in Settings.
 
 ## Connection routes
 
@@ -144,3 +144,9 @@ See [the onboarding QA report](docs/ONBOARDING_QA.md) for the latest production 
 ### Product rename
 
 See [Newron migration notes](docs/NEWRON_RENAME.md) for the canonical domain and legacy identifiers retained for installed buddies.
+
+### Collection reference prompts
+
+Choose a starred collection in Nox to copy one sentence linking to private Markdown. The agent reads the current saved references without signing in or connecting its session. Links are read-only and expire after seven days. Deleting or unstarring the collection, or revoking the issuing device, disables access. Deleted items are excluded. The links are redacted from captured transcripts and model context and are never collected as gallery sources. Migration 0013 stores only token hashes and their scope.
+
+Nox streams pointer changes at 30Hz directly to its renderer, with frame-rate-independent easing and no React render per pointer update. It emits no gaze events while idle or hidden. Reduced-motion preferences disable gaze movement; the desktop shadow fits inside the existing native window.

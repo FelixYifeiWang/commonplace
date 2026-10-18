@@ -142,3 +142,18 @@ export const accountSpaces = sqliteTable("account_spaces", {
 });
 
 export * from "./auth-schema";
+
+export const collectionReferenceLinks = sqliteTable(
+  "collection_reference_links",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    collectionId: text("collection_id")
+      .notNull()
+      .references(() => collections.id),
+    deviceId: text("device_id")
+      .notNull()
+      .references(() => devices.id),
+    expiresAt: text("expires_at").notNull(),
+  },
+);

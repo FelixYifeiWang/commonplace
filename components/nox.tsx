@@ -21,10 +21,12 @@ export function Nox({
   state = "following",
   gaze,
   size = 72,
+  trackPointer = false,
 }: {
   state?: SessionState;
   gaze?: { x: number; y: number };
   size?: number;
+  trackPointer?: boolean;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const neuron = useRef<ReturnType<typeof createNeuron> | null>(null);
@@ -36,17 +38,24 @@ export function Nox({
       // Without WebGL the bubble stays empty glass rather than breaking the window.
       neuron.current = null;
     }
+    const unsubscribe = trackPointer
+      ? window.commonplaceDesktop?.onGaze?.(({ x, y }) =>
+          neuron.current?.setGaze(x, y),
+        )
+      : undefined;
     return () => {
+      unsubscribe?.();
       neuron.current?.dispose();
       neuron.current = null;
     };
-  }, [size]);
+  }, [size, trackPointer]);
   useEffect(() => {
     neuron.current?.setMood(MOOD[state] || "rest");
   }, [state, size]);
   useEffect(() => {
+    if (trackPointer && window.commonplaceDesktop?.onGaze) return;
     neuron.current?.setGaze(gaze?.x || 0, gaze?.y || 0);
-  }, [gaze?.x, gaze?.y, size]);
+  }, [gaze?.x, gaze?.y, size, trackPointer]);
   return (
     <span
       className={`nox state-${state}`}

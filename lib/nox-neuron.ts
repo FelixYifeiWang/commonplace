@@ -4,6 +4,7 @@
 // It is seen through a glass lens (lib/glass-lens.ts) that bends it near the rim. While Nox works, signals travel
 // along the strokes and each corner flashes as one lands and fires the next. At rest nothing is drawn.
 import * as THREE from "three";
+import { followGaze } from "./nox-motion.mjs";
 import { createLens } from "./glass-lens";
 
 export type NeuronMood = "rest" | "working" | "muted" | "alert";
@@ -226,11 +227,11 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
 
   const step = (now: number) => {
     frame = 0;
-    const dt = Math.min(0.05, (now - (last || now)) / 1000);
+    const dt = Math.min(0.05, last ? (now - last) / 1000 : 1 / 60);
     last = now;
     const working = mood === "working" && !reducedMotion;
-    gaze.x += (gaze.tx - gaze.x) * 0.18;
-    gaze.y += (gaze.ty - gaze.y) * 0.18;
+    gaze.x = followGaze(gaze.x, gaze.tx, dt);
+    gaze.y = followGaze(gaze.y, gaze.ty, dt);
     if (working) pose.y += dt * 0.55;
     neuron.rotation.set(pose.x + gaze.y, pose.y + gaze.x, pose.z);
 
@@ -294,6 +295,7 @@ export function createNeuron(canvas: HTMLCanvasElement, size: number) {
     },
     // Gaze is in pixels (about ±3); Nox turns a little toward the pointer.
     setGaze(x: number, y: number) {
+      if (reducedMotion) return;
       gaze.tx = Math.max(-0.3, Math.min(0.3, x * 0.08));
       gaze.ty = Math.max(-0.3, Math.min(0.3, y * 0.08));
       wake();

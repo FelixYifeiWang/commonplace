@@ -22,6 +22,7 @@ type Snapshot = {
   error: string;
 };
 type Bridge = {
+  onGaze?: (callback: (gaze: { x: number; y: number }) => void) => () => void;
   copyReference?: (id: string) => Promise<{ copied: boolean }>;
   nativeDrag?: boolean;
   snapshot: () => Promise<Snapshot>;
@@ -168,7 +169,11 @@ export default function Companion() {
           if (e.detail === 0) void window.commonplaceDesktop?.toggle();
         }}
       >
-        <Nox state={snapshot?.state || "waiting"} gaze={snapshot?.gaze} />
+        <Nox
+          state={snapshot?.state || "waiting"}
+          gaze={snapshot?.gaze}
+          trackPointer
+        />
       </button>
       <div
         className={`native-connect-panel above ${panelVisible ? "visible" : ""}`}

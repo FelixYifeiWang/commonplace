@@ -7756,6 +7756,8 @@ a.gm-detail b::after {
 }
 /* On the desktop: a small lift on hover, a little more while dragging, and a ring for keyboard focus. */
 .native-buddy-grab .nox {
+  /* Fits the 16px native-window margin, including the hover lift. */
+  box-shadow: 0 3px 7px -2px rgb(17 17 26 / 0.12);
   transition: transform 420ms cubic-bezier(0.22, 1.4, 0.36, 1);
 }
 .native-buddy-grab:hover .nox {
@@ -7807,78 +7809,88 @@ a.gm-detail b::after {
   opacity: 1;
   stroke: #aaa;
 }
-.gm-navigation,
-.map-navigation-toggle {
+.gm-toolbar {
   position: absolute;
-  bottom: 20px;
-  z-index: 5;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 16;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: calc(100% - 24px);
+  padding: 5px;
+  border: 1px solid var(--gm-bd);
+  border-radius: 30px;
+  background: var(--gm-bg);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.03);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.gm-toolbar :is(.gm-navigation, .gm-zoom) {
+  position: static;
+  transform: none;
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgb(255 255 255 / 0.96);
-  border: 1px solid #e9e9e9;
-  border-radius: 30px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.03);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: inherit;
 }
-.gm-navigation {
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 5px;
-}
-.gm-navigation :is(button, a) {
-  display: grid;
-  place-items: center;
-  min-width: 32px;
-  height: 32px;
-  border-radius: 20px;
-  color: #777;
-  font-size: 12px;
-  text-decoration: none;
-}
-.gm-navigation :is(button, a):hover {
-  background: #f5f5f5;
-  color: #111;
-}
-.gm-navigation button:nth-child(2) {
+.gm-toolbar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: auto;
+  min-width: 30px;
+  height: 30px;
   padding: 0 8px;
-  min-width: 100px;
-  white-space: nowrap;
-}
-.map-navigation-toggle {
-  right: 20px;
-  padding: 10px 14px;
-  gap: 8px;
+  border: 0;
+  border-radius: 20px;
+  color: var(--gm-grey);
+  background: transparent;
   font-size: 12px;
-  cursor: pointer;
-  color: #666;
 }
-.map-navigation-toggle:hover {
-  border-color: #aaa;
-  color: #111;
+.gm-toolbar button:hover {
+  background: var(--gm-tile);
+  color: var(--gm-ink);
 }
-@media (max-width: 600px) {
-  .gm-navigation {
-    left: 8px;
-    transform: none;
-    gap: 0;
-  }
-  .gm-navigation button:nth-child(2) {
-    min-width: 88px;
-    padding: 0 4px;
-  }
-  .map-navigation-toggle {
-    right: 8px;
-    padding: 10px;
-  }
-  .dev-map .gm-zoom {
-    left: 8px;
-    transform: none;
-  }
+.gm-navigation button:nth-child(2),
+.gm-toolbar .gm-level {
+  min-width: 105px;
+  text-align: center;
+}
+.gm-toolbar .gm-level {
+  font-size: 12px;
+}
+.gm-toolbar .gm-dots {
+  display: none;
+}
+.gm-toolbar-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 2px;
+  background: var(--gm-bd);
+}
+.gm-toolbar .map-navigation-toggle {
+  gap: 6px;
+  padding: 0 10px;
 }
 @media (max-width: 380px) {
-  .map-navigation-toggle {
-    font-size: 0;
-    gap: 0;
+  .gm-toolbar {
+    gap: 2px;
+  }
+  .gm-toolbar .gm-level {
+    min-width: 48px;
+  }
+  .gm-toolbar .gm-level b {
+    display: none;
+  }
+  .gm-toolbar .map-navigation-toggle {
+    padding: 0 6px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
