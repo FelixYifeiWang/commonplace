@@ -180,3 +180,43 @@ test("retry carries verified sections and final rejection retains them without a
   );
   assert.equal(calls, 2);
 });
+
+import { validateSession } from "../lib/story.mjs";
+test("cosmetic wording never blocks production output, while grounding stays mandatory", () => {
+  const value = doc();
+  value.steps[0].title = "Portfolio";
+  value.map.nodes = [
+    {
+      label: "Design overview",
+      summary: "Portfolio navigation choices",
+      kind: "reference",
+      weight: "normal",
+      font: null,
+      itemId: "m1",
+      url: null,
+      evidence: step().evidence[0],
+      details: [],
+    },
+  ];
+  assert.throws(() => validateSession(value, input));
+  const result = validateSession(value, input, { strictPresentation: false });
+  assert.equal(result.map.nodes[0].itemId, "m1");
+  value.map.nodes[0].evidence = { sourceId: "foreign", quote: "Unsupported" };
+  assert.throws(
+    () => validateSession(value, input, { strictPresentation: false }),
+    /exact copy/,
+  );
+});
+test("relaxed presentation cannot accept an unavailable item or invented URL", () => {
+  for (const mutation of [
+    (v) => (v.steps[0].canvas.items[0].itemId = "foreign"),
+    (v) => (v.map.center.url = "https://not-in-this-session.example/"),
+  ]) {
+    const value = doc();
+    mutation(value);
+    assert.throws(
+      () => validateSession(value, input, { strictPresentation: false }),
+      /unavailable item|URL/,
+    );
+  }
+});
