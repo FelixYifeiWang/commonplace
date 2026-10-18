@@ -5,6 +5,7 @@ import {
   parseSetupLink,
   validateManifest,
   install,
+  verifyRuntime,
 } from "../desktop/install.mjs";
 import { redactSetupLinks } from "../desktop/setup-session.mjs";
 test("installer accepts only a private setup link on HTTPS or local development", () => {
@@ -73,9 +74,7 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
     await rm(home, { recursive: true, force: true });
   });
   const origin = "http://127.0.0.1:" + server.address().port;
-  const folder = join(home, ".claude/projects/qa");
-  await mkdir(folder, { recursive: true });
-  const file = join(folder, "selected.jsonl");
+  const file = join(home, ".claude/projects/qa/selected.jsonl");
   let installs = 0,
     boots = 0,
     kicks = 0,
@@ -89,8 +88,19 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
       });
       await writeFile(
         join(options.cwd, "node_modules/electron/path.txt"),
-        "test",
+        "Electron.app/Contents/MacOS/Electron",
       );
+    } else if (command === process.execPath) {
+      const dist = join(options.cwd, "node_modules/electron/dist");
+      for (const name of [
+        "Electron.app/Contents/MacOS/Electron",
+        "Electron.app/Contents/Info.plist",
+        "Electron.app/Contents/Frameworks/Electron Framework.framework/Electron Framework",
+      ]) {
+        const target = join(dist, name);
+        await mkdir(join(target, ".."), { recursive: true });
+        await writeFile(target, "fixture", { mode: 0o700 });
+      }
     } else if (args[0] === "bootstrap") {
       boots++;
       const plist = await readFile(args[2], "utf8");
@@ -106,7 +116,13 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
       const request = JSON.parse(
         await readFile(join(data, "setup-request.json")),
       );
-      assert.equal(request.source.provider, "Claude Code");
+      if (boots === 1 && kicks === 0) {
+        assert.equal(request.action, "setup");
+        assert.equal(request.source, undefined);
+      } else {
+        assert.equal(request.action, "connect");
+        assert.equal(request.source.provider, "Claude Code");
+      }
       await mkdir(join(data, "receipts"), { recursive: true });
       await writeFile(
         join(data, "receipts", request.id + ".json"),
@@ -115,11 +131,15 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
     }
   };
   for (const code of ["a".repeat(64), "b".repeat(64)]) {
-    const link = origin + "/setup#" + code;
-    await writeFile(
-      file,
-      JSON.stringify({ role: "user", content: "Set up " + link }) + "\n",
-    );
+    const link =
+      origin + (code.startsWith("a") ? "/setup#" : "/connect#") + code;
+    if (code.startsWith("b")) {
+      await mkdir(join(file, ".."), { recursive: true });
+      await writeFile(
+        file,
+        JSON.stringify({ role: "user", content: "Connect " + link }) + "\n",
+      );
+    }
     assert.equal(
       (
         await install(
@@ -131,4 +151,37 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
     );
   }
   assert.deepEqual([installs, boots, kicks], [1, 1, 1]);
+  let launched = false;
+  await assert.rejects(
+    install(
+      { link: origin + "/setup#" + "c".repeat(64) },
+      {
+        home: join(home, "blocked-fixture"),
+        platform: "darwin",
+        onProgress: () => {},
+        run: async (command) => {
+          if (command === process.execPath)
+            throw new Error("Operation not permitted");
+          if (command === "/bin/launchctl") launched = true;
+        },
+      },
+    ),
+    /macOS blocked/,
+  );
+  assert.equal(launched, false);
+});
+
+test("a success marker cannot hide a missing Electron executable", async (t) => {
+  const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const root = await mkdtemp(join(tmpdir(), "buddy-incomplete-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, "node_modules/electron"), { recursive: true });
+  await writeFile(join(root, ".installed"), "1");
+  await writeFile(
+    join(root, "node_modules/electron/path.txt"),
+    "Electron.app/Contents/MacOS/Electron",
+  );
+  await assert.rejects(verifyRuntime(root), { code: "ENOENT" });
 });

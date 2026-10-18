@@ -31,8 +31,12 @@ export async function consumeSetupRequest(
   try {
     if (input.origin !== origin || !/^[a-f0-9]{64}$/.test(input.code))
       throw new Error("Setup request does not match this space.");
-    const source = await validate(input.source);
-    report({ state: "connecting", target: source.title, error: "" });
+    if (input.action && !["setup", "connect"].includes(input.action))
+      throw new Error("Invalid setup action.");
+    const source =
+      input.action === "connect" ? await validate(input.source) : null;
+    if (source)
+      report({ state: "connecting", target: source.title, error: "" });
     const response = await request(origin + "/api/setup/claim", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -48,15 +52,19 @@ export async function consumeSetupRequest(
     if (!response.ok)
       throw new Error(device.error || "Setup failed. Copy a fresh prompt.");
     await pair({ origin, ...device });
-    const subscription = await subscribe(source);
-    report({ state: "collecting", target: source.title, error: "" });
-    await capture(source, subscription);
-    report({ state: "following", target: source.title, error: "" });
-    result = {
-      ok: true,
-      provider: source.provider,
-      sessionId: source.sessionId,
-    };
+    if (!source) {
+      result = { ok: true, action: "setup" };
+    } else {
+      const subscription = await subscribe(source);
+      report({ state: "collecting", target: source.title, error: "" });
+      await capture(source, subscription);
+      report({ state: "following", target: source.title, error: "" });
+      result = {
+        ok: true,
+        provider: source.provider,
+        sessionId: source.sessionId,
+      };
+    }
   } catch (e) {
     const error = e instanceof Error ? e.message : "Setup failed.";
     report({ state: "error", error });

@@ -84,6 +84,7 @@ export async function findSetupSession(
     home = homedir(),
     codexHome = process.env.CODEX_HOME,
     file: explicitFile,
+    linkPath = "/setup",
   } = {},
 ) {
   if (!/^[a-f0-9]{64}$/.test(code))
@@ -133,7 +134,7 @@ export async function findSetupSession(
       const turns = parseTranscript(tail);
       if (
         !turns.some(
-          (t) => t.role === "user" && t.text.includes("/setup#" + code),
+          (t) => t.role === "user" && t.text.includes(linkPath + "#" + code),
         )
       )
         continue;
@@ -160,7 +161,7 @@ export async function findSetupSession(
 }
 export function redactSetupLinks(text) {
   return text.replace(
-    /(https?:\/\/[^\s<>"']+\/(?:setup|agent))#[a-f0-9]{64}\b/gi,
+    /(https?:\/\/[^\s<>"']+\/(?:setup|connect|agent))#[a-f0-9]{64}\b/gi,
     "[private setup link]",
   );
 }

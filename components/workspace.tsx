@@ -96,9 +96,9 @@ export default function Workspace({
     [screen, setScreen] = useState<"collection" | "sessions" | "settings">(
       "collection",
     );
-  const [modal, setModal] = useState<"connect" | "collection" | "item" | null>(
-      null,
-    ),
+  const [modal, setModal] = useState<
+      "setup" | "connect" | "collection" | "item" | null
+    >(null),
     [detail, setDetail] = useState<Item | null>(null);
   const [busy, setBusy] = useState(false),
     [toast, setToast] = useState(""),
@@ -182,6 +182,8 @@ export default function Workspace({
       });
   }, [data.items, demo, refresh]);
   const collections = data.collections;
+  const hasBuddy = data.devices.some((device) => !device.revoked);
+  const connectionLabel = hasBuddy ? "Connect a session" : "Set up buddy";
   const allItems =
     selected === "all"
       ? data.items
@@ -194,7 +196,7 @@ export default function Workspace({
     setDroppedText("");
     setModalError("");
     setCopied(false);
-    setModal(value);
+    setModal(value === "connect" && !hasBuddy ? "setup" : value);
   }
   function chooseCollection(id: string) {
     setSelected(id);
@@ -244,15 +246,19 @@ export default function Workspace({
       const setup = demo
         ? null
         : await api<{ link: string }>("/api/setup", "POST");
-      const sentence = setup
-        ? `Set up ${setup.link} — install the buddy and keep this conversation connected to my Commonplace space.`
-        : "Set up [your private Commonplace setup link] — install the buddy and keep this conversation connected.";
+      const setupOnly = modal === "setup";
+      const link = setup
+        ? setup.link.replace("/setup#", setupOnly ? "/setup#" : "/connect#")
+        : "[your private link]";
+      const sentence = setupOnly
+        ? `Set up ${link}. Launch the buddy, then help me choose my first session. Do not collect this conversation.`
+        : `Connect ${link}. Save this conversation as a collection and keep it updated.`;
       await navigator.clipboard.writeText(sentence);
       setCopied(true);
       setToast(
         demo
           ? "Example sentence copied. Open your own space to connect."
-          : "Setup sentence copied. Paste it into your agent.",
+          : "Prompt copied.",
       );
     } catch (e) {
       setModalError(
@@ -547,7 +553,7 @@ export default function Workspace({
                     className="button primary"
                     onClick={() => openModal("connect")}
                   >
-                    Connect a session <ArrowRight size={15} />
+                    {connectionLabel} <ArrowRight size={15} />
                   </button>
                 </div>
               )}
@@ -591,7 +597,7 @@ export default function Workspace({
                       onClick={() => openModal("connect")}
                     >
                       <Plus size={15} />
-                      Connect a session
+                      {connectionLabel}
                     </button>
                   </div>
                   <div className="sessions-table">
@@ -609,7 +615,7 @@ export default function Workspace({
                           className="button subtle"
                           onClick={() => openModal("connect")}
                         >
-                          Connect a session <ArrowRight size={14} />
+                          {connectionLabel} <ArrowRight size={14} />
                         </button>
                       </div>
                     )}
@@ -659,7 +665,7 @@ export default function Workspace({
                       <h2>Connected computers</h2>
                       <button
                         className="text-button"
-                        onClick={() => openModal("connect")}
+                        onClick={() => openModal("setup")}
                       >
                         <Plus size={13} />
                         Connect a computer
@@ -725,10 +731,15 @@ export default function Workspace({
           {undo && <button onClick={() => void undoDelete()}>Undo</button>}
         </div>
       )}
-      {modal === "connect" && (
-        <Modal title="Connect a session" onClose={() => setModal(null)}>
+      {(modal === "connect" || modal === "setup") && (
+        <Modal
+          title={modal === "setup" ? "Set up buddy" : "Connect a session"}
+          onClose={() => setModal(null)}
+        >
           <p className="companion-build-note">
-            Paste into Codex, Claude Code, or Cursor.
+            {modal === "setup"
+              ? "Paste into your coding agent."
+              : "Paste into the session you want to save."}
           </p>
           <button
             className="button primary full"
@@ -736,10 +747,16 @@ export default function Workspace({
             disabled={busy}
           >
             {busy ? <Loader2 className="spin" size={15} /> : <Copy size={15} />}
-            {copied ? "Copy again" : "Copy setup prompt"}
+            {copied
+              ? "Copy again"
+              : modal === "setup"
+                ? "Copy setup prompt"
+                : "Copy connection prompt"}
           </button>
           <p className="companion-build-note">
-            Mac · installs once · follows this session
+            {modal === "setup"
+              ? "Mac · choose a session after setup"
+              : "Codex · Claude Code · Cursor"}
           </p>
           {modalError && (
             <p className="form-error" role="alert">

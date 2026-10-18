@@ -14,6 +14,7 @@ async function fixture(t) {
       id,
       origin: "https://space.example",
       code: "a".repeat(64),
+      action: "connect",
       source: { file: "/selected.jsonl", provider: "Cursor" },
     }),
   );
@@ -67,4 +68,27 @@ test("failed capture reports failure, never a false connected receipt", async (t
   });
   assert.equal(result.ok, false);
   assert.equal(states.includes("following"), false);
+});
+
+test("setup pairs without reading or subscribing any session, even with a legacy source", async (t) => {
+  const data = await fixture(t),
+    events = [];
+  const file = join(data, "setup-request.json");
+  const input = JSON.parse(await readFile(file));
+  delete input.action;
+  await writeFile(file, JSON.stringify(input));
+  const forbidden = () => {
+    throw new Error("Setup must not access transcripts");
+  };
+  const result = await consumeSetupRequest(data, {
+    origin: "https://space.example",
+    request: async () => Response.json({ token: "b".repeat(64) }),
+    pair: async () => events.push("pair"),
+    validate: forbidden,
+    subscribe: forbidden,
+    capture: forbidden,
+    report: (s) => events.push(s.state),
+  });
+  assert.deepEqual(result, { ok: true, action: "setup" });
+  assert.deepEqual(events, ["pair"]);
 });

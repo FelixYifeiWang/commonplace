@@ -6,7 +6,9 @@ import {
   rename,
   chmod,
   rm,
+  access,
 } from "node:fs/promises";
+import { constants } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { homedir } from "node:os";
 import { createHash, randomUUID } from "node:crypto";
@@ -37,12 +39,16 @@ export function parseSetupLink(link) {
       )) ||
     url.username ||
     url.password ||
-    url.pathname !== "/setup" ||
+    !["/setup", "/connect"].includes(url.pathname) ||
     url.search ||
     !/^#[a-f0-9]{64}$/.test(url.hash)
   )
     throw new Error("Use the private setup link copied from Commonplace.");
-  return { origin: url.origin, code: url.hash.slice(1) };
+  return {
+    origin: url.origin,
+    code: url.hash.slice(1),
+    action: url.pathname === "/connect" ? "connect" : "setup",
+  };
 }
 export function validateManifest(manifest) {
   if (
@@ -79,6 +85,20 @@ export function validateManifest(manifest) {
     throw new Error("Release checksum mismatch.");
   return manifest;
 }
+export async function verifyRuntime(runtime) {
+  const root = join(runtime, "node_modules/electron");
+  const executable = "Electron.app/Contents/MacOS/Electron";
+  if ((await readFile(join(root, "path.txt"), "utf8")).trim() !== executable)
+    throw new Error("Buddy runtime is incomplete.");
+  await access(join(root, "dist", executable), constants.X_OK);
+  await access(join(root, "dist/Electron.app/Contents/Info.plist"));
+  await access(
+    join(
+      root,
+      "dist/Electron.app/Contents/Frameworks/Electron Framework.framework/Electron Framework",
+    ),
+  );
+}
 async function download(url) {
   const r = await fetch(url, {
     redirect: "error",
@@ -104,7 +124,7 @@ export async function install(
   const [major, minor] = process.versions.node.split(".").map(Number);
   if (major < 22 || (major === 22 && minor < 13))
     throw new Error("Node.js 22.13 or newer is required.");
-  const { origin, code } = parseSetupLink(input.link),
+  const { origin, code, action } = parseSetupLink(input.link),
     space = digest(origin).slice(0, 16);
   const root = join(
       home,
@@ -151,21 +171,25 @@ export async function install(
       }
     }
     await chmod(join(runtime, "desktop/native/bin/commonplace-target"), 0o755);
-    const { findSetupSession } = await import(
-      pathToFileURL(join(runtime, "desktop/setup-session.mjs")).href
-    );
-    const source = await findSetupSession(code, {
-      home,
-      file: input.transcriptPath,
-    });
-    if (input.title) source.title = String(input.title).slice(0, 120);
+    let source;
+    if (action === "connect") {
+      const { findSetupSession } = await import(
+        pathToFileURL(join(runtime, "desktop/setup-session.mjs")).href
+      );
+      source = await findSetupSession(code, {
+        home,
+        file: input.transcriptPath,
+        linkPath: "/connect",
+      });
+      if (input.title) source.title = String(input.title).slice(0, 120);
+    }
     const electron = join(
       runtime,
       "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron",
     );
     try {
       await readFile(join(runtime, ".installed"));
-      await readFile(join(runtime, "node_modules/electron/path.txt"));
+      await verifyRuntime(runtime);
     } catch (e) {
       if (e.code !== "ENOENT") throw e;
       onProgress("Installing the desktop runtime…");
@@ -179,11 +203,30 @@ export async function install(
           timeout: 300000,
           maxBuffer: 2 * 1024 * 1024,
         });
-      } catch {
+        // Current Electron packages install the binary on demand, not during npm ci.
+        await run(
+          process.execPath,
+          [join(runtime, "node_modules/electron/install.js")],
+          {
+            cwd: runtime,
+            env,
+            timeout: 300000,
+            maxBuffer: 2 * 1024 * 1024,
+          },
+        );
+      } catch (error) {
+        const detail = String(error.stderr || error.message || "");
+        if (
+          /EPERM|EACCES|Operation not permitted|Permission denied/i.test(detail)
+        )
+          throw new Error(
+            "macOS blocked the buddy installation. Setup stopped. No session was connected.",
+          );
         throw new Error(
-          "Runtime download failed. Check your network and run setup again.",
+          "Buddy download failed. Check your connection and try again.",
         );
       }
+      await verifyRuntime(runtime);
       await writeFile(join(runtime, ".installed"), "1");
     }
     const id = randomUUID();
@@ -191,7 +234,13 @@ export async function install(
     // Only the expiring code touches disk; Electron exchanges it and encrypts the device key.
     await writeFile(
       join(data, "setup-request.json.tmp"),
-      JSON.stringify({ id, origin, code, source }),
+      JSON.stringify({
+        id,
+        origin,
+        code,
+        action,
+        ...(source ? { source } : {}),
+      }),
       { mode: 0o600 },
     );
     await rename(
@@ -249,7 +298,7 @@ export async function install(
       `import {execFileSync} from 'node:child_process';\nimport {unlinkSync} from 'node:fs';\ntry{execFileSync('/bin/launchctl',['bootout',${JSON.stringify(service)}]);}catch{}\nunlinkSync(${JSON.stringify(plist)});\nconsole.log('Buddy stopped. Saved collections and local credentials were retained.');\n`,
       { mode: 0o600 },
     );
-    onProgress("Connecting this conversation…");
+    onProgress(action === "setup" ? "Starting buddy…" : "Connecting session…");
     const deadline = Date.now() + 180000;
     while (Date.now() < deadline) {
       let receipt;
@@ -263,15 +312,15 @@ export async function install(
       if (receipt) {
         if (!receipt.ok) throw new Error(receipt.error);
         onProgress(
-          "Buddy connected. This session will keep syncing while your Mac is awake.",
+          action === "setup"
+            ? "Buddy ready. Choose a session to save in Commonplace."
+            : "Session connected.",
         );
         return receipt;
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
-    throw new Error(
-      "Buddy is installed but has not confirmed connection yet. Check for a macOS prompt; do not report Connected until setup completes.",
-    );
+    throw new Error("Buddy has not confirmed setup. Check for a macOS prompt.");
   } finally {
     await rm(lock, { recursive: true, force: true });
   }

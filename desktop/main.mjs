@@ -32,7 +32,7 @@ async function processSetup() {
   if (setupBusy || busy) return;
   setupBusy = true;
   try {
-    await consumeSetupRequest(app.getPath("userData"), {
+    const result = await consumeSetupRequest(app.getPath("userData"), {
       origin: ORIGIN,
       connection,
       pair,
@@ -41,6 +41,7 @@ async function processSetup() {
       report: showDropFeedback,
       request,
     });
+    if (result?.ok && result.action === "setup") win?.show();
   } catch (error) {
     lastError = error.message;
     status = "error";

@@ -42,9 +42,37 @@ try {
     (await fetch(origin + "/api/setup", { method: "POST" })).status,
     401,
   );
+  const installation = await api("/api/setup", {});
+  const installCode = new URL(installation.link).hash.slice(1);
+  codes.push(installCode);
+  const installData = join(home, "setup-only");
+  await mkdir(installData);
+  await writeFile(
+    join(installData, "setup-request.json"),
+    JSON.stringify({
+      id: crypto.randomUUID(),
+      origin,
+      code: installCode,
+      action: "setup",
+    }),
+  );
+  const forbidden = () => {
+    throw new Error("Setup attempted transcript access");
+  };
+  const prepared = await consumeSetupRequest(installData, {
+    origin,
+    validate: forbidden,
+    subscribe: forbidden,
+    capture: forbidden,
+    pair: async (device) => deviceIds.push(device.id),
+    report: () => {},
+  });
+  assert.deepEqual(prepared, { ok: true, action: "setup" });
+  console.log("Setup paired without reading or creating a session.");
   for (const provider of ["Codex", "Claude Code", "Cursor"]) {
-    const setup = await api("/api/setup", {}),
-      code = new URL(setup.link).hash.slice(1);
+    const setup = await api("/api/setup", {});
+    setup.link = setup.link.replace("/setup#", "/connect#");
+    const code = new URL(setup.link).hash.slice(1);
     codes.push(code);
     const sid = crypto.randomUUID(),
       file = join(
@@ -68,13 +96,13 @@ try {
       file,
       row("Set up " + setup.link) + row("Reference https://example.com/first"),
     );
-    const source = await findSetupSession(code, { home });
+    const source = await findSetupSession(code, { home, linkPath: "/connect" });
     assert.equal(source.provider, provider);
     const data = join(home, "data-" + sid);
     await mkdir(data);
     await writeFile(
       join(data, "setup-request.json"),
-      JSON.stringify({ id: sid, origin, code, source }),
+      JSON.stringify({ id: sid, origin, code, action: "connect", source }),
     );
     let connection, subscription;
     const cursors = {};

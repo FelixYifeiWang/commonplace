@@ -57,3 +57,13 @@ QA cleanup limitation: CLI attempts exposed missing paired OIDC/store configurat
 
 - Deployed to https://commonplace-pearl.vercel.app. Public setup instructions and every bundled file passed hosted checksum checks. Anonymous setup issuance was rejected; authenticated pairing, single-use replay rejection and device reuse passed. Hosted pairing fixtures were removed without importing transcripts or making model calls.
 - The prebuilt native helper executed successfully on this Mac and passed signature verification. This is a helper smoke test, not a complete fresh-install test.
+
+## Separate buddy setup from the first collection
+
+- Setup now pairs and launches only. It does not search transcripts, import the setup conversation or create a collection, even if an old request includes a source. A separate `/connect` prompt explicitly selects a meaningful conversation. Existing Codex buddy click-to-connect remains available.
+- Setup and connection instructions are separate, brief, and contain no em dash. The setup response directs users to choose their first session. Reviewed the new setup modal in the local browser.
+- Fixed a runtime installation assumption exposed by the user's attempt: Electron 44.9.0 requires its official on-demand installer after npm ci. Verify the executable, plist and framework before writing a success marker or registering automatic launch. Tests cover a missing executable and a simulated permission denial with no LaunchAgent registered.
+- The actual macOS App Management denial during Electron extraction remains unverified after this change. No permissions were changed and the blocked extraction was not retried through another tool or location. No signing identity is available locally for a signed distribution.
+- 114 tests, ESLint, typecheck and the local API integration passed. The API test confirms setup does not access a transcript, then separately checks initial and ongoing capture for all three providers. Temporary fixtures were removed.
+
+- Production build and hosted checks passed for both setup and connection instructions, release checksums and pairing. Published to https://commonplace-pearl.vercel.app.

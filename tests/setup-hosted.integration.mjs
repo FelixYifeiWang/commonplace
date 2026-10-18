@@ -14,10 +14,13 @@ const hash = (value) => createHash("sha256").update(value).digest("hex");
 const codes = [],
   devices = [];
 try {
-  for (const path of ["/setup", "/SKILL.md"]) {
+  for (const path of ["/setup", "/SKILL.md", "/connect"]) {
     const r = await fetch(base + path);
     assert.equal(r.status, 200);
-    assert.match(await r.text(), /Wait for “Buddy connected.”/);
+    assert.match(
+      await r.text(),
+      /Wait for “(?:Buddy ready.|Session connected.)”/,
+    );
   }
   const manifest = validateManifest(
     await (await fetch(base + "/companion/manifest.json")).json(),
