@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readOpenConversation } from "./activity.mjs";
+import { CLAUDE_BUNDLE_ID, resolveClaudeTarget } from "./claude.mjs";
 const exec = promisify(execFile);
 const normalized = (value) =>
   String(value || "")
@@ -109,6 +110,7 @@ export async function resolveLocalTarget(
   target,
   codexHome = process.env.CODEX_HOME || join(homedir(), ".codex"),
 ) {
+  if (target.bundleId === CLAUDE_BUNDLE_ID) return resolveClaudeTarget(target);
   const sessionId = await readOpenConversation(target);
   const selected = resolveTarget(
     { bundleId: target.bundleId, urls: [sessionId] },

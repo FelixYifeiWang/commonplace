@@ -14,8 +14,9 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { resolveLocalTarget } from "./target.mjs";
+import { claudeProjectSource } from "./claude.mjs";
 import { consumeSetupRequest } from "./setup-inbox.mjs";
-import { connectSession } from "./connect.mjs";
+import { connectSession, SUPPORTED_APPS } from "./connect.mjs";
 import {
   createDragController,
   buddyBounds,
@@ -260,7 +261,7 @@ async function findCandidate() {
   lastError = "";
   try {
     const target = await inspectPoint(anchorPoint());
-    if (target.error || target.bundleId !== "com.openai.codex") return;
+    if (target.error || !SUPPORTED_APPS.has(target.bundleId)) return;
     const found = await resolveLocalTarget(target);
     let connected = false;
     if (connection) {
@@ -376,6 +377,7 @@ async function subscribeSource(source) {
       done: false,
       mode: "follow",
       file: source.file,
+      folder: !!source.folder,
     });
   else
     subscriptions.push({
@@ -383,12 +385,30 @@ async function subscribeSource(source) {
       title: source.title,
       provider: source.provider,
       file: source.file,
+      folder: !!source.folder,
       mode: "follow",
       paused: false,
       done: false,
     });
   await persist();
   return subscriptions.find((s) => s.id === result.subscriptionId);
+}
+const FOLLOW_PROJECT = "--follow-claude-project=";
+const projectArg = (argv) =>
+  argv.find((a) => a.startsWith(FOLLOW_PROJECT))?.slice(FOLLOW_PROJECT.length);
+// The user names a Claude Code project folder on the command line; every session in it is followed.
+async function followClaudeProject(folder) {
+  try {
+    const source = await claudeProjectSource(folder);
+    showDropFeedback({ state: "connecting", target: source.title, error: "" });
+    const subscription = await subscribeSource(source);
+    await captureSource(source, subscription);
+    showDropFeedback({ state: "following", target: source.title, error: "" });
+    console.log(`Following Claude Code project ${source.title}.`);
+  } catch (error) {
+    showDropFeedback({ state: "error", error: error.message });
+    console.error(`Could not follow ${folder}: ${error.message}`);
+  }
 }
 async function handleProtocol(raw) {
   try {
@@ -417,6 +437,8 @@ if (!lock) {
   app.on("second-instance", (_event, argv) => {
     const link = argv.find((a) => a.startsWith("commonplace://"));
     if (link) void handleProtocol(link);
+    const folder = projectArg(argv);
+    if (folder) void followClaudeProject(folder);
     win?.show();
   });
   app.on("open-url", (event, url) => {
@@ -693,6 +715,8 @@ if (!lock) {
       setInterval(() => void processSetup(), 2000);
       setInterval(() => void tick(), 15000);
       void tick();
+      const folder = projectArg(process.argv);
+      if (folder) void followClaudeProject(folder);
     })
     .catch((error) => {
       console.error("Companion could not start:", error.message);

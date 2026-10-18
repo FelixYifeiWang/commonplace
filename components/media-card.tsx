@@ -4,6 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { FileText, Play, Music2, ArrowUpRight, File } from "lucide-react";
 import type { Item } from "@/lib/types";
 import { embedFor } from "@/lib/media.mjs";
+import { createLimiter } from "@/lib/limit.mjs";
+// A page screenshot can take half a minute to render. Browsers allow about six requests per host,
+// so cap screenshot loads to keep the rest of the app (story, workspace updates) responsive.
+const screenshotSlots = createLimiter(2);
 function hostname(url: string | null) {
   try {
     return new URL(url || "").hostname.replace(/^www\./, "");
@@ -70,6 +74,18 @@ export function MediaCard({
     !!item.url &&
     /^[0-9a-f-]{36}$/.test(item.id) &&
     !pageFailed;
+  const [pageSlot, setPageSlot] = useState(false);
+  const stopPage = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    if (!page) return;
+    const stop = screenshotSlots.acquire(() => setPageSlot(true));
+    stopPage.current = stop;
+    return () => {
+      stop();
+      setPageSlot(false);
+    };
+  }, [page]);
+  const finishPage = () => stopPage.current?.();
   const mediaUrl = item.fileKey ? `/api/files/${item.id}` : item.url;
   const directVideo =
     item.kind === "video" &&
@@ -157,7 +173,7 @@ export function MediaCard({
           tabIndex={-1}
         />
       )}
-      {page && (
+      {page && pageSlot && (
         <Image
           className={`page-screenshot ${pageLoaded ? "loaded" : ""}`}
           unoptimized
@@ -165,9 +181,16 @@ export function MediaCard({
           height={720}
           src={`/api/screenshots/${item.id}?v=2`}
           alt={`Page preview of ${item.title}`}
-          loading="lazy"
-          onLoad={() => setPageLoaded(true)}
-          onError={() => setPageFailed(true)}
+          // Loading is already gated by distance and a slot; a lazy image that never loads would keep its slot.
+          loading="eager"
+          onLoad={() => {
+            finishPage();
+            setPageLoaded(true);
+          }}
+          onError={() => {
+            finishPage();
+            setPageFailed(true);
+          }}
         />
       )}
       {item.kind === "video" && hasImage && (

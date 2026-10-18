@@ -22,7 +22,8 @@
     "companion:package": "node scripts/package-companion.mjs",
     "prelocal": "npm run companion:package",
     "predev": "npm run companion:package",
-    "prebuild": "npm run companion:package"
+    "prebuild": "npm run companion:package",
+    "pretest": "npm run companion:package"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

@@ -5,7 +5,7 @@ import { and, eq, notInArray } from "drizzle-orm";
 import { agentSession, jsonBody, fail, HttpError, hash } from "@/lib/server";
 import { isReferenceUrl } from "@/lib/source-policy.mjs";
 import { classifyMedia } from "@/lib/media.mjs";
-import { itemIdentity, safeUrl } from "@/lib/protocol.mjs";
+import { itemIdentity, safeUrl, trimUrl } from "@/lib/protocol.mjs";
 export async function POST(request: Request) {
   try {
     const body = await jsonBody(request),
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       );
       const matches = turn.text.match(/https?:\/\/[^\s<>"'`\]\)]+/g) || [];
       for (const raw of [...new Set<string>(matches)]) {
-        const url = safeUrl(raw.replace(/[.,;:!?]+$/, ""));
+        const url = safeUrl(trimUrl(raw));
         if (!url) continue;
         const parsed = new URL(url);
         if (!isReferenceUrl(url)) continue;

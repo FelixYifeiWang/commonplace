@@ -1,5 +1,5 @@
-import { open, readdir, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { open, readdir, realpath, stat } from "node:fs/promises";
+import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { redactSetupLinks } from "./setup-session.mjs";
@@ -112,6 +112,48 @@ export async function* readSelectedTranscript(path) {
     await file.close();
   }
 }
+// A followed project is a folder of session transcripts. Read each one oldest first, so new sessions join automatically.
+// Skip anything that resolves outside the folder, such as a symlink, and nested subagent transcripts.
+// Transcripts can be hundreds of megabytes, so one whose size and modification time match `previous` is not read again.
+export async function* readProjectTranscripts(
+  folder,
+  previous = {},
+  next = {},
+) {
+  const root = await realpath(folder);
+  const files = [];
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    if (!entry.name.endsWith(".jsonl")) continue;
+    let file;
+    try {
+      file = await realpath(join(root, entry.name));
+    } catch (error) {
+      if (error.code === "ENOENT") continue;
+      throw error;
+    }
+    if (dirname(file) !== root) continue;
+    const info = await stat(file);
+    if (info.isFile())
+      files.push({
+        file,
+        mtime: info.mtimeMs,
+        version: `${info.size}:${info.mtimeMs}`,
+      });
+  }
+  files.sort((a, b) => a.mtime - b.mtime);
+  for (const { file, version } of files) {
+    if (previous[file]?.version === version) {
+      next[file] = previous[file];
+      continue;
+    }
+    let turns = 0;
+    for await (const turn of readSelectedTranscript(file)) {
+      turns++;
+      yield turn;
+    }
+    next[file] = { version, turns };
+  }
+}
 export async function syncTranscript({
   connection,
   subscription,
@@ -153,7 +195,11 @@ export async function syncTranscript({
     size = 0;
     queued.clear();
   }
-  for await (const raw of readSelectedTranscript(subscription.file)) {
+  const versions = {};
+  const transcript = subscription.folder
+    ? readProjectTranscripts(subscription.file, subscription.versions, versions)
+    : readSelectedTranscript(subscription.file);
+  for await (const raw of transcript) {
     total++;
     const turn = { ...raw, text: redactSetupLinks(raw.text).slice(0, 64000) };
     const key = createHash("sha256")
@@ -169,5 +215,10 @@ export async function syncTranscript({
   }
   // Even an unchanged session needs a heartbeat; only the last batch completes imports.
   await sendBatch(true);
+  if (subscription.folder) {
+    // Remember which transcripts were read only after every batch is acknowledged.
+    subscription.versions = versions;
+    total = Object.values(versions).reduce((n, v) => n + v.turns, 0);
+  }
   return { captured, total, pendingAI: captured > 0 };
 }

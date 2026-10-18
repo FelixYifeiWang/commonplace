@@ -1,3 +1,7 @@
+export const SUPPORTED_APPS = new Set([
+  "com.openai.codex",
+  "com.anthropic.claudefordesktop",
+]);
 // Only the explicit Connect action may subscribe; resolving the candidate is read-only.
 export async function connectSession({
   inspect,
@@ -9,8 +13,10 @@ export async function connectSession({
 }) {
   try {
     const target = await inspect(point);
-    if (target.error || target.bundleId !== "com.openai.codex")
-      throw new Error("Place the buddy over an open Codex conversation.");
+    if (target.error || !SUPPORTED_APPS.has(target.bundleId))
+      throw new Error(
+        "Place the buddy over an open Codex conversation or Claude Code session.",
+      );
     const source = await resolve(target);
     report({ state: "connecting", target: source.title, error: "", point });
     const subscription = await subscribe(source);

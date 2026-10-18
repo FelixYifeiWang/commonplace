@@ -175,7 +175,7 @@ export default function Companion() {
           title={
             snapshot?.error ||
             snapshot?.candidateTitle ||
-            "Move the buddy over an open Codex conversation, then click it."
+            "Move the buddy over an open Codex conversation or Claude Code session, then click it."
           }
           aria-label={
             snapshot?.candidateConnected

@@ -14,6 +14,7 @@ for (const file of [
   "collector.mjs",
   "target.mjs",
   "activity.mjs",
+  "claude.mjs",
   "connect.mjs",
   "drag.mjs",
   "setup-session.mjs",

@@ -11,8 +11,8 @@ The collection starts with a picker, square blocks, and an add button. Click a b
 ## Connection routes
 
 - **Desktop (macOS preview):** open one Codex window, open the conversation, then move the buddy over the conversation area, click it and choose Connect. It connects and follows new turns while the companion runs. No Accessibility or screen-recording permission is requested. It checks the selected transcript every 15 seconds; the webpage refreshes every four seconds.
-- **Agent setup:** choose Set up buddy and paste the prompt into any local coding agent. Setup pairs and launches the buddy without reading the setup conversation or creating a collection. Then choose Connect a session and paste that separate prompt into a conversation worth saving. Codex can also connect through the buddy's Connect control over an open conversation. macOS 13+, Node.js 22.13+ and npm are required. A prebuilt helper avoids Xcode; cloud agents cannot install a laptop buddy.
-
+- **Claude Code (macOS preview):** the same buddy connects the session focused in the Claude desktop app's Code tab, with one Claude window open. To follow a whole project folder instead, including sessions started there later, run `npm run desktop -- --follow-claude-project=/full/path/to/folder`. The folder becomes one channel. Every transcript Claude Code stores for that folder is uploaded, so name only folders you want collected. Claude Code in a terminal cannot be targeted by the buddy.
+- **Agent setup:** choose Set up buddy and paste the prompt into any local coding agent. Setup pairs and launches the buddy without reading the setup conversation or creating a collection. Then choose Connect a session and paste that separate prompt into a conversation worth saving. Codex and Claude Code in the Claude desktop app can also connect through the buddy's Connect control over an open conversation. macOS 13+, Node.js 22.13+ and npm are required. A prebuilt helper avoids Xcode; cloud agents cannot install a laptop buddy.
 
 Both routes use the same device/subscription APIs. A device token is scoped to writes for its owner; pause stops ingestion and revocation disables the device. Server tokens are hashed; desktop credentials are encrypted using Electron safeStorage. Only explicitly selected transcripts are uploaded.
 
@@ -22,7 +22,7 @@ Collections, manual blocks, source passages, account sign-in, revocable connecti
 
 ## Unfinished
 
-The example collection is sample content, not a live extraction. Clicking the desktop buddy to identify an open window currently supports Codex only. Inactive sidebar rows must be opened first. The setup-prompt route supports local Codex, Claude Code and Cursor JSONL transcripts; see `COMPATIBILITY.md`. There is no signed desktop installer or freely editable mind map yet.
+The example collection is sample content, not a live extraction. Clicking the desktop buddy to identify an open window currently supports Codex and Claude Code in the Claude desktop app. Inactive sidebar rows must be opened first. The setup-prompt route supports local Codex, Claude Code and Cursor JSONL transcripts; see `COMPATIBILITY.md`. There is no signed desktop installer or freely editable mind map yet.
 
 The older Sites preview has an additional Sites authentication boundary. The Vercel deployment uses its own private access code. Desktop hosted sign-in and unattended hosted syncing still need an end-to-end companion check; local companion syncing is the tested development path.
 
