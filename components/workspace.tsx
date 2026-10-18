@@ -110,12 +110,11 @@ export default function Workspace({
   const [busy, setBusy] = useState(false),
     [toast, setToast] = useState(""),
     [modalError, setModalError] = useState("");
-  // Two views per collection: Gallery (the session map) and Story. Cmd/Ctrl+Shift+G switches the
-  // Gallery between the map and the item grid, where items are added and removed.
-  const [view, setView] = useState<"gallery" | "story">("gallery");
-  const [grid, setGrid] = useState(false);
+  // The shortcut reveals the item grid as a third view for this workspace visit.
+  const [view, setView] = useState<"gallery" | "map" | "story">("map");
+  const [galleryEnabled, setGalleryEnabled] = useState(false);
   useEffect(() => {
-    const toggle = (event: KeyboardEvent) => {
+    const revealGallery = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
       if (
         (event.metaKey || event.ctrlKey) &&
@@ -125,11 +124,11 @@ export default function Workspace({
       ) {
         event.preventDefault();
         setView("gallery");
-        setGrid((value) => !value);
+        setGalleryEnabled(true);
       }
     };
-    window.addEventListener("keydown", toggle);
-    return () => window.removeEventListener("keydown", toggle);
+    window.addEventListener("keydown", revealGallery);
+    return () => window.removeEventListener("keydown", revealGallery);
   }, []);
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const [droppedText, setDroppedText] = useState("");
@@ -583,16 +582,18 @@ export default function Workspace({
               role="group"
               aria-label="Collection view"
             >
-              {(["gallery", "story"] as const).map((option) => (
+              {(galleryEnabled
+                ? (["gallery", "map", "story"] as const)
+                : (["map", "story"] as const)
+              ).map((option) => (
                 <button
                   key={option}
                   aria-pressed={view === option}
-                  onClick={() => {
-                    setView(option);
-                    setGrid(false);
-                  }}
+                  onClick={() => setView(option)}
                 >
-                  {option[0].toUpperCase() + option.slice(1)}
+                  {option === "map" && !galleryEnabled
+                    ? "Gallery"
+                    : option[0].toUpperCase() + option.slice(1)}
                 </button>
               ))}
             </div>
@@ -622,10 +623,7 @@ export default function Workspace({
           data.user && <AccountTransition onLinked={refresh} />}
         <main
           className={
-            screen === "collection" &&
-            view === "gallery" &&
-            !grid &&
-            selected !== "all"
+            screen === "collection" && view === "map" && selected !== "all"
               ? "map-main"
               : undefined
           }
@@ -679,7 +677,7 @@ export default function Workspace({
               )}
               {screen === "collection" &&
                 selected !== "all" &&
-                (view === "gallery" && grid ? (
+                (view === "gallery" ? (
                   itemGrid
                 ) : (
                   <SessionView
@@ -689,7 +687,7 @@ export default function Workspace({
                       collections.find((c) => c.id === selected)?.name ||
                       "Untitled"
                     }
-                    mode={view}
+                    mode={view === "map" ? "gallery" : "story"}
                     items={[
                       ...visibleItems,
                       ...(data.recentlyDeleted || []).filter(
