@@ -1,5 +1,5 @@
 import { readdir, realpath } from "node:fs/promises";
-import { join, relative, isAbsolute } from "node:path";
+import { join, relative, isAbsolute, basename } from "node:path";
 import { homedir } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -120,4 +120,30 @@ export async function resolveLocalTarget(
     ...selected,
     file: await confineTranscript(selected.file, codexHome),
   };
+}
+
+// Codex can replace a thread's rollout when it resumes. Follow the thread, not
+// the file captured on connect. Legacy subscriptions recover its ID from the filename.
+export async function resolveFollowedTranscript(
+  subscription,
+  {
+    codexHome = process.env.CODEX_HOME || join(homedir(), ".codex"),
+    metadata = codexSessionMetadata,
+  } = {},
+) {
+  if (subscription.provider !== "Codex" || subscription.folder)
+    return { file: subscription.file };
+  const sessionId =
+    subscription.sessionId ||
+    basename(subscription.file).match(
+      /^rollout-.*?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:_|\.jsonl$)/i,
+    )?.[1];
+  const selected =
+    sessionId &&
+    (await metadata(codexHome)).find((s) => s.sessionId === sessionId);
+  if (!selected)
+    throw new Error(
+      "Subscribed Codex session is unavailable. Open it in Codex and reconnect.",
+    );
+  return { file: await confineTranscript(selected.file, codexHome), sessionId };
 }

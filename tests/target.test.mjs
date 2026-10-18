@@ -100,7 +100,14 @@ test("an unresolved row never falls back to a different open conversation", () =
 
 import { createDragController } from "../desktop/drag.mjs";
 import { confineTranscript } from "../desktop/target.mjs";
-import { mkdtemp, mkdir, writeFile, symlink, rm } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  writeFile,
+  symlink,
+  rm,
+  realpath,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 test("a symlink cannot turn a session target into an arbitrary file read", async (t) => {
@@ -193,4 +200,58 @@ test("cancel restores the original position", () => {
   f.move();
   d.cancel({ restore: true });
   assert.equal(d.isDragging(), false);
+});
+
+import { resolveFollowedTranscript } from "../desktop/target.mjs";
+test("a followed Codex session follows its stable ID to a rotated transcript", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "newron-rotation-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, "sessions"));
+  const id = sessions[0].sessionId;
+  const original = join(
+    root,
+    "sessions",
+    `rollout-2026-10-17T12-00-00-${id}.jsonl`,
+  );
+  const current = join(
+    root,
+    "sessions",
+    `rollout-2026-10-18T12-00-00-${id}_new.jsonl`,
+  );
+  await writeFile(original, "");
+  await writeFile(current, "");
+  const subscription = { provider: "Codex", file: original };
+  const result = await resolveFollowedTranscript(subscription, {
+    codexHome: root,
+    metadata: async () => [
+      { ...sessions[0], file: current },
+      { ...sessions[1], title: sessions[0].title },
+    ],
+  });
+  assert.deepEqual(result, { file: await realpath(current), sessionId: id });
+  assert.equal(subscription.file, original);
+});
+test("a missing subscribed ID never follows a matching title", async () => {
+  await assert.rejects(
+    resolveFollowedTranscript(
+      {
+        provider: "Codex",
+        sessionId: sessions[0].sessionId,
+        file: "/old.jsonl",
+      },
+      {
+        metadata: async () => [{ ...sessions[1], title: sessions[0].title }],
+      },
+    ),
+    /session.*unavailable/i,
+  );
+});
+test("non-Codex sources retain their existing transcript", async () => {
+  assert.deepEqual(
+    await resolveFollowedTranscript({
+      provider: "Claude Code",
+      file: "/claude.jsonl",
+    }),
+    { file: "/claude.jsonl" },
+  );
 });

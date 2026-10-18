@@ -3,6 +3,7 @@ import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { redactSetupLinks } from "./setup-session.mjs";
+import { resolveFollowedTranscript } from "./target.mjs";
 import { parseTranscript } from "../lib/protocol.mjs";
 
 async function filesUnder(root, depth) {
@@ -159,6 +160,7 @@ export async function syncTranscript({
   subscription,
   cursors,
   request = fetch,
+  resolveTranscript = resolveFollowedTranscript,
 }) {
   const seen = new Set(cursors[subscription.id] || []);
   const queued = new Set();
@@ -196,9 +198,23 @@ export async function syncTranscript({
     queued.clear();
   }
   const versions = {};
+  const source = subscription.folder
+    ? { file: subscription.file }
+    : await resolveTranscript(subscription);
+  async function* selectedTranscripts() {
+    // Drain the old file first so a rotation between polls cannot lose its tail.
+    if (source.file !== subscription.file) {
+      try {
+        yield* readSelectedTranscript(subscription.file);
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+      }
+    }
+    yield* readSelectedTranscript(source.file);
+  }
   const transcript = subscription.folder
     ? readProjectTranscripts(subscription.file, subscription.versions, versions)
-    : readSelectedTranscript(subscription.file);
+    : selectedTranscripts();
   for await (const raw of transcript) {
     total++;
     const turn = { ...raw, text: redactSetupLinks(raw.text).slice(0, 64000) };
@@ -215,6 +231,8 @@ export async function syncTranscript({
   }
   // Even an unchanged session needs a heartbeat; only the last batch completes imports.
   await sendBatch(true);
+  // Persist the new path only after the server has acknowledged its contents.
+  Object.assign(subscription, source);
   if (subscription.folder) {
     // Remember which transcripts were read only after every batch is acknowledged.
     subscription.versions = versions;

@@ -207,3 +207,61 @@ test("a followed project does not read unchanged transcripts again", async (t) =
   assert.deepEqual(sent, ["Finished session", "Active session", "New turn"]);
   assert.equal(result.total, 3);
 });
+
+test("rotation drains the old tail and follows new turns without replaying acknowledged ones", async (t) => {
+  const args = await fixture(t);
+  const sent = [];
+  args.request = async (_url, opts) => {
+    sent.push(...JSON.parse(opts.body).turns);
+    return ok();
+  };
+  await syncTranscript(args);
+  const oldFile = args.subscription.file;
+  const nextFile = join(oldFile, "..", "resumed.jsonl");
+  await appendFile(
+    oldFile,
+    "\n" +
+      JSON.stringify({
+        id: "tail",
+        role: "user",
+        content: "Last old-file decision",
+      }),
+  );
+  await writeFile(
+    nextFile,
+    JSON.stringify({
+      id: "rename",
+      role: "user",
+      content: "The project is renamed to Newron.",
+    }),
+  );
+  args.resolveTranscript = async () => ({
+    file: nextFile,
+    sessionId: "stable-thread",
+  });
+  await syncTranscript(args);
+  await syncTranscript(args);
+  assert.deepEqual(
+    sent.map((t) => t.id),
+    ["turn-0", "tail", "rename"],
+  );
+  assert.equal(args.subscription.file, nextFile);
+  assert.equal(args.subscription.sessionId, "stable-thread");
+});
+test("a failed rotated upload retains the old subscription path for retry", async (t) => {
+  const args = await fixture(t);
+  const original = args.subscription.file;
+  const nextFile = join(original, "..", "resumed.jsonl");
+  await writeFile(
+    nextFile,
+    JSON.stringify({ id: "rename", role: "user", content: "Name this Newron" }),
+  );
+  args.resolveTranscript = async () => ({
+    file: nextFile,
+    sessionId: "stable-thread",
+  });
+  args.request = async () =>
+    Response.json({ error: "Unavailable" }, { status: 503 });
+  await assert.rejects(syncTranscript(args), { status: 503 });
+  assert.equal(args.subscription.file, original);
+});

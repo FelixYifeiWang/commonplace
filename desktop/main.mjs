@@ -475,6 +475,7 @@ async function subscribeSource(source) {
       done: false,
       mode: "follow",
       file: source.file,
+      sessionId: source.sessionId,
       folder: !!source.folder,
     });
   else
@@ -483,6 +484,7 @@ async function subscribeSource(source) {
       title: source.title,
       provider: source.provider,
       file: source.file,
+      sessionId: source.sessionId,
       folder: !!source.folder,
       mode: "follow",
       paused: false,
