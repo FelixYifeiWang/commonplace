@@ -14,8 +14,8 @@ The first mockup was curated by hand: I extracted the transcripts, picked the de
 | 4. Capture what was built | The shipped URL (desktop and phone) and local prototypes become items | Screenshot worker (phone viewport, local files) | After the merge |
 | 5. Fit every picture | Classify as page, object or ink; store the edge colour and trim box; make the cut-out for objects. Website captures are always pages | `lib/image-fit.mjs` (`classifyImage`, `cutOut`), run once in the screenshot worker | Library built; wiring after the merge |
 | 6. Write the story and gallery | One call (about 20 s) returns the whole story and gallery, revising the current version. IDs, URLs, fonts and quotes are checked against the session. A rejected answer is retried once, and the retry names the rule it broke | `prepareSessionBatch`, `generateSession`, `validateSession` | Built |
-| 7. Store them | Save the whole story and gallery on each run; earlier versions are replaced, not appended | `lib/story-store.mjs` and a migration | After the merge (the migration number follows Felix's 0006) |
-| 8. Render | Story steps and the Gallery, following the rules in this file | `components/story-view.tsx` and the Gallery | Stages 3–4 |
+| 7. Store them | Save the whole story and gallery on each run; earlier versions are replaced, not appended. The local and hosted workers both call it | `completeSession` in `lib/story-store.mjs`, migration 0007 (`stories.session_json`) | Built |
+| 8. Render | Story steps and the Gallery, following the rules in this file | `components/session-view.tsx` (data, status, Retry) with `components/session-story.tsx` and `components/session-map.tsx` | Built (light mode; dark mode comes with the shared shell) |
 
 The model never sees the pictures, so it cannot crop to a subject. The rules make up for that:
 - **Fonts:** a typography node names its font and a sample, and the gallery renders a live specimen.
@@ -29,7 +29,7 @@ Sending small thumbnails to the model would let it choose better. It stays off b
 The story model reads transcript text and media metadata. It never sees the images, so it cannot judge how a picture will fit.
 
 - **The model** picks:
-  - the step's layout: choice, reference, before-after, detour, quote or none
+  - the step's layout: choice, reference, before-after, detour, words or none
   - which saved items go on it
   - each item's role: option, picked, before, after, attempt or result
   - a short label for each item
@@ -134,7 +134,7 @@ The layout says what kind of moment a step is, so the renderer knows how to arra
 | reference | an outside source that set a standard or direction | 1–3 items, all "reference" |
 | before-after | something drawn or written, then built | one "before", one "after" |
 | detour | an attempt that was dropped and undone | a "start", 1–2 "attempt", a "result" |
-| quote | a turn made in words, with no picture that shows it | no items; one exact line from the session |
+| words | a turn made in words, with no picture that shows it | no items; 1–5 rows in one form: flow, change, spec, line or number |
 | none | a step that needs no canvas | nothing |
 
 ### ① Reference
@@ -185,17 +185,25 @@ Something was tried, abandoned and undone. A Before-after cannot show the return
 
 Trigger words in the transcript: "revert", "discard", "go back to", "the beginning version looks better".
 
-### ⑤ Quote
+### ⑤ Words (no picture)
 
-Text-only steps are being explored on a separate comparison page (five treatments: Pull quote, Annotate, Conversation, Strike and replace, One number). The Story currently uses Pull quote: one line from the session set large, with a quiet row of one-word results under it. A text-only canvas never repeats what the story paragraph already says.
+When no picture shows the step, the canvas still shows what happened, in a shape the reader gets at a glance. The test: cover the paragraph, and the canvas alone tells you the step. The model picks the form that fits:
 
-Input from someone outside the session, and what came of each point. The quote leads, and it is calm: one panel, no boxes inside it, no thumbnail.
-
-| Variant | Use when | Slots |
+| Form | The step is… | Rows |
 | --- | --- | --- |
-| **F-quote** | a pasted review, critique or comment | one panel across the body, split by a hairline. Left 56%: the quote in display type, sized to fill, with the source below it. Right: 1–4 points as plain lines separated by hairlines. Each line has a ✓ (applied) or – (declined), the point in a few words, and an optional measurement in small type |
+| **Flow** | a sequence: a process, a journey, a user flow | 3–5 steps in order, numbered dots on one line |
+| **Change** | something went from one thing to another | 2: what it was (struck through) and what it became |
+| **Spec** | a part decided in words: what, where, when | 2–5 label and value rows, split by hairlines |
+| **Line** | a rule or stance, said best in the human's words | 1: copied exactly, at most 20 words, with who said it |
+| **Number** | one measured result | 1: the value as the session states it, with what it measures |
 
-More than 4 points: show the 3 with the most discussion, then "+n more".
+Rules for every form:
+- Rows are a few words each (at most 8; a line at most 20).
+- The words come from the session: most of each row's words, and every number, appear in the conversation.
+- The canvas shows, and the paragraph tells. They can share words, but a line never repeats the paragraph.
+- Nothing is boxed: type, hairlines and the sheet only.
+
+Lab with real steps: https://claude.ai/artifact/HAaF8VACh7Q3q5noxD5RuX
 
 ## Outcome (new)
 
@@ -241,9 +249,10 @@ The Gallery is not the Story. It keeps what is worth reusing from the session: t
 
 - **Center:** no node repeats it. do's design, unchanged: a white box with a hairline border and the dot ring, with the output's name and "Session output" underneath. It links out when it has a URL. It does not use the sheet.
 - **Main nodes:** up to six, evenly spaced around the center. Each is a tile sized by weight: about 196px tall for "major" (at most two), 128px for "normal", 92px for "minor". A tile shows its picture, or the node's quote when it has none.
-- **Tile text:** a node with no picture shows its quote. If a story canvas already shows that line, the tile shows the node's label in display type instead, so the two views never show the same line.
+- **Tile text:** a node with no picture shows its quote, growing to fit it (at most six lines). If a story canvas already shows that line, the tile shows the node's label in display type instead, so the two views never show the same line.
 - **Summary bubble:** beside each tile on its outer side, shown by default. It holds the one-line summary and the node's name, but no kind or category label.
-- **Details:** 1–3 per node. They pop out when you zoom in, inside the node's own slice of the map. A detail with a picture is a small tile; one without is an outlined label. The human's quote appears under each detail at the closest zoom.
+- **Details:** 1–3 per node. When you zoom in they fade in together with the line that leads to them, on the same timing, without scaling, inside the node's own slice of the map. A detail with a picture is a small tile; one without is an outlined label. The human's quote appears under each detail at the closest zoom.
+- **Item grid:** a collection has two views, Gallery and Story. The Gallery shows the item grid until a map exists; Cmd/Ctrl+Shift+G switches the Gallery between the map and the grid, where items are added and removed.
 - **Links:** a reference node or detail opens its site in a new tab. Nothing opens a pop-up. There is no filter column and no link to the Story.
 - **Interaction:**
   - Scroll or pinch zooms around the pointer.
@@ -267,8 +276,7 @@ The Gallery is not the Story. It keeps what is worth reusing from the session: t
 | Outcome title | up to 6 words |
 | Story paragraph | about 30 words, first person, the human's tone, no bullet points |
 | Slot label | 1–4 words |
-| Quote on a canvas | at most 20 words, one line, copied exactly from the transcript |
-| Feedback points | at most 4 shown |
+| Words on a canvas | rows of at most 8 words; a line at most 20 words, copied exactly |
 
 ## Check before shipping a canvas
 
@@ -285,7 +293,7 @@ Each piece of feedback was turned into a general rule, so it holds for any sessi
 
 | Feedback | General rule | Where it is enforced |
 | --- | --- | --- |
-| "template" was confusing | Internal names are plain words: each step has a layout (choice, reference, before-after, detour, quote, none), and readers never see it | Schema; validator |
+| "template" was confusing | Internal names are plain words: each step has a layout (choice, reference, before-after, detour, words, none), and readers never see it | Schema; validator |
 | "4 fixes after launch" | Name each thing; never counts or vague summaries | Prompt; validator rejects aggregate text |
 | "Change log · sketch → shipped" labels | Labels name content, never the format: no layout names, layout arrows or meta words | Prompt; validator rejects format words |
 | Too many words | Titles 2–7 words, step text about 15–45 words, gallery summaries one line, details a few words | Prompt; validator word limits |
@@ -308,9 +316,12 @@ Each piece of feedback was turned into a general rule, so it holds for any sessi
 | Sketches first | The human's own material outranks captures | Prompt |
 | Deploying became a step (Codex test) | Publishing, deploying or pushing the result is never a step; the center shows the result | Prompt |
 | The live site was both center and node | No node repeats the center | Prompt; validator |
-| Canvas quotes ran 27–33 words | A canvas quote is one line of at most 20 words | Prompt; validator |
+| Canvas quotes ran 27–33 words | A line on the canvas is at most 20 words | Prompt; validator |
 | A reference without a link was missed ("like X's left bar") | A reference can be named without a link | Prompt |
 | The retry repeated the same mistake | The retry tells the model which rule the first answer broke | `lib/story-provider.mjs` |
 | Codex wrappers hid the request | Strip app wrappers and keep the request inside | `cleanSessionText` in `lib/story.mjs` |
 | Gallery and story showed the same line | The renderer swaps the tile's quote for its label; the model is only asked to prefer another line (a hard rule made runs fail) | Prompt; renderer |
 | Detail lines stopped short at mid zoom | Lines end on the always-visible part of their target, measured live | Renderer |
+| The text-only canvas was confusing; one line was too narrow | The canvas shows what happened in the shape that fits the step (flow, change, spec, line, number), readable without the paragraph | Schema; prompt; validator; renderer |
+| A whole answer was discarded for one small slip | Code repairs what it can fix without guessing (a reused picture, extra major nodes, a node repeating the center); only invented items, links or quotes are rejected | Validator |
+| Quotes failed on capitals and curly quotes | Quotes must have the same words in the same order; capitals and quote-mark style may differ | Validator |

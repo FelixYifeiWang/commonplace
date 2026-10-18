@@ -3,11 +3,13 @@ import { getDb } from "@/db";
 import { collections, sessions, items, devices } from "@/db/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { userRequired, fail } from "@/lib/server";
+import { createItemTrash } from "@/lib/item-trash.mjs";
+import { env } from "@/lib/runtime-env";
 export async function GET() {
   try {
     const user = await userRequired(),
       db = getDb();
-    const [cs, ss, ii] = await Promise.all([
+    const [cs, ss, ii, recentlyDeleted] = await Promise.all([
       db
         .select()
         .from(collections)
@@ -36,6 +38,7 @@ export async function GET() {
         .from(items)
         .where(and(eq(items.ownerId, user.userId), isNull(items.deletedAt)))
         .orderBy(desc(items.createdAt)),
+      createItemTrash(env.DB).list(user.userId),
     ]);
     const ds = await db
       .select({
@@ -51,6 +54,7 @@ export async function GET() {
     return Response.json(
       {
         collections: cs,
+        recentlyDeleted,
         sessions: ss.filter((s) => visibleCollections.has(s.collectionId)),
         items: ii.filter(
           (i) => visibleCollections.has(i.collectionId) && isReferenceItem(i),

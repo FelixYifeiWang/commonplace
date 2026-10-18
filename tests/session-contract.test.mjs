@@ -5,6 +5,7 @@ import {
   normalizeSession,
   sessionInstructions,
   validateSession,
+  sessionURLs,
 } from "../lib/story.mjs";
 
 const input = {
@@ -73,7 +74,7 @@ const valid = () => ({
           { itemId: "m-sketch", role: "before", label: "My wireframe" },
           { itemId: "m-ticket", role: "after", label: "Shipped ticket" },
         ],
-        quote: null,
+        words: null,
       },
       evidence: [
         { sourceId: "t1", quote: "Strictly follow this as a lofi wireframe" },
@@ -83,9 +84,18 @@ const valid = () => ({
       title: "Live, then a reality check",
       text: "A peer said the custom cursor had to go and the site lagged. Fair. Cursor out, and the slowest frame got way faster.",
       canvas: {
-        layout: "quote",
+        layout: "words",
         items: [],
-        quote: { sourceId: "t3", text: "i really dislike custom cursors" },
+        words: {
+          form: "line",
+          rows: [
+            {
+              label: "A peer",
+              text: "i really dislike custom cursors",
+              sourceId: "t3",
+            },
+          ],
+        },
       },
       evidence: [{ sourceId: "t3", quote: "it lags and stutters sometimes" }],
     },
@@ -220,7 +230,7 @@ test("a canvas names one of the plain layouts", () => {
     "reference",
     "before-after",
     "detour",
-    "quote",
+    "words",
     "none",
   ]);
 });
@@ -233,7 +243,7 @@ test("a choice canvas has exactly one picked option", () => {
       { itemId: "m-sketch", role: "option", label: "Sketch" },
       { itemId: "m-ticket", role: "option", label: "Ticket" },
     ],
-    quote: null,
+    words: null,
   };
   assert.throws(() => validateSession(v, input), /picked/);
 });
@@ -329,7 +339,7 @@ test("story and gallery text stay short", () => {
   assert.throws(() => validateSession(wordy, input), /short line/);
 });
 
-test("a quote canvas does not repeat its paragraph", () => {
+test("a line on the canvas does not repeat its paragraph", () => {
   const v = valid();
   v.steps[1].text =
     "A peer said i really dislike custom cursors, and the site lagged. Fair. Cursor out, and the slowest frame got way faster.";
@@ -380,7 +390,7 @@ test("a canvas quote is one short line", () => {
     transcript: [...input.transcript, { id: "t5", role: "user", text }],
   };
   const v = valid();
-  v.steps[1].canvas.quote = { sourceId: "t5", text };
+  v.steps[1].canvas.words.rows = [{ label: "You", text, sourceId: "t5" }];
   assert.throws(() => validateSession(v, long), /20 words/);
 });
 
@@ -397,12 +407,12 @@ test("Chinese titles and concise paragraphs do not require English word spacing"
   );
 });
 
-test("a repeated optional quote is removed without losing the story or evidence", () => {
+test("a repeated line is removed without losing the story or evidence", () => {
   const value = valid();
   value.steps[1].text += " i really dislike custom cursors";
   const normalized = normalizeSession(value, input);
   assert.equal(normalized.steps[1].canvas.layout, "none");
-  assert.equal(normalized.steps[1].canvas.quote, null);
+  assert.equal(normalized.steps[1].canvas.words, null);
   assert.deepEqual(normalized.steps[1].evidence, value.steps[1].evidence);
   assert.doesNotThrow(() => validateSession(normalized, input));
 });
@@ -468,4 +478,153 @@ test("visible Markdown does not reject a genuine quote or allow a changed meanin
     "do not follow this",
   );
   assert.throws(() => validateSession(output, source), /exact copy/);
+});
+
+const words = (form, rows) => {
+  const v = valid();
+  v.steps[1].canvas.words = { form, rows };
+  return v;
+};
+
+test("a step with no picture shows what happened as a flow, change, spec, line or number", () => {
+  const flow = words("flow", [
+    { label: "", text: "Follow the lofi wireframe", sourceId: "t1" },
+    { label: "", text: "Good color palette", sourceId: "t4" },
+    { label: "", text: "Use Doto", sourceId: "t4" },
+  ]);
+  assert.equal(validateSession(flow, input).steps[1].canvas.words.form, "flow");
+  const spec = words("spec", [
+    { label: "Cursor", text: "custom cursors out", sourceId: "t3" },
+    { label: "Order", text: "UX first, then design", sourceId: "t3" },
+  ]);
+  assert.equal(
+    validateSession(spec, input).steps[1].canvas.words.rows.length,
+    2,
+  );
+});
+
+test("canvas words come from the session", () => {
+  const v = words("spec", [
+    { label: "Mood", text: "Quantum velvet sunrise", sourceId: "t3" },
+    { label: "Order", text: "UX first, then design", sourceId: "t3" },
+  ]);
+  assert.throws(() => validateSession(v, input), /from the session/);
+});
+
+test("a row may use words from anywhere in the conversation, not only its cited line", () => {
+  const v = words("spec", [
+    { label: "Palette", text: "Good color palette", sourceId: "t3" },
+    { label: "Order", text: "UX first, then design", sourceId: "t3" },
+  ]);
+  assert.equal(validateSession(v, input).steps[1].canvas.words.rows.length, 2);
+});
+
+test("a change shows what it was and what it became", () => {
+  const v = words("change", [
+    { label: "Cursor", text: "custom cursors", sourceId: "t3" },
+  ]);
+  assert.throws(() => validateSession(v, input), /change/);
+});
+
+test("a flow has three to five steps", () => {
+  const v = words("flow", [
+    { label: "", text: "Follow the lofi wireframe", sourceId: "t1" },
+  ]);
+  assert.throws(() => validateSession(v, input), /flow/);
+});
+
+test("a line is copied exactly from the session", () => {
+  const v = words("line", [
+    { label: "You", text: "i truly dislike custom cursors", sourceId: "t3" },
+  ]);
+  assert.throws(() => validateSession(v, input), /exact|evidence/);
+});
+
+test("a number is one the session states", () => {
+  const v = words("number", [
+    { label: "Slowest frame", text: "117 → 17 ms", sourceId: "t3" },
+  ]);
+  assert.throws(() => validateSession(v, input), /from the session/);
+});
+
+test("canvas rows are a few words each", () => {
+  const v = words("spec", [
+    {
+      label: "Cursor",
+      text: "i really dislike custom cursors it lags and stutters sometimes",
+      sourceId: "t3",
+    },
+    { label: "Order", text: "UX first, then design", sourceId: "t3" },
+  ]);
+  assert.throws(() => validateSession(v, input), /few words/);
+});
+
+test("pictures and words do not share a canvas", () => {
+  const v = valid();
+  v.steps[0].canvas.words = {
+    form: "line",
+    rows: [{ label: "You", text: "Strictly follow this", sourceId: "t1" }],
+  };
+  assert.throws(() => validateSession(v, input), /words/);
+});
+
+test("a quote may differ from its source only in capitals and quote marks", () => {
+  const v = valid();
+  v.steps[0].evidence = [
+    { sourceId: "t1", quote: "STRICTLY follow this as a lofi wireframe" },
+  ];
+  assert.equal(validateSession(v, input).steps.length, 2);
+  const reworded = valid();
+  reworded.steps[0].evidence = [
+    { sourceId: "t1", quote: "Strictly follow it as a lofi wireframe" },
+  ];
+  assert.throws(() => validateSession(reworded, input));
+});
+
+test("a node that only repeats the center is dropped before validation", () => {
+  const v = valid();
+  v.map.center.url = "https://www.hirotos.com/";
+  const normalized = normalizeSession(v, input);
+  assert.equal(
+    normalized.map.nodes.some((n) => n.url === "https://www.hirotos.com/"),
+    false,
+  );
+  assert.doesNotThrow(() => validateSession(normalized, input));
+});
+
+test("a typeface node shows its specimen, never a picture", () => {
+  const v = valid();
+  v.map.nodes[0].font = { family: "Doto", sample: "WELCOME ABOARD" };
+  assert.equal(normalizeSession(v, input).map.nodes[0].itemId, null);
+});
+
+test("deleted URLs cannot return through earlier transcripts or the saved map", () => {
+  const value = valid();
+  const removedURL = value.map.nodes.find((n) => n.url).url;
+  const source = {
+    ...input,
+    current: value,
+    media: input.media.filter((item) => item.url !== removedURL),
+    removedMedia: [{ id: "deleted", url: removedURL }],
+  };
+  assert.ok(!sessionURLs(source).includes(removedURL));
+  assert.throws(
+    () => validateSession(value, source),
+    /deleted source|unavailable item/,
+  );
+});
+
+test("deleting a duplicate does not ban a source that is still saved", () => {
+  const value = valid();
+  const kept = input.media.find((item) => item.url);
+  const source = {
+    ...input,
+    current: value,
+    removedMedia: [{ id: "deleted-duplicate", url: kept.url }],
+  };
+  assert.ok(
+    sessionURLs(source).includes(kept.url.replace(/\/$/, "")) ||
+      sessionURLs(source).includes(kept.url),
+  );
+  assert.doesNotThrow(() => validateSession(value, source));
 });

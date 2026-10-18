@@ -38,6 +38,8 @@ export type Session = {
   itemCount?: number;
 };
 export type Item = {
+  deletedAt?: string | null;
+  collectionName?: string;
   id: string;
   sessionId: string | null;
   collectionId: string;
@@ -67,6 +69,7 @@ export type Device = {
   revoked: boolean;
 };
 export type WorkspaceData = {
+  recentlyDeleted?: Item[];
   collections: Collection[];
   sessions: Session[];
   items: Item[];
