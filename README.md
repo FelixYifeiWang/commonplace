@@ -6,7 +6,7 @@ A first draft of a shared home for ideas from human–AI conversations.
 
 See [the morning test guide](MORNING_TEST.md) for controls, verified flows and current limits.
 
-Open [Commonplace](https://commonplace-pearl.vercel.app). Google sign-in is available once OAuth credentials are configured; until then the existing access-code login remains. Choose Set up buddy to connect this hosted space to your Mac. Open a conversation, move the buddy over it, click it, then click Connect. Dragging only moves the buddy. Test on Vercel by default; use localhost only when explicitly requested. Local and hosted collections are separate.
+Open [Commonplace](https://commonplace-pearl.vercel.app) and sign in with Google. Choose Set up buddy to connect this hosted space to your Mac. Open a conversation, move the buddy over it, click it, then click Connect. Dragging only moves the buddy. Test on Vercel by default; use localhost only when explicitly requested. Local and hosted collections are separate.
 
 Each collection has three views: **Gallery** for saved media, **Map** for connections, and **Story** for decisions and their sources. Gallery opens by default. In Map, drag the background to pan and scroll or pinch to zoom. Cmd/Ctrl+Shift+G toggles Gallery and Map. The buddy only appears on the desktop. The collection menu includes connection and account controls.
 
@@ -120,3 +120,11 @@ Dragging preserves the grab offset. Native mouse events move and release the win
 Right-click the buddy for **Hide buddy** or **Quit and stop syncing**. Hide keeps subscriptions running. The Commonplace menu-bar icon restores it. **Settings → Show buddy** opens the registered desktop link, subject to browser permission to open external apps.
 
 Native checks: two off-center drags moved by exactly the pointer delta, release coordinates matched the saved position, Connect kept the face fixed, and Hide removed the window. Browser automation blocks the desktop URI, so the website restore path was not end-to-end verified here.
+
+## Google sign-in verification
+
+Google sign-in, returning sign-in, and sign-out were verified on the production domain on October 18, 2026. The hosted OAuth integration checks and all 212 unit tests passed, alongside lint, TypeScript and the Vercel production build. Credentials are Vercel Production Secrets and are not stored in Git. The client requests only `openid`, `email`, and `profile`, uses PKCE and a secure HttpOnly session cookie, and does not request offline Google access.
+
+The Google project currently has External / Testing status with unverified branding. Google explicitly exempts basic Sign in with Google from the test-user allowlist and seven-day authorization limit, so users do not need to be added individually. The consent screen identifies the app by its domain until branding is verified. See [Google’s audience guidance](https://support.google.com/cloud/answer/15549945). Requesting additional Google scopes would require revisiting this configuration.
+
+Run `tests/hosted-account.integration.mjs` with `COMMONPLACE_TEST_URL` set to the production HTTPS URL to check anonymous access, forged identities, origin/callback rejection, OAuth state, PKCE and secure cookies. Optionally load `COMMONPLACE_SESSION_SECRET` to also prove the old signed cookie cannot authenticate by itself. This test does not log in to Google or make model calls.

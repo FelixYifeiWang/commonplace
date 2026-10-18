@@ -2,7 +2,7 @@
 
 Open [Commonplace](https://commonplace-pearl.vercel.app). Use Vercel for testing unless local testing is explicitly requested.
 
-1. Sign in. Google OAuth is implemented but awaits its Google client credentials; access-code login remains until activation. Once enabled, sign in with Google. A new account starts with an empty space. If you previously used the access code in this browser, choose **Open existing space** to retain its collections and buddy connections.
+1. Sign in with Google. A new account starts with an empty space. If you previously used the access code in this browser, choose **Open existing space** to retain its collections and buddy connections.
 2. **All collections** opens the overview. Hover a collection to delete it. **Undo** restores it but leaves capture disconnected.
 3. Open a collection. **Gallery** shows saved media, **Map** connects sources, and **Story** explains decisions. Gallery is the default. All three views use the same collection.
 4. Use **Set up buddy** from the hosted app. The setup prompt installs and pairs without collecting the setup conversation. Open a meaningful conversation, move the buddy over it, click it, then choose **Connect**.
