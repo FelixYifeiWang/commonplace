@@ -18,10 +18,10 @@ export function OpenBuddy({ onSetup }: { onSetup: () => void }) {
           launch();
         }}
       >
-        Open buddy
+        Open Nox
       </button>
       {open && (
-        <Modal title="Open buddy" onClose={() => setOpen(false)}>
+        <Modal title="Open Nox" onClose={() => setOpen(false)}>
           <p className="modal-description">
             Allow your browser to open Newron.
           </p>
@@ -36,7 +36,7 @@ export function OpenBuddy({ onSetup }: { onSetup: () => void }) {
                 onSetup();
               }}
             >
-              Nothing opened? Set up buddy
+              Nothing opened? Set up Nox
             </button>
           </div>
         </Modal>

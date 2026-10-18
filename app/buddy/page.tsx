@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Plus } from "lucide-react";
-import { Buddy } from "@/components/buddy";
+import { Nox } from "@/components/nox";
 import type { SessionState } from "@/lib/types";
 type Snapshot = {
   separateControls?: boolean;
@@ -61,7 +61,7 @@ export default function Companion() {
         if (value && !disposed) receive(value);
       } catch (e) {
         if (!disposed)
-          setError(e instanceof Error ? e.message : "Buddy unavailable.");
+          setError(e instanceof Error ? e.message : "Nox unavailable.");
       }
     };
     const unsubscribe = window.commonplaceDesktop?.onSnapshot?.((value) => {
@@ -120,8 +120,8 @@ export default function Companion() {
     >
       <button
         className={`native-buddy-grab ${dragging ? "dragging" : ""}`}
-        aria-label="Move buddy. Hover or click to connect."
-        title={error || "Move buddy. Click to connect."}
+        aria-label="Move Nox. Hover or click to connect."
+        title={error || "Move Nox. Click to connect."}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
           e.preventDefault();
@@ -168,7 +168,7 @@ export default function Companion() {
           if (e.detail === 0) void window.commonplaceDesktop?.toggle();
         }}
       >
-        <Buddy state={snapshot?.state || "waiting"} />
+        <Nox state={snapshot?.state || "waiting"} gaze={snapshot?.gaze} />
       </button>
       <div
         className={`native-connect-panel above ${panelVisible ? "visible" : ""}`}
@@ -185,14 +185,14 @@ export default function Companion() {
           }
           title={
             needsSetup
-              ? "Open Newron to set up the buddy."
+              ? "Open Newron to set up Nox."
               : snapshot?.error ||
                 snapshot?.candidateTitle ||
-                "Move the buddy over an open Codex conversation or Claude Code session, then choose Connect."
+                "Move Nox over an open Codex conversation or Claude Code session, then choose Connect."
           }
           aria-label={
             needsSetup
-              ? "Set up buddy"
+              ? "Set up Nox"
               : snapshot?.candidateConnected
                 ? "Connected"
                 : snapshot?.connecting

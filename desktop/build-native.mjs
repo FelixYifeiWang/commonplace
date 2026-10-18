@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("./native/", import.meta.url));
 if (process.platform !== "darwin")
-  throw new Error("The native buddy helper requires macOS.");
+  throw new Error("The native Nox helper requires macOS.");
 mkdirSync(root + "bin", { recursive: true });
 const release = process.argv.includes("--release");
 const architectures = release

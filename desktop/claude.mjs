@@ -32,7 +32,7 @@ export async function readFocusedClaudeSession(
   logFile = join(homedir(), "Library/Logs/Claude/main.log"),
 ) {
   if (target.bundleId !== CLAUDE_BUNDLE_ID)
-    throw new Error("Move the buddy over an open Claude Code session.");
+    throw new Error("Move Nox over an open Claude Code session.");
   if (target.windowCount !== 1)
     throw new Error("Keep one Claude window open, then connect again.");
   if (
@@ -48,7 +48,7 @@ export async function readFocusedClaudeSession(
     target.point.x < target.bounds.x + Math.min(360, target.bounds.width * 0.35)
   )
     throw new Error(
-      "Open that session first, then move the buddy over the conversation area.",
+      "Open that session first, then move Nox over the conversation area.",
     );
   let info;
   try {

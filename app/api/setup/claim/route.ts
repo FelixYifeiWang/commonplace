@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       codeHash,
       deviceId: id,
       tokenHash: await hash(token),
-      name: "Desktop buddy",
+      name: "Desktop Nox",
     });
     if (!claimed)
       throw new HttpError(

@@ -91,7 +91,7 @@ export async function verifyRuntime(runtime) {
   const root = join(runtime, "node_modules/electron");
   const executable = "Electron.app/Contents/MacOS/Electron";
   if ((await readFile(join(root, "path.txt"), "utf8")).trim() !== executable)
-    throw new Error("Buddy runtime is incomplete.");
+    throw new Error("Nox runtime is incomplete.");
   await access(join(root, "dist", executable), constants.X_OK);
   await access(join(root, "dist/Electron.app/Contents/Info.plist"));
   await access(
@@ -215,7 +215,7 @@ end revealBuddy
       "-json",
       JSON.stringify([
         {
-          CFBundleURLName: "Newron buddy",
+          CFBundleURLName: "Nox",
           CFBundleURLSchemes: ["commonplace"],
         },
       ]),
@@ -235,7 +235,7 @@ end revealBuddy
     /* Report one clear setup failure below. */
   }
   if (handler !== expected)
-    throw new Error("Could not register the buddy launcher. Run setup again.");
+    throw new Error("Could not register the Nox launcher. Run setup again.");
   return appPath;
 }
 
@@ -250,7 +250,7 @@ export async function install(
 ) {
   if (platform !== "darwin")
     throw new Error(
-      "The buddy currently needs a local macOS agent. Run this prompt on your Mac, not a cloud worker.",
+      "Nox currently needs a local macOS agent. Run this prompt on your Mac, not a cloud worker.",
     );
   const [major, minor] = process.versions.node.split(".").map(Number);
   if (major < 22 || (major === 22 && minor < 13))
@@ -284,7 +284,7 @@ export async function install(
           ),
         );
         runtime = join(root, "releases", manifest.release);
-        onProgress("Preparing buddy…");
+        onProgress("Preparing Nox…");
         for (const file of manifest.files) {
           const target = join(runtime, file.path);
           let valid = false;
@@ -303,7 +303,7 @@ export async function install(
             )
               throw Object.assign(
                 new Error(
-                  "The buddy release changed during setup. Try setup again.",
+                  "The Nox release changed during setup. Try setup again.",
                 ),
                 { code: "RELEASE_CHANGED" },
               );
@@ -315,7 +315,7 @@ export async function install(
         break;
       } catch (error) {
         if (attempt || error.code !== "RELEASE_CHANGED") throw error;
-        onProgress("Getting the latest buddy…");
+        onProgress("Getting the latest Nox…");
       }
     }
     await chmod(join(runtime, "desktop/native/bin/commonplace-target"), 0o755);
@@ -368,10 +368,10 @@ export async function install(
           /EPERM|EACCES|Operation not permitted|Permission denied/i.test(detail)
         )
           throw new Error(
-            "macOS blocked the buddy installation. Setup stopped. No session was connected.",
+            "macOS blocked the Nox installation. Setup stopped. No session was connected.",
           );
         throw new Error(
-          "Buddy download failed. Check your connection and try again.",
+          "Nox download failed. Check your connection and try again.",
         );
       }
       await verifyRuntime(runtime);
@@ -450,10 +450,10 @@ export async function install(
     }
     await writeFile(
       join(root, "uninstall.mjs"),
-      `import {execFileSync} from 'node:child_process';\nimport {unlinkSync} from 'node:fs';\ntry{execFileSync('/bin/launchctl',['bootout',${JSON.stringify(service)}]);}catch{}\nunlinkSync(${JSON.stringify(plist)});\nconsole.log('Buddy stopped. Saved collections and local credentials were retained.');\n`,
+      `import {execFileSync} from 'node:child_process';\nimport {unlinkSync} from 'node:fs';\ntry{execFileSync('/bin/launchctl',['bootout',${JSON.stringify(service)}]);}catch{}\nunlinkSync(${JSON.stringify(plist)});\nconsole.log('Nox stopped. Saved collections and local credentials were retained.');\n`,
       { mode: 0o600 },
     );
-    onProgress(action === "setup" ? "Starting buddy…" : "Connecting session…");
+    onProgress(action === "setup" ? "Starting Nox…" : "Connecting session…");
     const deadline = Date.now() + 180000;
     while (Date.now() < deadline) {
       let receipt;
@@ -468,14 +468,14 @@ export async function install(
         if (!receipt.ok) throw new Error(receipt.error);
         onProgress(
           action === "setup"
-            ? "Buddy ready. Choose a session to save in Newron."
+            ? "Nox ready. Choose a session to save in Newron."
             : "Session connected.",
         );
         return receipt;
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
-    throw new Error("Buddy has not confirmed setup. Check for a macOS prompt.");
+    throw new Error("Nox has not confirmed setup. Check for a macOS prompt.");
   } finally {
     await rm(lock, { recursive: true, force: true });
   }

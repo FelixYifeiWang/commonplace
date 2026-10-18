@@ -231,7 +231,7 @@ export default function Workspace({
       b.createdAt.localeCompare(a.createdAt),
   );
   const hasBuddy = data.devices.some((device) => !device.revoked);
-  const connectionLabel = hasBuddy ? "Connect a session" : "Set up buddy";
+  const connectionLabel = hasBuddy ? "Connect a session" : "Set up Nox";
   const allItems =
     selected === "all"
       ? data.items
@@ -653,9 +653,7 @@ export default function Workspace({
               {screen === "collection" && !collections.length && !demo && (
                 <div className="welcome first-collection">
                   <h1>Your first collection</h1>
-                  <p>
-                    Add things yourself, or connect a session with the buddy.
-                  </p>
+                  <p>Add things yourself, or connect a session with Nox.</p>
                   <div className="first-collection-actions">
                     <button
                       className="button primary"
@@ -670,7 +668,7 @@ export default function Workspace({
                         className="text-button"
                         onClick={() => openModal("setup")}
                       >
-                        Set up buddy
+                        Set up Nox
                       </button>
                     )}
                   </div>

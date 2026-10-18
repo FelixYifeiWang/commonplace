@@ -17,7 +17,7 @@ No Claude or Cursor configuration was changed, and no conversation was subscribe
 
 ## Implemented setup-prompt route
 
-Setup only installs and pairs the buddy. A separate connection prompt matches its private `/connect` URL in a user message, then follows the resulting file every 15 seconds. It does not depend on the selected window, terminal tab, hooks, or Accessibility.
+Setup only installs and pairs Nox. A separate connection prompt matches its private `/connect` URL in a user message, then follows the resulting file every 15 seconds. It does not depend on the selected window, terminal tab, hooks, or Accessibility.
 
 | Provider | Supported local transcript |
 | --- | --- |

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
-import { Buddy } from "@/components/buddy";
+import { Nox } from "@/components/nox";
 import type { SessionState } from "@/lib/types";
 export default function DropFeedback() {
   const [value, setValue] = useState<{
@@ -59,7 +59,7 @@ export default function DropFeedback() {
       <div className="drop-ripple" />
       <div className="drop-feedback-message" role="status" aria-live="polite">
         <div className="drop-feedback-face">
-          <Buddy state={value.state} />
+          <Nox state={value.state} />
           {success ? (
             <span className="drop-result">
               <Check size={18} />

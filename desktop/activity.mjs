@@ -68,7 +68,7 @@ export async function readOpenConversation(
 ) {
   if (target.bundleId !== "com.openai.codex")
     throw new Error(
-      "Move the buddy over the open Codex conversation. Other apps are not supported yet.",
+      "Move Nox over the open Codex conversation. Other apps are not supported yet.",
     );
   if (target.windowCount !== 1)
     throw new Error("Keep one Codex window open, then connect again.");
@@ -85,7 +85,7 @@ export async function readOpenConversation(
     target.point.x < target.bounds.x + Math.min(360, target.bounds.width * 0.35)
   )
     throw new Error(
-      "Open that session first, then move the buddy over the conversation area.",
+      "Open that session first, then move Nox over the conversation area.",
     );
   const files = await Promise.all(
     (await logFiles(root, target.pid)).map(async (file) => ({

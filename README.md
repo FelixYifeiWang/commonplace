@@ -6,15 +6,15 @@ A first draft of a shared home for ideas from human–AI conversations.
 
 See [the morning test guide](MORNING_TEST.md) for controls, verified flows and current limits.
 
-Open [Newron](https://newron.app) and sign in with Google. Choose Set up buddy to connect this hosted space to your Mac. Open a conversation, move the buddy over it, click it, then click Connect. Dragging only moves the buddy. Test on Vercel by default; use localhost only when explicitly requested. Local and hosted collections are separate.
+Open [Newron](https://newron.app) and sign in with Google. Choose Set up Nox to connect this hosted space to your Mac. Open a conversation, move Nox over it, click it, then click Connect. Dragging only moves Nox. Test on Vercel by default; use localhost only when explicitly requested. Local and hosted collections are separate.
 
-Each collection has three views: **Gallery** for saved media, **Map** for connections, and **Story** for decisions and their sources. Gallery opens by default. In Map, drag the background to pan and scroll or pinch to zoom. Cmd/Ctrl+Shift+G toggles Gallery and Map. The buddy only appears on the desktop. The collection menu includes connection and account controls.
+Each collection has three views: **Gallery** for saved media, **Map** for connections, and **Story** for decisions and their sources. Gallery opens by default. In Map, drag the background to pan and scroll or pinch to zoom. Cmd/Ctrl+Shift+G toggles Gallery and Map. Nox only appears on the desktop. The collection menu includes connection and account controls.
 
 ## Connection routes
 
-- **Desktop (macOS preview):** open one Codex window, open the conversation, then move the buddy over the conversation area, click it and choose Connect. It connects and follows new turns while the companion runs. No Accessibility or screen-recording permission is requested. It checks the selected transcript every 15 seconds; the webpage refreshes every four seconds.
-- **Claude Code (macOS preview):** the same buddy connects the session focused in the Claude desktop app's Code tab, with one Claude window open. To follow a whole project folder instead, including sessions started there later, run `npm run desktop -- --follow-claude-project=/full/path/to/folder`. The folder becomes one collection. Every transcript Claude Code stores for that folder is uploaded, so name only folders you want collected. Claude Code in a terminal cannot be targeted by the buddy.
-- **Agent setup:** choose Set up buddy and paste the prompt into any local coding agent. Setup pairs and launches the buddy without reading the setup conversation or creating a collection. Create a collection manually, or open a meaningful conversation and use the buddy’s Connect control. A separate connection prompt remains available under Connections. Codex and Claude Code in the Claude desktop app can also connect through the buddy's Connect control over an open conversation. macOS 13+, Node.js 22.13+ and npm are required. A prebuilt helper avoids Xcode; cloud agents cannot install a laptop buddy.
+- **Desktop (macOS preview):** open one Codex window, open the conversation, then move Nox over the conversation area, click it and choose Connect. It connects and follows new turns while the companion runs. No Accessibility or screen-recording permission is requested. It checks the selected transcript every 15 seconds; the webpage refreshes every four seconds.
+- **Claude Code (macOS preview):** Nox connects the session focused in the Claude desktop app's Code tab, with one Claude window open. To follow a whole project folder instead, including sessions started there later, run `npm run desktop -- --follow-claude-project=/full/path/to/folder`. The folder becomes one collection. Every transcript Claude Code stores for that folder is uploaded, so name only folders you want collected. Claude Code in a terminal cannot be targeted by Nox.
+- **Agent setup:** choose Set up Nox and paste the prompt into any local coding agent. Setup pairs and launches Nox without reading the setup conversation or creating a collection. Create a collection manually, or open a meaningful conversation and use Nox’s Connect control. A separate connection prompt remains available under Connections. Codex and Claude Code in the Claude desktop app can also connect through Nox's Connect control over an open conversation. macOS 13+, Node.js 22.13+ and npm are required. A prebuilt helper avoids Xcode; cloud agents cannot install a laptop Nox.
 
 Both routes use the same device/subscription APIs. A device token is scoped to writes for its owner; pause stops ingestion and revocation disables the device. Server tokens are hashed; desktop credentials are encrypted using Electron safeStorage. Only explicitly selected transcripts are uploaded.
 
@@ -26,13 +26,13 @@ Collections, manual blocks, source passages, account sign-in, revocable connecti
 
 Images pasted into coding sessions and screenshots of generated local websites are not automatically imported into the new canvases yet. Add those images manually. The model currently reads text and media metadata, not image pixels.
 
-The example collection is sample content, not a live extraction. Clicking the desktop buddy to identify an open window currently supports Codex and Claude Code in the Claude desktop app. Inactive sidebar rows must be opened first. The setup-prompt route supports local Codex, Claude Code and Cursor JSONL transcripts; see `COMPATIBILITY.md`. Map nodes can be moved, but their text and relationships are generated. There is no signed desktop installer yet.
+The example collection is sample content, not a live extraction. Clicking Nox to identify an open window currently supports Codex and Claude Code in the Claude desktop app. Inactive sidebar rows must be opened first. The setup-prompt route supports local Codex, Claude Code and Cursor JSONL transcripts; see `COMPATIBILITY.md`. Map nodes can be moved, but their text and relationships are generated. There is no signed desktop installer yet.
 
-The older Sites preview has an additional Sites authentication boundary. Vercel uses Google OAuth and database-backed Better Auth sessions. New Google accounts have isolated spaces. Existing prototype users can choose Open existing space when their browser still holds its signed access-code cookie; this preserves existing files and buddy connections.
+The older Sites preview has an additional Sites authentication boundary. Vercel uses Google OAuth and database-backed Better Auth sessions. New Google accounts have isolated spaces. Existing prototype users can choose Open existing space when their browser still holds its signed access-code cookie; this preserves existing files and Nox connections.
 
 ## Development
 
-React 19, TypeScript, Vinext (Next App Router compatibility), Cloudflare Workers, D1/Drizzle, Electron. Node >=22.13. The desktop buddy requires macOS. Building its native helper from source requires Xcode Command Line Tools (`swiftc`); setup uses the prebuilt universal helper. Rebuild that release binary with `node desktop/build-native.mjs --release`.
+React 19, TypeScript, Vinext (Next App Router compatibility), Cloudflare Workers, D1/Drizzle, Electron. Node >=22.13. Nox requires macOS. Building its native helper from source requires Xcode Command Line Tools (`swiftc`); setup uses the prebuilt universal helper. Rebuild that release binary with `node desktop/build-native.mjs --release`.
 
 ```sh
 npm ci
@@ -61,15 +61,15 @@ Verification: protocol, collector, move/connect lifecycle, and media-preview tes
 
 ## How connection works
 
-The local helper reads window geometry and the owning process, never screen pixels or window titles. Codex navigation logs identify the open conversation; its ID resolves to a transcript in the local session index. Dragging always repositions the visible buddy. Clicking opens one Connect/Connected control; connection requires an explicit click. Ambiguous windows, sidebar locations, and missing navigation records do not upload anything. This uses undocumented local formats and may require updates after Codex upgrades. A browser alone cannot access this local state; the preview still runs a local Electron companion.
+The local helper reads window geometry and the owning process, never screen pixels or window titles. Codex navigation logs identify the open conversation; its ID resolves to a transcript in the local session index. Dragging always repositions the visible Nox. Clicking opens one Connect/Connected control; connection requires an explicit click. Ambiguous windows, sidebar locations, and missing navigation records do not upload anything. This uses undocumented local formats and may require updates after Codex upgrades. A browser alone cannot access this local state; the preview still runs a local Electron companion.
 
-An explicit connection shows a screen-wide ripple, then connection/import status. The Connected result appears after the initial transcript capture succeeds. The overlay ignores pointer input. Public webpage screenshots and covers are captured while the local collection page is open; a source may still appear as a text card if it blocks previews or supplies no cover. The mouthless buddy has a single connection control, cursor-aware eyes and reduced-motion support. Expanding its control preserves its face position, including at the bottom of a display. See `ARENA_REFERENCE.md` for media behavior and limits.
+An explicit connection shows a screen-wide ripple, then connection/import status. The Connected result appears after the initial transcript capture succeeds. The overlay ignores pointer input. Public webpage screenshots and covers are captured while the local collection page is open; a source may still appear as a text card if it blocks previews or supplies no cover. The mouthless Nox has a single connection control, cursor-aware eyes and reduced-motion support. Expanding its control preserves its face position, including at the bottom of a display. See `ARENA_REFERENCE.md` for media behavior and limits.
 
 The `drizzle/0002_yellow_freak.sql` migration separates existing sessions into named collections and preserves their blocks. The `drizzle/0003_tough_gladiator.sql` migration adds named groups and local file references without changing existing blocks. The `drizzle/0004_pretty_sally_floyd.sql` migration adds reversible deletion markers. Collection deletion revokes capture; Undo restores the collection but leaves it disconnected. Explicitly connecting again restores and resumes that collection while preserving deleted-block markers. Apply only migrations not already present on an existing database. Run `node tests/local-api.integration.mjs` against the local preview for collection, grouping and media checks; it removes its own temporary fixtures.
 
 ## Collection stories
 
-Choose a collection, then **Gallery**, **Map** or **Story**. New transcript turns and gallery edits queue a continuation automatically; opening Story is not required. Keep the buddy running for subscribed session capture.
+Choose a collection, then **Gallery**, **Map** or **Story**. New transcript turns and gallery edits queue a continuation automatically; opening Story is not required. Keep Nox running for subscribed session capture.
 
 Set `OPENAI_API_KEY` in the ignored `.env.local` file. The local worker reads it for each job and uses `gpt-6-luna` via the OpenAI Responses API with provider storage disabled. The key stays server-side. Session text and media metadata are sent to OpenAI after credential redaction; images themselves are not sent. Reference arrows describe relationships supported by the transcript, rather than inferring visual details from thumbnails.
 
@@ -109,15 +109,15 @@ The per-space installation lives in `~/Library/Application Support/Commonplace/<
 
 ### Setup revision
 
-Setup does not create the first collection. It launches the buddy and gives a short next step. Connection prompts remain separate and work across local Codex, Claude Code and Cursor JSONL formats.
+Setup does not create the first collection. It launches Nox and gives a short next step. Connection prompts remain separate and work across local Codex, Claude Code and Cursor JSONL formats.
 
 Electron 44.9.0 has an on-demand binary installer. After `npm ci`, the installer runs Electron's official `install.js` and verifies the executable, plist and framework before registering a LaunchAgent. If macOS denies extraction, setup stops before registering an incomplete launch service. The app does not change permissions or instruct users to grant broad App Management access as normal onboarding. A signed, notarized distribution remains future work; do not claim permission-free installation.
 
-### Buddy movement and visibility
+### Nox movement and visibility
 
 Dragging preserves the grab offset. Native mouse events move and release the window before renderer dispatch, so renderer delays cannot extend a drag. Capture loss and focus changes keep the latest position; only Escape cancels back to the start. Connect fades into reserved space above the face without resizing the window.
 
-Right-click the buddy for **Hide buddy** or **Quit and stop syncing**. Hide keeps subscriptions running. The Newron menu-bar icon restores it. **Open buddy** in the website header restores a hidden buddy or launches it after Quit. The installer registers a small macOS launcher and explicitly makes it the default `commonplace://` handler, without modifying Electron’s signed runtime. Setup verifies that the link resolves to Commonplace, and development Electron never registers itself as the macOS handler. Existing installations need one setup update to receive it. The browser may ask permission to open Newron. If nothing opens, the dialog offers setup. Opening the buddy never connects a session.
+Right-click Nox for **Hide Nox** or **Quit and stop syncing**. Hide keeps subscriptions running. The Newron menu-bar icon restores it. **Open Nox** in the website header restores Nox when hidden or launches it after Quit. The installer registers a small macOS launcher and explicitly makes it the default `commonplace://` handler, without modifying Electron’s signed runtime. Setup verifies that the link resolves to Commonplace, and development Electron never registers itself as the macOS handler. Existing installations need one setup update to receive it. The browser may ask permission to open Newron. If nothing opens, the dialog offers setup. Opening Nox never connects a session.
 
 Native checks: two off-center drags moved by exactly the pointer delta, release coordinates matched the saved position, Connect kept the face fixed, and Hide removed the window. Browser automation blocks the desktop URI, so the complete browser-to-native handoff must also be checked in a regular browser. Installer and one-shot reopen behavior are covered by the remote test suite.
 
@@ -131,11 +131,11 @@ Run `tests/hosted-account.integration.mjs` with `COMMONPLACE_TEST_URL` set to th
 
 ### Neutral workspace release checks
 
-Production build passed 214 tests, ESLint, TypeScript, and Next.js compilation. Hosted checks covered the simplified picker, manual creation and recoverable deletion, Gallery/Map/Story, Add block, and the buddy setup fallback. Google OAuth and account-isolation integration checks passed against production. The macOS opener compiled without registering or launching an app. The automated browser blocked the external-app handoff, and its viewport override did not apply, so native handoff and mobile layout still require manual verification. Local preview was stopped; saved local data and credentials were retained.
+Production build passed 214 tests, ESLint, TypeScript, and Next.js compilation. Hosted checks covered the simplified picker, manual creation and recoverable deletion, Gallery/Map/Story, Add block, and Nox setup fallback. Google OAuth and account-isolation integration checks passed against production. The macOS opener compiled without registering or launching an app. The automated browser blocked the external-app handoff, and its viewport override did not apply, so native handoff and mobile layout still require manual verification. Local preview was stopped; saved local data and credentials were retained.
 
-### Buddy link repair
+### Nox link repair
 
-The macOS helper explicitly assigns and verifies Commonplace’s URL handler during setup. The development Electron runtime no longer claims it. The universal helper builds for Intel and Apple Silicon on macOS 13+. Vercel passed 215 tests, lint, TypeScript, and compilation. The existing production companion was upgraded without re-pairing; its saved credentials and subscriptions were retained. macOS resolved the URL to Commonplace.app after the companion started, and the running window showed the hosted buddy. Browser-to-app clicks remain a manual check because browser automation blocks external schemes.
+The macOS helper explicitly assigns and verifies Commonplace’s URL handler during setup. The development Electron runtime no longer claims it. The universal helper builds for Intel and Apple Silicon on macOS 13+. Vercel passed 215 tests, lint, TypeScript, and compilation. The existing production companion was upgraded without re-pairing; its saved credentials and subscriptions were retained. macOS resolved the URL to Commonplace.app after the companion started, and the running window showed the hosted Nox. Browser-to-app clicks remain a manual check because browser automation blocks external schemes.
 
 ### Current onboarding checks
 

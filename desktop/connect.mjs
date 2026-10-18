@@ -15,7 +15,7 @@ export async function connectSession({
     const target = await inspect(point);
     if (target.error || !SUPPORTED_APPS.has(target.bundleId))
       throw new Error(
-        "Place the buddy over an open Codex conversation or Claude Code session.",
+        "Place Nox over an open Codex conversation or Claude Code session.",
       );
     const source = await resolve(target);
     report({ state: "connecting", target: source.title, error: "", point });

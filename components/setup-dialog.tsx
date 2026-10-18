@@ -64,7 +64,7 @@ export function SetupDialog({
     try {
       let next = ticket;
       if (!next || next.expiresAt <= Date.now()) {
-        if (demo) throw new Error("Open your own space to set up the buddy.");
+        if (demo) throw new Error("Open your own space to set up Nox.");
         const r = await fetch("/api/setup", { method: "POST" });
         const result = (await r.json()) as Ticket & { error?: string };
         if (!r.ok) throw new Error(result.error || "Could not start setup.");
@@ -90,10 +90,10 @@ export function SetupDialog({
       title={
         ready
           ? mode === "setup"
-            ? "Buddy ready"
+            ? "Nox ready"
             : "Session connected"
           : mode === "setup"
-            ? "Set up buddy"
+            ? "Set up Nox"
             : "Connect a session"
       }
       onClose={onClose}
@@ -102,7 +102,7 @@ export function SetupDialog({
         <>
           <p className="setup-description">
             {mode === "setup"
-              ? "Open a conversation in Codex or Claude desktop. Move the buddy over it, click it, then Connect."
+              ? "Open a conversation in Codex or Claude desktop. Move Nox over it, click it, then Connect."
               : "Your collection will update as you work."}
           </p>
           <button className="button primary full" onClick={onClose}>
@@ -121,7 +121,7 @@ export function SetupDialog({
         <>
           <p className="setup-description">
             {mode === "setup"
-              ? "Copy this prompt into Codex, Claude Code, or Cursor. Your agent will install and open the buddy."
+              ? "Copy this prompt into Codex, Claude Code, or Cursor. Your agent will install and open Nox."
               : "Paste this prompt into the conversation you want to save."}
           </p>
           <button

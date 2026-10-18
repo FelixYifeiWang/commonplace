@@ -45,7 +45,7 @@ async function processSetup() {
   try {
     await consumeShowRequest(app.getPath("userData"), showBuddy);
   } catch (error) {
-    console.error("Could not reopen buddy:", error.message);
+    console.error("Could not reopen Nox:", error.message);
   }
   if (setupBusy || busy) return;
   setupBusy = true;
@@ -234,7 +234,7 @@ function hideBuddy() {
 }
 function buddyMenu() {
   return Menu.buildFromTemplate([
-    { label: "Hide buddy", click: hideBuddy },
+    { label: "Hide Nox", click: hideBuddy },
     {
       label: "Open Newron",
       click: () =>
@@ -440,7 +440,7 @@ async function subscribeSource(source) {
     const response = await request(`${ORIGIN}/api/devices`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Desktop buddy" }),
+      body: JSON.stringify({ name: "Nox" }),
     });
     if (
       !response.ok ||
@@ -576,8 +576,8 @@ if (!lock) {
                   }),
               },
               { type: "separator" },
-              { label: "Show buddy", click: showBuddy },
-              { label: "Hide buddy", click: hideBuddy },
+              { label: "Show Nox", click: showBuddy },
+              { label: "Hide Nox", click: hideBuddy },
               {
                 label: "Open my space",
                 click: () =>
@@ -871,11 +871,11 @@ if (!lock) {
       const trayIcon = icon.resize({ width: 18, height: 18 });
       trayIcon.setTemplateImage(true);
       tray = new Tray(trayIcon);
-      tray.setToolTip("Newron · Show buddy");
+      tray.setToolTip("Newron · Show Nox");
       tray.setContextMenu(
         Menu.buildFromTemplate([
-          { label: "Show buddy", click: showBuddy },
-          { label: "Hide buddy", click: hideBuddy },
+          { label: "Show Nox", click: showBuddy },
+          { label: "Hide Nox", click: hideBuddy },
           {
             label: "Open my space",
             click: () =>
