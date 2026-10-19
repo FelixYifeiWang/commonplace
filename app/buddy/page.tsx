@@ -8,6 +8,7 @@ type Snapshot = {
   separateControls?: boolean;
   favorites?: { id: string; name: string }[];
   connected?: boolean;
+  setupPending?: boolean;
   revision?: number;
   dragging?: boolean;
   gaze?: { x: number; y: number };
@@ -192,10 +193,11 @@ export default function Companion() {
         <button
           className={`native-connect ${snapshot?.candidateConnected ? "connected" : ""}`}
           disabled={
-            !needsSetup &&
-            (snapshot?.connecting ||
-              !snapshot?.candidateTitle ||
-              snapshot?.candidateConnected)
+            snapshot?.setupPending ||
+            (!needsSetup &&
+              (snapshot?.connecting ||
+                !snapshot?.candidateTitle ||
+                snapshot?.candidateConnected))
           }
           title={
             needsSetup
@@ -236,13 +238,15 @@ export default function Companion() {
             <Plus size={12} />
           )}
           <span>
-            {needsSetup
-              ? "Set up"
-              : snapshot?.candidateConnected
-                ? "Connected"
-                : snapshot?.connecting
-                  ? "Connecting"
-                  : "Connect"}
+            {snapshot?.setupPending
+              ? "Setting up…"
+              : needsSetup
+                ? "Set up"
+                : snapshot?.candidateConnected
+                  ? "Connected"
+                  : snapshot?.connecting
+                    ? "Connecting"
+                    : "Connect"}
           </span>
         </button>
       </div>

@@ -66,7 +66,8 @@ if (process.env.COMMONPLACE_DATA_DIR) {
     throw new Error("Invalid companion storage path.");
   app.setPath("userData", process.env.COMMONPLACE_DATA_DIR);
 }
-let setupBusy = false;
+let setupBusy = false,
+  setupPending = false;
 async function processSetup() {
   try {
     await consumeShowRequest(app.getPath("userData"), showBuddy);
@@ -75,6 +76,10 @@ async function processSetup() {
   }
   if (setupBusy || busy) return;
   setupBusy = true;
+  setupPending = existsSync(
+    path.join(app.getPath("userData"), "setup-request.json"),
+  );
+  if (setupPending) notifyBuddy();
   try {
     const result = await consumeSetupRequest(app.getPath("userData"), {
       origin: ORIGIN,
@@ -91,6 +96,10 @@ async function processSetup() {
     status = "error";
   } finally {
     setupBusy = false;
+    if (setupPending) {
+      setupPending = false;
+      notifyBuddy();
+    }
   }
 }
 let win,
@@ -341,6 +350,7 @@ function buddySnapshot() {
     candidateConnected,
     connecting,
     connected: !!connection,
+    setupPending,
     expanded,
     targetTitle,
     feedbackMessage,
@@ -961,6 +971,8 @@ if (!lock) {
         buddyMenu().popup({ window: win });
       });
       register("companion:connect", async () => {
+        if (setupPending || !connection)
+          throw new Error("Finish setting up Nox before connecting a session.");
         if (connecting) return { connected: false };
         connecting = true;
         notifyBuddy();

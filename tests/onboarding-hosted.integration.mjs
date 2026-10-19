@@ -51,6 +51,7 @@ async function api(path, body, token = connection?.token) {
 }
 const pair = async (value) => {
   connection = value;
+  if (!value.id) throw new Error("Missing device id");
 };
 const forbidden = async () => {
   throw new Error("Setup accessed a transcript");
@@ -84,6 +85,10 @@ try {
     report: () => {},
   });
   assert.deepEqual(result, { ok: true, action: "setup" });
+  assert.ok(
+    (await db.get("SELECT ready_at FROM devices WHERE id=?", [connection.id]))
+      .ready_at,
+  );
   assert.ok(
     (
       await db.get("SELECT ready_at FROM pairing_codes WHERE code_hash=?", [

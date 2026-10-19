@@ -51,6 +51,7 @@ export async function GET() {
         id: devices.id,
         name: devices.name,
         lastSeen: devices.lastSeen,
+        readyAt: devices.readyAt,
         revoked: devices.revoked,
         createdAt: devices.createdAt,
       })

@@ -314,7 +314,14 @@ export default function Workspace({
   );
   const writableCollections = collections.filter((c) => !c.frozenAt);
   const frozen = !!collections.find((c) => c.id === selected)?.frozenAt;
-  const hasBuddy = data.devices.some((device) => !device.revoked);
+  const hasBuddy = data.devices.some(
+    (device) => !device.revoked && !!device.readyAt,
+  );
+  const [setupWaiting, setSetupWaiting] = useState(false);
+  const setupReady = useCallback(() => {
+    setSetupWaiting(false);
+    void refresh();
+  }, [refresh, setSetupWaiting]);
   const connectionLabel = hasBuddy ? "Connect a session" : "Set up Nox";
   const allItems =
     selected === "all"
@@ -843,9 +850,19 @@ export default function Workspace({
             </Link>
           )}
           <div className="workspace-actions">
-            {!demo && ready && data.user && (
-              <OpenBuddy onSetup={() => openModal("setup")} />
-            )}
+            {!demo &&
+              ready &&
+              data.user &&
+              (hasBuddy ? (
+                <OpenBuddy onSetup={() => openModal("setup")} />
+              ) : (
+                <button
+                  className="text-button open-buddy"
+                  onClick={() => openModal("setup")}
+                >
+                  {setupWaiting ? "Setting up Nox…" : "Set up Nox"}
+                </button>
+              ))}
             {devMode && (screen !== "collection" || selected === "all") && (
               <button
                 className="button new-collection"
@@ -890,11 +907,18 @@ export default function Workspace({
               )}
               {screen === "collection" && !collections.length && !demo && (
                 <div className="welcome first-collection">
+                  <Image
+                    className="welcome-nox"
+                    src="/nox.svg"
+                    alt=""
+                    width={72}
+                    height={72}
+                  />
                   <h1>Your first collection</h1>
                   <p>
                     {devMode
                       ? "Add things yourself, or connect a session with Nox."
-                      : "Nox is your desktop companion. Connect a working session to collect ideas as you go."}
+                      : "Meet Nox, your desktop companion. Save ideas from a working session as you go."}
                   </p>
                   <div className="first-collection-actions">
                     {devMode && (
@@ -909,10 +933,11 @@ export default function Workspace({
                       <OpenBuddy onSetup={() => openModal("setup")} />
                     ) : (
                       <button
-                        className="text-button"
+                        className="button primary"
                         onClick={() => openModal("setup")}
                       >
-                        Set up Nox
+                        {setupWaiting ? "Continue setup" : "Set up Nox"}
+                        <ArrowUpRight size={15} />
                       </button>
                     )}
                   </div>
@@ -1134,6 +1159,9 @@ export default function Workspace({
           key={modal}
           mode={modal}
           demo={demo}
+          account={data.user?.email || ""}
+          onReady={setupReady}
+          onWaiting={setSetupWaiting}
           onClose={() => setModal(null)}
           onConnect={() => setModal("connect")}
         />

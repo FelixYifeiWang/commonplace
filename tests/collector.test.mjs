@@ -286,3 +286,38 @@ test("a long import holds intermediate batches and reports completion only at it
   assert.equal(batches.at(-1).responseState, "complete");
   assert.match(batches.at(-1).activityId, /^[a-f0-9]{64}$/);
 });
+
+test("one-time import recovers a lost completion response without uploading again", async (t) => {
+  const args = await fixture(t, 12);
+  args.subscription.mode = "once";
+  let complete = false;
+  args.request = async (_url, opts) => {
+    if (complete)
+      return Response.json(
+        { code: "IMPORT_COMPLETE", error: "This import is complete." },
+        { status: 409 },
+      );
+    if (JSON.parse(opts.body).complete) {
+      complete = true;
+      throw new Error("Final acknowledgement lost");
+    }
+    return ok();
+  };
+  await assert.rejects(syncTranscript(args), /acknowledgement lost/);
+  args.subscription.historyRemaining = true;
+  const before = [...args.cursors.selected];
+  const result = await syncTranscript(args);
+  assert.equal(result.completed, true);
+  assert.equal(args.subscription.historyRemaining, false);
+  assert.deepEqual(args.cursors.selected, before);
+});
+test("ordinary conflicts and follow-mode completion conflicts still fail", async (t) => {
+  const args = await fixture(t);
+  args.request = async () =>
+    Response.json({ code: "IMPORT_COMPLETE" }, { status: 409 });
+  await assert.rejects(syncTranscript(args), { status: 409 });
+  args.subscription.mode = "once";
+  args.request = async () =>
+    Response.json({ error: "Paused" }, { status: 409 });
+  await assert.rejects(syncTranscript(args), /Paused/);
+});

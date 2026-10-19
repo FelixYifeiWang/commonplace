@@ -1,18 +1,31 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
-import { referenceLinkQuery, referencePrompt } from "../lib/reference-link.mjs";
+import {
+  referenceLinkQuery,
+  referenceMediaQuery,
+  referencePrompt,
+} from "../lib/reference-link.mjs";
 test("private collection links enforce expiry, ownership, favorites and device revocation", () => {
   const db = new DatabaseSync(":memory:");
   try {
     db.exec(`CREATE TABLE collections(id,owner_id,name,description,deleted_at,favorite);
       CREATE TABLE devices(id,owner_id,revoked);
       CREATE TABLE collection_reference_links(token_hash,owner_id,collection_id,device_id,expires_at);
+      CREATE TABLE items(id,owner_id,collection_id,file_key,deleted_at);
+      INSERT INTO items VALUES('picture','a','c','users/a/picture.png',NULL),('foreign','b','other','users/b/private.png',NULL),('deleted','a','c','users/a/deleted.png','2026-10-19');
       INSERT INTO collections VALUES('c','a','Reference','',NULL,1),('other','b','Private','',NULL,1);
       INSERT INTO devices VALUES('d','a',0);
       INSERT INTO collection_reference_links VALUES('valid','a','c','d','2026-11-01'),('cross-owner','a','other','d','2026-11-01');`);
     const read = (token = "valid", now = "2026-10-20") =>
       db.prepare(referenceLinkQuery).get(token, now);
+    const media = (id = "picture", token = "valid", now = "2026-10-20") =>
+      db.prepare(referenceMediaQuery).get(token, now, id);
+    assert.equal(media().fileKey, "users/a/picture.png");
+    assert.equal(media("foreign"), undefined);
+    assert.equal(media("deleted"), undefined);
+    assert.equal(media("picture", "valid", "2026-11-01"), undefined);
+    assert.equal(media("picture", "cross-owner"), undefined);
     assert.equal(read().name, "Reference");
     assert.equal(read("unknown"), undefined);
     assert.equal(read("cross-owner"), undefined);
@@ -31,6 +44,7 @@ test("private collection links enforce expiry, ownership, favorites and device r
     ]) {
       db.exec(change);
       assert.equal(read(), undefined);
+      assert.equal(media(), undefined);
       db.exec(restore);
     }
   } finally {

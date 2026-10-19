@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Check, Plus, Star, Loader2 } from "lucide-react";
 type State = {
   revision?: number;
+  connected?: boolean;
+  setupPending?: boolean;
   candidateTitle: string;
   candidateConnected: boolean;
   connecting: boolean;
@@ -72,8 +74,14 @@ export default function Controls() {
       <button
         className="native-connect"
         title={error || state.candidateTitle}
-        disabled={state.connecting || state.candidateConnected}
+        disabled={
+          state.setupPending || state.connecting || state.candidateConnected
+        }
         onClick={async () => {
+          if (state.connected === false) {
+            window.commonplaceDesktop?.openSpace();
+            return;
+          }
           setError("");
           try {
             await window.commonplaceDesktop?.connect();
@@ -82,18 +90,22 @@ export default function Controls() {
           }
         }}
       >
-        {state.connecting ? (
+        {state.setupPending || state.connecting ? (
           <Loader2 size={12} className="spin" />
         ) : state.candidateConnected ? (
           <Check size={12} />
         ) : (
           <Plus size={12} />
         )}
-        {state.connecting
-          ? "Connecting"
-          : state.candidateConnected
-            ? "Connected"
-            : "Connect"}
+        {state.setupPending
+          ? "Setting up…"
+          : state.connected === false
+            ? "Set up Nox"
+            : state.connecting
+              ? "Connecting"
+              : state.candidateConnected
+                ? "Connected"
+                : "Connect"}
       </button>
       {error && (
         <span className="buddy-control-error" role="alert">

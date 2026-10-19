@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { authOrigin } from "@/lib/auth";
@@ -26,6 +27,13 @@ export default async function SignInPage({
   return (
     <main className="account-signin">
       <div className="account-signin-card">
+        <Image
+          className="signin-nox"
+          src="/nox.svg"
+          alt=""
+          width={56}
+          height={56}
+        />
         <h1>Newron</h1>
         <GoogleSignIn
           initialError={

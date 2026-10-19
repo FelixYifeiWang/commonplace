@@ -9291,3 +9291,105 @@ a[href].gm-detail.gm-commit b::after {
     font-size: 14px;
   }
 }
+
+/* Onboarding: one focal point and one primary action. */
+.signin-nox {
+  display: block;
+  margin: 0 auto 18px;
+}
+.account-signin-card h1 {
+  font-size: 38px;
+  margin: 0 0 32px;
+}
+.google-signin-button {
+  min-height: 48px;
+  border-radius: 12px;
+  transition:
+    background 0.18s,
+    border-color 0.18s;
+}
+.first-collection .welcome-nox {
+  margin-bottom: 8px;
+}
+.first-collection h1 {
+  font-size: 28px;
+  letter-spacing: -0.7px;
+}
+.first-collection p {
+  font-size: 14px;
+  max-width: 340px;
+  line-height: 1.7;
+}
+.first-collection-actions {
+  margin-top: 16px;
+}
+.first-collection-actions .button.primary {
+  border-radius: 999px;
+  padding: 12px 22px;
+  gap: 14px;
+  box-shadow: none;
+  font-size: 13px;
+}
+.modal.setup-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 32px;
+  border: 1px solid #e7e7e7;
+  border-radius: 22px;
+}
+.setup-dialog .modal-head {
+  margin-bottom: 24px;
+}
+.setup-dialog .modal-head h2 {
+  font-family: var(--sans);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+}
+.setup-mark {
+  display: block;
+  margin-bottom: 20px;
+}
+.setup-dialog .setup-description {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.65;
+  margin-bottom: 24px;
+}
+.setup-dialog .button.primary {
+  border-radius: 999px;
+  box-shadow: none;
+  min-height: 46px;
+  font-size: 13px;
+}
+.setup-recopy {
+  background: transparent;
+  border: 1px solid #e7e7e7;
+  border-radius: 999px;
+  min-height: 42px;
+  font-size: 13px;
+}
+.setup-waiting {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  margin: 0 0 20px;
+  background: #f7f7f7;
+  border-radius: 12px;
+  font-size: 13px;
+}
+.setup-waiting > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.setup-waiting span span {
+  display: block;
+  color: #777;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+.setup-dialog .setup-progress {
+  font-size: 12px;
+  margin-top: 16px;
+}

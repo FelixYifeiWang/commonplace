@@ -700,3 +700,26 @@ test("upload leases reject foreign paths and files already being deleted", async
   sql.exec("UPDATE blob_deletions SET status='deleting'");
   await assert.rejects(queueUpload(db, "u", key), /unavailable/);
 });
+
+test("double-dot filenames can upload and expire without allowing traversal", async (t) => {
+  const { db } = fixture(t);
+  const { queueUpload } = await import("../lib/upload-lease.mjs");
+  const { createBlobCleanup } = await import("../lib/blob-cleanup.mjs");
+  const prefix = "users/u/11111111-1111-4111-8111-111111111111/";
+  await queueUpload(db, "u", prefix + "mockup..png", 1000);
+  for (const name of [
+    "..",
+    ".",
+    "../file.png",
+    "%2e%2e",
+    "%2e%2e%2ffile.png",
+    "a%5cb.png",
+  ])
+    await assert.rejects(queueUpload(db, "u", prefix + name), /unavailable/);
+  const removed = [];
+  await createBlobCleanup(db, {
+    now: () => 86401001,
+    remove: async (key) => removed.push(key),
+  }).drain();
+  assert.deepEqual(removed, [prefix + "mockup..png"]);
+});

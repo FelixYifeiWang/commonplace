@@ -11,6 +11,7 @@ export const devices = sqliteTable("devices", {
   name: text("name").notNull(),
   tokenHash: text("token_hash").notNull(),
   revoked: integer("revoked", { mode: "boolean" }).notNull().default(false),
+  readyAt: text("ready_at"),
   lastSeen: text("last_seen"),
   createdAt: text("created_at").notNull(),
 });

@@ -332,6 +332,12 @@ export async function syncTranscript({
       throw new Error("Sign in to your space before syncing this computer.");
     const result = await response.json();
     if (!response.ok) {
+      if (
+        response.status === 409 &&
+        result.code === "IMPORT_COMPLETE" &&
+        subscription.mode === "once"
+      )
+        return false;
       const error = new Error(result.error || "Unable to sync this session.");
       error.status = response.status;
       error.code = result.code;
@@ -343,6 +349,17 @@ export async function syncTranscript({
     batch = [];
     size = 0;
     queued.clear();
+    return true;
+  }
+  function alreadyCompleted() {
+    subscription.historyRemaining = false;
+    return {
+      captured: 0,
+      total: subscription.turns || total,
+      pendingAI: false,
+      pictures: 0,
+      completed: true,
+    };
   }
   const versions = {};
   const source = subscription.folder
@@ -414,14 +431,15 @@ export async function syncTranscript({
     if (seen.has(key) || queued.has(key)) continue;
     const length = Buffer.byteLength(JSON.stringify(turn), "utf8");
     if (batch.length && (batch.length >= 10 || size + length > 700000))
-      await sendBatch(false);
+      if (!(await sendBatch(false))) return alreadyCompleted();
     batch.push({ turn, key });
     queued.add(key);
     size += length;
   }
   // Acknowledge text before uploading its media. A text-only import can finish
   // here; media-enabled imports finish only after every available picture is acknowledged.
-  await sendBatch(true, !media && !historyRemaining);
+  if (!(await sendBatch(true, !media && !historyRemaining)))
+    return alreadyCompleted();
   // Persist the new path only after the server has acknowledged its contents.
   Object.assign(subscription, source);
   if (subscription.folder) {
@@ -444,7 +462,7 @@ export async function syncTranscript({
     !mediaResult.pendingPasted &&
     !mediaResult.pendingArtifacts
   )
-    await sendBatch(true, true);
+    if (!(await sendBatch(true, true))) return alreadyCompleted();
   // Revisit either kind of transcript until its remaining pictures are stored.
   if (!mediaResult.pendingPasted) {
     if (subscription.folder) subscription.versions = versions;

@@ -13,7 +13,7 @@ const headers = {
   "X-Content-Type-Options": "nosniff",
 };
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ reference: string }> },
 ) {
   const { reference } = await context.params;
@@ -49,7 +49,14 @@ export async function GET(
     )
     .orderBy(desc(items.createdAt))
     .limit(80);
-  return new Response(collectionReferenceMarkdown(collection, sources), {
-    headers,
-  });
+  return new Response(
+    collectionReferenceMarkdown(
+      collection,
+      sources,
+      new URL(`/r/${reference}`, request.url).href,
+    ),
+    {
+      headers,
+    },
+  );
 }

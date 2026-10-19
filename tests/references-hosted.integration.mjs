@@ -63,8 +63,11 @@ try {
   const ref = await request(ids[0]);
   assert.equal(ref.status, 200);
   const { prompt } = await ref.json();
-  assert.match(prompt, /example.com\/reference/);
-  assert.doesNotMatch(prompt, /mail.google.com/);
+  const link = prompt.match(/https:\/\/\S+\.md/)?.[0];
+  assert.ok(link);
+  const markdown = await (await fetch(link)).text();
+  assert.match(markdown, /example.com\/reference/);
+  assert.doesNotMatch(markdown, /mail.google.com/);
   assert.equal((await request(ids[5])).status, 404);
   assert.equal((await request("another-owners-collection")).status, 404);
   assert.equal((await request(undefined, "invalid")).status, 401);
@@ -80,7 +83,13 @@ try {
   );
 } finally {
   await db.batch(
-    ["items", "stories", "collections", "devices"].map((table) => ({
+    [
+      "collection_reference_links",
+      "items",
+      "stories",
+      "collections",
+      "devices",
+    ].map((table) => ({
       sql: `DELETE FROM ${table} WHERE owner_id=?`,
       args: [owner],
     })),

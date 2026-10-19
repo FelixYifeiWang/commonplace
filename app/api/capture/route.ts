@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     if (!Array.isArray(body.turns) || body.turns.length > 50)
       throw new HttpError(400, "Send at most 50 turns per update.");
     if (session.mode === "once" && session.state === "complete")
-      throw new HttpError(409, "This import is complete.");
+      throw new HttpError(409, "This import is complete.", "IMPORT_COMPLETE");
     for (const turn of body.turns)
       if (
         typeof turn.id !== "string" ||

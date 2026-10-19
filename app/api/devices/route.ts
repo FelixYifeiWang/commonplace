@@ -28,6 +28,7 @@ export async function POST(request: Request) {
             : "My computer",
         tokenHash: await hash(token),
         createdAt: new Date().toISOString(),
+        readyAt: new Date().toISOString(),
       });
     return Response.json(
       { id, token },

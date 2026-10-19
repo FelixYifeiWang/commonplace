@@ -69,6 +69,7 @@ export type Item = {
   art?: string;
 };
 export type Device = {
+  readyAt?: string | null;
   id: string;
   name: string;
   lastSeen: string | null;
