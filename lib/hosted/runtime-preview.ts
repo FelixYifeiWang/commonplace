@@ -1,4 +1,4 @@
-import { head, get } from "@vercel/blob";
+import { head, get, put } from "@vercel/blob";
 import { previewUrl } from "../../desktop/preview.mjs";
 const bridge = {
   preview: previewUrl,
@@ -16,6 +16,20 @@ const bridge = {
       mode: "blob",
       prefix: `users/${encodeURIComponent(ownerId)}/${crypto.randomUUID()}/`,
     };
+  },
+  async store(file: {
+    ownerId: string;
+    name: string;
+    mimeType: string;
+    bytes: Uint8Array;
+  }) {
+    const key = `users/${encodeURIComponent(file.ownerId)}/${crypto.randomUUID()}/${encodeURIComponent(file.name)}`;
+    await put(key, Buffer.from(file.bytes), {
+      access: "private",
+      contentType: file.mimeType,
+      addRandomSuffix: false,
+    });
+    return key;
   },
   async fileInfo(key: string) {
     if (!/^users\/[^/]+\/[0-9a-f-]{36}\/[^/]+$/.test(key))

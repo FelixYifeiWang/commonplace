@@ -20,6 +20,19 @@ export function createLocalFiles(root) {
       return { url: `/__commonplace/files/${id}` };
     },
     info,
+    // A file the server received itself (a companion's picture), stored like an upload.
+    async write({ ownerId, name, mimeType, bytes }) {
+      const key = randomUUID(),
+        file = join(root, key);
+      await mkdir(root, { recursive: true, mode: 0o700 });
+      await writeFile(file, bytes, { flag: "wx", mode: 0o600 });
+      await writeFile(
+        file + ".json",
+        JSON.stringify({ key, name, mimeType, ownerId, size: bytes.length }),
+        { mode: 0o600 },
+      );
+      return key;
+    },
     async upload(req, res, id) {
       const ticket = tickets.get(id);
       tickets.delete(id);

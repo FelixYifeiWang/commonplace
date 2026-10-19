@@ -2,6 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { deviceDisplayName } from "@/lib/brand.mjs";
+import { imageSource } from "@/lib/media-source.mjs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -755,8 +756,7 @@ export default function Workspace({
                         .filter(
                           (item) =>
                             item.collectionId === collection.id &&
-                            (item.imageUrl ||
-                              (item.fileKey && item.kind === "image")),
+                            !!imageSource(item),
                         )
                         .slice(0, 3);
                       return (

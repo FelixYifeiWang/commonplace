@@ -11,6 +11,7 @@ const sources = {
   "desktop/native/bin/commonplace-target": "desktop/release/commonplace-target",
   "lib/protocol.mjs": "lib/protocol.mjs",
   "lib/nox-motion.mjs": "lib/nox-motion.mjs",
+  "lib/session-media.mjs": "lib/session-media.mjs",
 };
 for (const file of [
   "main.mjs",
@@ -19,6 +20,7 @@ for (const file of [
   "target.mjs",
   "activity.mjs",
   "claude.mjs",
+  "media-tools.mjs",
   "connect.mjs",
   "drag.mjs",
   "visibility.mjs",

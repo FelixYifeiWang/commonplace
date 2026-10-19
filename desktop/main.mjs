@@ -11,8 +11,10 @@ import {
   nativeImage,
   dialog,
   clipboard,
+  session,
 } from "electron";
 import path from "node:path";
+import { createMediaTools } from "./media-tools.mjs";
 import { createVisibilityPolicy } from "./visibility.mjs";
 import { pointerDirection } from "../lib/nox-motion.mjs";
 import { execFile } from "node:child_process";
@@ -163,6 +165,7 @@ async function tick() {
           subscription,
           cursors,
           request,
+          media: mediaTools(),
         });
         subscription.turns = result.total;
         subscription.lastSynced = new Date().toISOString();
@@ -441,6 +444,12 @@ async function copyReference(id) {
   clipboard.writeText(data.prompt);
   return { copied: true };
 }
+// Pasted images and artifact captures for the transcripts Nox follows; made once Electron is ready.
+let media;
+function mediaTools() {
+  media ||= createMediaTools({ BrowserWindow, nativeImage, session });
+  return media;
+}
 async function captureSource(_source, subscription) {
   while (busy) await new Promise((resolve) => setTimeout(resolve, 50));
   busy = true;
@@ -450,6 +459,7 @@ async function captureSource(_source, subscription) {
       subscription,
       cursors,
       request,
+      media: mediaTools(),
     });
     subscription.turns = result.total;
     subscription.lastSynced = new Date().toISOString();

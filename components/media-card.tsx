@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { FileText, Play, Music2, ArrowUpRight, File } from "lucide-react";
 import type { Item } from "@/lib/types";
 import { imageSource, mediaPath } from "@/lib/media-source.mjs";
+import { privatePage } from "@/lib/session-media.mjs";
 import { embedFor } from "@/lib/media.mjs";
 import { createLimiter } from "@/lib/limit.mjs";
 // A page screenshot can take half a minute to render. Browsers allow about six requests per host,
@@ -70,6 +71,8 @@ export function MediaCard({
     near &&
     item.kind === "link" &&
     !!item.url &&
+    // A private page (claude.ai) screenshots as a sign-in page; its picture comes from Nox's capture.
+    !privatePage(item.url) &&
     /^[0-9a-f-]{36}$/.test(item.id) &&
     !pageFailed;
   const [pageSlot, setPageSlot] = useState(false);

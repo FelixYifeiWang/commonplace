@@ -5,7 +5,8 @@ import {
   publicUrl,
 } from "../lib/media.mjs";
 import { fetchPublic } from "./public-fetch.mjs";
-export async function previewUrl(url) {
+import { privatePage } from "../lib/session-media.mjs";
+export async function previewUrl(url, { fetcher = fetchPublic } = {}) {
   if (!publicUrl(url)) return { previewStatus: "unavailable" };
   const initialKind = classifyMedia(url),
     embedUrl = embedFor(url);
@@ -21,7 +22,7 @@ export async function previewUrl(url) {
     initial.imageUrl =
       "https://i.ytimg.com/vi/" + embedUrl.split("/").pop() + "/hqdefault.jpg";
   try {
-    const page = await fetchPublic(url),
+    const page = await fetcher(url),
       kind = classifyMedia(page.url, page.contentType);
     if (!page.contentType.includes("html"))
       return {
@@ -32,6 +33,8 @@ export async function previewUrl(url) {
         previewStatus: "ready",
       };
     const metadata = parsePageMetadata(page.body, page.url);
+    // A private page's cover is the site's default card (Claude's logo), not the page.
+    if (privatePage(page.url)) metadata.imageUrl = null;
     return {
       ...metadata,
       imageUrl: metadata.imageUrl || initial.imageUrl,

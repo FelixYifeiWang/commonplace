@@ -31,10 +31,11 @@ export function mediaPreview() {
       if (this.environment?.name === "client")
         throw new Error("Preview bridge is server-only.");
       if (!dev)
-        return `export default {async preview(){return {previewStatus:'unavailable'}},async screenshot(){return new Response(null,{status:503})},async ticket(){throw new Error('Local files unavailable')},async fileInfo(){throw new Error('Local files unavailable')},async file(){return new Response(null,{status:503})}};`;
+        return `export default {async preview(){return {previewStatus:'unavailable'}},async screenshot(){return new Response(null,{status:503})},async ticket(){throw new Error('Local files unavailable')},async fileInfo(){throw new Error('Local files unavailable')},async file(){return new Response(null,{status:503})},async store(){throw new Error('Local files unavailable')}};`;
       return `async function call(op,data){return fetch(${JSON.stringify(`http://127.0.0.1:${port}/__commonplace/preview`)},{method:'POST',headers:{'Content-Type':'application/json','X-Commonplace-Preview':${JSON.stringify(token)}},body:JSON.stringify({op,...data})});}
       async function json(op,data){const r=await call(op,data);if(!r.ok)throw new Error('Local media unavailable');return r.json();}
-      export default {preview:url=>json('preview',{url}),screenshot:url=>call('screenshot',{url}),ticket:ownerId=>json('ticket',{ownerId}),fileInfo:key=>json('info',{key}),file:(key,range)=>call('file',{key,range})};`;
+      async function store(f){const r=await fetch(${JSON.stringify(`http://127.0.0.1:${port}/__commonplace/store`)},{method:'POST',headers:{'Content-Type':'application/octet-stream','X-Commonplace-Preview':${JSON.stringify(token)},'X-File':encodeURIComponent(JSON.stringify({ownerId:f.ownerId,name:f.name,mimeType:f.mimeType}))},body:f.bytes});if(!r.ok)throw new Error('Local media unavailable');return (await r.json()).key;}
+      export default {preview:url=>json('preview',{url}),screenshot:url=>call('screenshot',{url}),ticket:ownerId=>json('ticket',{ownerId}),fileInfo:key=>json('info',{key}),file:(key,range)=>call('file',{key,range}),store};`;
     },
     configureServer(server) {
       server.middlewares.use("/__commonplace/files", async (req, res) => {
@@ -48,6 +49,29 @@ export function mediaPreview() {
         }
         const id = (req.url || "").slice(1);
         await files.upload(req, res, id);
+      });
+      // Companion pictures the server saves itself; only server code holds the token.
+      server.middlewares.use("/__commonplace/store", async (req, res) => {
+        if (
+          req.method !== "POST" ||
+          req.headers["x-commonplace-preview"] !== token
+        ) {
+          res.statusCode = 403;
+          res.end();
+          return;
+        }
+        try {
+          const meta = JSON.parse(
+            decodeURIComponent(String(req.headers["x-file"] || "")),
+          );
+          const bytes = await getRawBody(req, { limit: "4mb" });
+          const key = await files.write({ ...meta, bytes });
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ key }));
+        } catch {
+          res.statusCode = 400;
+          res.end();
+        }
       });
       server.middlewares.use("/__commonplace/preview", async (req, res) => {
         if (
