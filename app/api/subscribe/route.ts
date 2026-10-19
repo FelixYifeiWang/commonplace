@@ -1,3 +1,4 @@
+import { ensureSubscription } from "@/lib/subscription-store.mjs";
 import { env } from "@/lib/runtime-env";
 import { createCollectionTrash } from "@/lib/collection-trash.mjs";
 import { storyResponse } from "@/lib/story-response";
@@ -5,7 +6,7 @@ import { createStoryStore } from "@/lib/story-store.mjs";
 import { normalizeCuratedSession } from "@/lib/story.mjs";
 import { DEMO_SESSIONS } from "@/lib/demo-sessions";
 import { getDb } from "@/db";
-import { sessions, collections, devices } from "@/db/schema";
+import { sessions, collections } from "@/db/schema";
 import { and, eq, ne } from "drizzle-orm";
 import {
   deviceRequired,
@@ -43,6 +44,32 @@ export async function POST(request: Request) {
     if (!["Codex", "Claude Code", "Cursor", "Other"].includes(body.provider))
       throw new HttpError(400, "Unknown provider.");
     await createCollectionTrash(env.DB).purge(device.ownerId);
+    const id = crypto.randomUUID(),
+      now = new Date().toISOString(),
+      collectionId = `session-${id}`;
+    const title =
+      typeof body.title === "string" && body.title.trim()
+        ? body.title.trim().slice(0, 120)
+        : `A session with ${body.provider}`;
+    const created = await ensureSubscription(env.DB, {
+      id,
+      collectionId,
+      ownerId: device.ownerId,
+      deviceId: device.id,
+      externalId: body.sessionId,
+      provider: body.provider,
+      title,
+      mode: body.mode === "once" ? "once" : "follow",
+      tokenHash: await hash(newToken()),
+      now,
+    });
+    if (created) {
+      await showDemo(body.sessionId, collectionId, device.ownerId);
+      return storyResponse(
+        { subscriptionId: id, collectionId, state: "reading" },
+        { status: 201 },
+      );
+    }
     const [existing] = await db
       .select()
       .from(sessions)
@@ -107,43 +134,9 @@ export async function POST(request: Request) {
         ...(restored ? { message: "Collection restored." } : {}),
       });
     }
-    const id = crypto.randomUUID(),
-      now = new Date().toISOString();
-    const collectionId = `session-${id}`;
-    const title =
-      typeof body.title === "string" && body.title.trim()
-        ? body.title.trim().slice(0, 120)
-        : `A session with ${body.provider}`;
-    await db.batch([
-      db.insert(collections).values({
-        id: collectionId,
-        ownerId: device.ownerId,
-        name: title,
-        description: "",
-        createdAt: now,
-      }),
-      db.insert(sessions).values({
-        id,
-        ownerId: device.ownerId,
-        deviceId: device.id,
-        collectionId,
-        title,
-        provider: body.provider,
-        externalId: body.sessionId,
-        mode: body.mode === "once" ? "once" : "follow",
-        state: "reading",
-        tokenHash: await hash(newToken()),
-        createdAt: now,
-      }),
-      db
-        .update(devices)
-        .set({ lastSeen: now })
-        .where(eq(devices.id, device.id)),
-    ]);
-    await showDemo(body.sessionId, collectionId, device.ownerId);
-    return storyResponse(
-      { subscriptionId: id, collectionId, state: "reading" },
-      { status: 201 },
+    throw new HttpError(
+      409,
+      "This session changed. Connect again to start a new collection.",
     );
   } catch (e) {
     return fail(e);

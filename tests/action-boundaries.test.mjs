@@ -331,3 +331,98 @@ for (const scenario of ["expired", "foreign", "frozen"])
       "reading",
     );
   });
+
+for (const action of ["pause", "trash"])
+  test(`${action} keeps completed views complete after resume`, async (t) => {
+    const { db, sql, store } = fixture(t);
+    const { createCollectionTrash } =
+      await import("../lib/collection-trash.mjs");
+    const { snapshotReadySQL } = await import("../lib/disconnect.mjs");
+    sql.exec(
+      "UPDATE stories SET status='ready',processed_revision=revision,session_json='{\"steps\":[{}],\"map\":{\"nodes\":[{}]}}' WHERE collection_id='c'",
+    );
+    if (action === "pause") {
+      sql.exec("UPDATE sessions SET state='paused' WHERE id='s'");
+      sql.exec("UPDATE sessions SET state='following' WHERE id='s'");
+    } else {
+      const trash = createCollectionTrash(db);
+      await trash.remove("u", "c");
+      await trash.restore("u", "c");
+    }
+    assert.equal((await store.get("c", "u")).status, "ready");
+    assert.equal(
+      sql.prepare(`SELECT ${snapshotReadySQL("'c'")} AS ready`).get().ready,
+      1,
+    );
+  });
+
+test("simultaneous first-connect intent reuses one active subscription, including Trash", async (t) => {
+  const { db, sql } = fixture(t);
+  const { ensureSubscription } = await import("../lib/subscription-store.mjs");
+  sql.exec(
+    "INSERT INTO devices(id,owner_id,name,token_hash,created_at) VALUES('d','u','Nox','hash','now')",
+  );
+  const input = {
+    ownerId: "u",
+    deviceId: "d",
+    externalId: "external",
+    provider: "Codex",
+    title: "Test",
+    mode: "follow",
+    tokenHash: "hash",
+    now: "2026-10-19",
+  };
+  assert.equal(
+    await ensureSubscription(db, { ...input, id: "a", collectionId: "ca" }),
+    true,
+  );
+  assert.equal(
+    await ensureSubscription(db, { ...input, id: "b", collectionId: "cb" }),
+    false,
+  );
+  sql.exec("UPDATE collections SET deleted_at='2026-10-19' WHERE id='ca'");
+  assert.equal(
+    await ensureSubscription(db, { ...input, id: "b", collectionId: "cb" }),
+    false,
+  );
+  assert.equal(
+    sql.prepare("SELECT count(*) n FROM sessions WHERE device_id='d'").get().n,
+    1,
+  );
+  assert.equal(
+    sql.prepare("SELECT count(*) n FROM collections WHERE id='cb'").get().n,
+    0,
+  );
+  sql.exec(
+    "UPDATE collections SET deleted_at=NULL WHERE id='ca';UPDATE collections SET frozen_at='2026-10-19' WHERE id='ca'",
+  );
+  assert.equal(
+    await ensureSubscription(db, { ...input, id: "b", collectionId: "cb" }),
+    true,
+  );
+  assert.equal(
+    sql.prepare("SELECT state FROM sessions WHERE id='a'").get().state,
+    "revoked",
+  );
+});
+
+test("repeated Delete/Restore is idempotent without extending the recovery window", async (t) => {
+  const { db, sql } = fixture(t);
+  const { createCollectionTrash } = await import("../lib/collection-trash.mjs");
+  let time = Date.now();
+  const trash = createCollectionTrash(db, { now: () => time });
+  await trash.remove("u", "c");
+  const original = sql
+    .prepare("SELECT deleted_at FROM collections WHERE id='c'")
+    .get().deleted_at;
+  time += 86400000;
+  assert.equal(await trash.remove("u", "c"), true);
+  assert.equal(
+    sql.prepare("SELECT deleted_at FROM collections WHERE id='c'").get()
+      .deleted_at,
+    original,
+  );
+  assert.equal(await trash.restore("u", "c"), true);
+  assert.equal(await trash.restore("u", "c"), true);
+  assert.equal(await trash.restore("other", "c"), false);
+});
