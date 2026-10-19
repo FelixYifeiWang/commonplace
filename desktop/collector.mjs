@@ -305,7 +305,7 @@ export async function syncTranscript({
     size = 0,
     captured = 0,
     total = 0;
-  async function sendBatch(complete) {
+  async function sendBatch(complete, finalize = false) {
     const response = await request(`${connection.origin}/api/capture`, {
       method: "POST",
       headers: {
@@ -318,7 +318,7 @@ export async function syncTranscript({
         ...boundary.snapshot(),
         syncComplete: complete,
         turns: batch.map((e) => e.turn),
-        complete: subscription.mode === "once" && complete && !historyRemaining,
+        complete: subscription.mode === "once" && finalize,
       }),
     });
     if (!response.headers.get("content-type")?.includes("application/json"))
@@ -362,7 +362,9 @@ export async function syncTranscript({
         historyVersions[file] = previous;
         continue;
       }
-      if (file !== source.file && historicalFilesRead++ >= 6) {
+      // Keep ingestion chronological: a current segment must not leap ahead
+      // of deferred history, which Story would otherwise treat as new events.
+      if (historicalFilesRead++ >= 6) {
         historyRemaining = true;
         continue;
       }
@@ -410,8 +412,9 @@ export async function syncTranscript({
     queued.add(key);
     size += length;
   }
-  // Even an unchanged session needs a heartbeat; only the last batch completes imports.
-  await sendBatch(true);
+  // Acknowledge text before uploading its media. A text-only import can finish
+  // here; media-enabled imports finish only after every pasted image is stored.
+  await sendBatch(true, !media && !historyRemaining);
   // Persist the new path only after the server has acknowledged its contents.
   Object.assign(subscription, source);
   if (subscription.folder) {
@@ -429,6 +432,13 @@ export async function syncTranscript({
         found,
       })
     : { uploaded: 0, pendingPasted: false };
+  if (
+    media &&
+    subscription.mode === "once" &&
+    !historyRemaining &&
+    !mediaResult.pendingPasted
+  )
+    await sendBatch(true, true);
   if (!subscription.folder && !mediaResult.pendingPasted)
     subscription.historyVersions = historyVersions;
   subscription.responseBoundary = boundary.snapshot();

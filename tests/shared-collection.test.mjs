@@ -2,7 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { readdirSync, readFileSync } from "node:fs";
-import { createSharedCollectionStore } from "../lib/shared-collection.mjs";
+import {
+  sharedItem,
+  createSharedCollectionStore,
+} from "../lib/shared-collection.mjs";
+import { curateGalleryItems, groupItems } from "../lib/gallery.mjs";
 import { mediaPath, imageSource } from "../lib/media-source.mjs";
 function fixture() {
   const sqlite = new DatabaseSync(":memory:");
@@ -53,7 +57,7 @@ test("link views expose one collection without account or raw session metadata",
     ])
       assert.equal(json.includes(secret), false);
     assert.equal(data.items[0].sharedCollectionId, "a");
-    assert.equal(data.items[0].fileKey, "attached");
+    assert.equal(data.items[0].fileKey, "attached:one");
   } finally {
     sqlite.close();
   }
@@ -137,4 +141,27 @@ test("disconnect keeps the same shared collection URL and its media available", 
   } finally {
     sqlite.close();
   }
+});
+
+test("shared Gallery preserves every pasted image in one stack without exposing session or storage keys", () => {
+  const images = [1, 2, 3].map((n) =>
+    sharedItem(
+      {
+        id: `image-${n}`,
+        kind: "image",
+        title: "Pasted image",
+        sessionId: "private-session",
+        fileKey: `private/key-${n}`,
+        url: null,
+      },
+      "c",
+    ),
+  );
+  const curated = curateGalleryItems(images);
+  assert.equal(curated.length, 3);
+  assert.deepEqual(
+    groupItems(curated).map((g) => [g.title, g.items.length]),
+    [["Pasted images", 3]],
+  );
+  assert.equal(JSON.stringify(images).includes("private"), false);
 });

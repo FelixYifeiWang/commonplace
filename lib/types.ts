@@ -42,6 +42,7 @@ export type Session = {
   itemCount?: number;
 };
 export type Item = {
+  sessionAttachment?: boolean;
   sharedCollectionId?: string;
   deletedAt?: string | null;
   collectionName?: string;

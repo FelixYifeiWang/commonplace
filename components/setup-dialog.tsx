@@ -122,7 +122,7 @@ export function SetupDialog({
           <p className="setup-description">
             {mode === "setup"
               ? "Nox connects your working sessions to Newron. Copy this prompt into Codex, Claude Code, or Cursor to install it."
-              : "Paste this prompt into the conversation you want to save. Its messages, the images you paste and pictures of the artifacts it publishes are saved privately to your space."}
+              : "Paste this prompt into the conversation you want to save. Anyone with the collection link can view it."}
           </p>
           <button
             className="button primary full"

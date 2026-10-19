@@ -126,10 +126,14 @@ test("large histories backfill in bounded passes without losing later segments",
   };
   await syncTranscript(args);
   assert.ok(sent.length < 15);
-  assert.ok(sent.includes("m-14"));
+  assert.deepEqual(sent, ["m-0", "m-1", "m-2", "m-3", "m-4", "m-5"]);
   for (let i = 0; i < 4; i++) await syncTranscript(args);
   assert.equal(new Set(sent).size, 15);
   assert.equal(sent.length, 15);
+  assert.deepEqual(
+    sent,
+    Array.from({ length: 15 }, (_, i) => `m-${i}`),
+  );
 });
 
 test("history cursors commit only after all batches succeed", async (t) => {
@@ -208,4 +212,69 @@ test("pasted pictures beyond the upload batch are retried before old history is 
   assert.equal(uploads.length, 10);
   assert.equal(args.subscription.historyRemaining, false);
   assert.ok(args.subscription.historyVersions[old]);
+});
+
+test("one-time imports finish only after all pasted images are acknowledged", async (t) => {
+  const root = await fixture(t),
+    file = join(root, "once.jsonl");
+  await writeFile(
+    file,
+    Array.from({ length: 10 }, (_, i) =>
+      JSON.stringify({
+        uuid: `once-${i}`,
+        type: "user",
+        message: {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: "image/png",
+                data: Buffer.from(`image-${i}`).toString("base64"),
+              },
+            },
+            { type: "text", text: `Picture ${i}` },
+          ],
+        },
+      }),
+    ).join("\n"),
+  );
+  let completed = false;
+  const uploaded = new Set();
+  const args = {
+    connection: { origin: "https://example.test", token: "t" },
+    subscription: { id: "s", file, mode: "once" },
+    cursors: {},
+    media: {},
+    resolveTranscript: async () => ({ file, files: [file] }),
+    request: async (url, options) => {
+      const body = JSON.parse(options.body);
+      if (url.endsWith("/media")) {
+        uploaded.add(body.data);
+        return Response.json({ ok: true });
+      }
+      if (completed)
+        return Response.json(
+          { error: "This import is complete." },
+          { status: 409 },
+        );
+      if (body.complete) {
+        assert.equal(
+          uploaded.size,
+          10,
+          "completion must follow media acknowledgement",
+        );
+        completed = true;
+      }
+      return Response.json({ ok: true });
+    },
+  };
+  await syncTranscript(args);
+  assert.equal(completed, false);
+  assert.equal(args.subscription.historyRemaining, true);
+  await syncTranscript(args);
+  assert.equal(uploaded.size, 10);
+  assert.equal(completed, true);
+  assert.equal(args.subscription.historyRemaining, false);
 });

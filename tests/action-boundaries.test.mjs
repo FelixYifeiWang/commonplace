@@ -574,3 +574,90 @@ test("a Restore that wins before permanent deletion cannot be erased", async (t)
   assert.equal(await trash.destroy("u", "c"), false);
   assert.equal(sql.prepare("SELECT count(*) n FROM sessions").get().n, 1);
 });
+
+test("expired item cleanup removes only expired live-collection Trash and queues files", async (t) => {
+  const { db, sql } = fixture(t);
+  const { createItemTrash } = await import("../lib/item-trash.mjs");
+  const trash = createItemTrash(db, {
+    now: () => Date.parse("2026-11-20T00:00:00.000Z"),
+  });
+  const insert = (id, deletedAt) =>
+    sql
+      .prepare(
+        "INSERT INTO items(id,owner_id,session_id,collection_id,identity,kind,title,source_text,source_role,created_at,updated_at,file_key,deleted_at) VALUES(?,'u','s','c',?,'image','Picture','Private','user','now','now',?,?)",
+      )
+      .run(id, id, `users/u/${id}.png`, deletedAt);
+  insert("expired", "2026-10-21T00:00:00.000Z");
+  insert("recent", "2026-11-19T00:00:00.000Z");
+  insert("live", null);
+  assert.equal(await trash.purge("other"), 0);
+  assert.equal(await trash.purge("u"), 1);
+  assert.deepEqual(
+    sql
+      .prepare("SELECT id FROM items ORDER BY id")
+      .all()
+      .map((i) => i.id),
+    ["live", "recent"],
+  );
+  assert.equal(sql.prepare("SELECT count(*) n FROM blob_deletions").get().n, 1);
+  insert("expired", null);
+  assert.equal(
+    sql.prepare("SELECT count(*) n FROM items WHERE id='expired'").get().n,
+    0,
+  );
+  assert.equal(await trash.purge(), 0);
+});
+for (const state of ["frozen", "trashed"]) {
+  test(`item expiry preserves a ${state} collection snapshot`, async (t) => {
+    const { db, sql } = fixture(t);
+    const { createItemTrash } = await import("../lib/item-trash.mjs");
+    sql.exec(
+      "INSERT INTO items(id,owner_id,session_id,collection_id,identity,kind,title,source_text,source_role,created_at,updated_at,deleted_at) VALUES('i','u','s','c','i','note','Keep','','user','now','now','2026-10-01')",
+    );
+    sql.exec(
+      state === "frozen"
+        ? "UPDATE collections SET frozen_at='2026-10-19'"
+        : "UPDATE collections SET deleted_at='2026-11-19'",
+    );
+    const trash = createItemTrash(db, {
+      now: () => Date.parse("2026-11-20T00:00:00.000Z"),
+    });
+    assert.equal(await trash.purge(), 0);
+    assert.equal(sql.prepare("SELECT count(*) n FROM items").get().n, 1);
+  });
+}
+
+test("expiry cleanup is bounded and retries remaining items without losing suppression", async (t) => {
+  const { db, sql } = fixture(t);
+  const { createItemTrash } = await import("../lib/item-trash.mjs");
+  const trash = createItemTrash(db, {
+    now: () => Date.parse("2026-11-20T00:00:00.000Z"),
+  });
+  const insert = sql.prepare(
+    "INSERT INTO items(id,owner_id,session_id,collection_id,identity,kind,title,source_text,source_role,created_at,updated_at,deleted_at) VALUES(?,'u','s','c',?,'note','Note','','user','now','now','2026-10-01')",
+  );
+  for (let n = 0; n < 102; n++) insert.run(`i-${n}`, `i-${n}`);
+  assert.equal(await trash.purge(), 100);
+  assert.equal(await trash.purge(), 2);
+  assert.equal(
+    sql.prepare("SELECT count(*) n FROM item_suppressions").get().n,
+    102,
+  );
+});
+test("restoring an item before its deadline protects it from later expiry cleanup", async (t) => {
+  const { db, sql } = fixture(t);
+  const { createItemTrash } = await import("../lib/item-trash.mjs");
+  let now = Date.parse("2026-10-30T00:00:00.000Z");
+  sql.exec(
+    "INSERT INTO items(id,owner_id,session_id,collection_id,identity,kind,title,source_text,source_role,created_at,updated_at,deleted_at) VALUES('i','u','s','c','i','note','Note','','user','now','now','2026-10-01T00:00:00.000Z')",
+  );
+  const trash = createItemTrash(db, { now: () => now });
+  assert.deepEqual(await trash.restore("u", ["i"]), ["i"]);
+  now = Date.parse("2026-11-20T00:00:00.000Z");
+  assert.equal(await trash.purge(), 0);
+  assert.equal(sql.prepare("SELECT count(*) n FROM items").get().n, 1);
+  assert.equal(
+    sql.prepare("SELECT count(*) n FROM item_suppressions").get().n,
+    0,
+  );
+});
