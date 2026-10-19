@@ -31,6 +31,63 @@ test("explicit person groups span websites", () =>
     groupItems(items.map((i) => ({ ...i, groupName: "Paul" }))).length,
     1,
   ));
+test("session-pasted images share one stack while websites and manual uploads stay separate", () => {
+  const images = [
+    {
+      id: "a",
+      kind: "image",
+      fileKey: "a.png",
+      sessionId: "s",
+      title: "Pasted image",
+    },
+    {
+      id: "b",
+      kind: "image",
+      fileKey: "b.png",
+      sessionId: "s",
+      title: "Sketch",
+      groupName: "Layout",
+    },
+    {
+      id: "c",
+      kind: "link",
+      fileKey: "page.png",
+      sessionId: "s",
+      url: "https://example.com",
+    },
+    {
+      id: "d",
+      kind: "image",
+      fileKey: "upload.png",
+      sessionId: null,
+      title: "Upload",
+    },
+    {
+      id: "e",
+      kind: "image",
+      sessionId: "s",
+      url: "https://images.example.com/image.png",
+    },
+  ];
+  const groups = groupItems(images);
+  assert.deepEqual(
+    groups.map((g) => g.items.map((i) => i.id)),
+    [["a", "b"], ["c"], ["d"], ["e"]],
+  );
+  assert.equal(groups[0].title, "Pasted images");
+});
+test("selection mode keeps pasted images individually selectable", () => {
+  const images = ["a", "b"].map((id) => ({
+    id,
+    kind: "image",
+    fileKey: `${id}.png`,
+    sessionId: "s",
+  }));
+  assert.deepEqual(
+    groupItems(images, false).map((g) => g.items.map((i) => i.id)),
+    [["a"], ["b"]],
+  );
+});
 test("search and type filters operate on sources inside stacks", () =>
   assert.deepEqual(
     filterItems(items, { query: "Paul", type: "video" }).map((i) => i.id),

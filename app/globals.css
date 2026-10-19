@@ -6159,11 +6159,13 @@ body.desktop-feedback-page {
   border-radius: 50%;
   color: #797979;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 120ms ease;
 }
 .collection-overview-card:hover .collection-overview-delete,
 .collection-overview-card:focus-within .collection-overview-delete {
   opacity: 1;
+  pointer-events: auto;
 }
 .collection-overview-delete:hover {
   color: #606060;
@@ -6176,6 +6178,7 @@ body.desktop-feedback-page {
 @media (hover: none) {
   .collection-overview-delete {
     opacity: 1;
+    pointer-events: auto;
   }
 }
 .account-signin {
@@ -6473,6 +6476,7 @@ body.desktop-feedback-page {
 }
 @media (hover: none) {
   .collection-favorite,
+  .collection-overview-delete,
   .channel-menu-row .channel-favorite {
     opacity: 1;
   }
@@ -8943,19 +8947,6 @@ a[href].gm-detail.gm-commit b::after {
   margin-top: 3px;
   accent-color: #80511c;
 }
-.collection-overview-delete,
-.channel-delete {
-  opacity: 1;
-}
-
-.channel-menu-row .channel-delete {
-  opacity: 1;
-  pointer-events: auto;
-}
-.channel-menu-row > button:first-child {
-  padding-right: 36px;
-}
-
 .collection-cover-caption {
   display: flex;
   flex-direction: column;
