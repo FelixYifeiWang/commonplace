@@ -12,10 +12,11 @@ import { followGaze, releaseAfter, springStep } from "./nox-motion.mjs";
 export type MarkMood = "rest" | "working" | "muted" | "alert";
 export type MarkMotion = "melt" | "rewire" | "relay" | "mesh";
 
+// Black, as in Newron's logo (INK in lib/newron-mark.mjs); grey while paused and orange on error.
 const INK: Record<MarkMood, [number, number, number]> = {
-  rest: [0x3b, 0x36, 0xd4],
-  working: [0x3b, 0x36, 0xd4],
-  muted: [0x8f, 0x8d, 0xa6],
+  rest: [0x16, 0x16, 0x16],
+  working: [0x16, 0x16, 0x16],
+  muted: [0x8e, 0x8e, 0x8a],
   alert: [0xc2, 0x41, 0x0c],
 };
 // The moment of rest Newron's logo shows (the top right drop furthest apart); also used when motion is reduced.

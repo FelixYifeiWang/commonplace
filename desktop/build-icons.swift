@@ -52,7 +52,7 @@ func render(_ size: Int, template: Bool = false) -> Data {
     NSColor.white.setStroke()
     let rim = NSBezierPath(ovalIn:NSRect(x:5.5,y:5.5,width:69,height:69));rim.lineWidth=1;rim.stroke()
   }
-  (template ? NSColor.black : NSColor(calibratedRed:0.231,green:0.212,blue:0.831,alpha:1)).setFill()
+  (template ? NSColor.black : NSColor(calibratedWhite:0.086,alpha:1)).setFill()
   outline().fill()
   NSGraphicsContext.restoreGraphicsState()
   return bitmap.representation(using:.png,properties:[:])!
