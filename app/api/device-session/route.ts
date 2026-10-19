@@ -58,6 +58,9 @@ export async function GET(request: Request) {
           eq(sessions.ownerId, device.ownerId),
           ne(sessions.state, "revoked"),
           eq(sessions.externalId, url.searchParams.get("externalId") || ""),
+          url.searchParams.has("provider")
+            ? eq(sessions.provider, url.searchParams.get("provider")!)
+            : undefined,
         ),
       );
     return Response.json(

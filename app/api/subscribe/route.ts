@@ -7,7 +7,7 @@ import { normalizeCuratedSession } from "@/lib/story.mjs";
 import { DEMO_SESSIONS } from "@/lib/demo-sessions";
 import { getDb } from "@/db";
 import { sessions, collections } from "@/db/schema";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, ne, desc } from "drizzle-orm";
 import {
   deviceRequired,
   jsonBody,
@@ -35,6 +35,8 @@ export async function POST(request: Request) {
     const device = await deviceRequired(request),
       body = await jsonBody(request),
       db = getDb();
+    const database = env.DB;
+    if (!database) throw new HttpError(503, "Storage is unavailable.");
     if (
       typeof body.sessionId !== "string" ||
       !body.sessionId.trim() ||
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
       throw new HttpError(400, "Provide a stable sessionId.");
     if (!["Codex", "Claude Code", "Cursor", "Other"].includes(body.provider))
       throw new HttpError(400, "Unknown provider.");
-    await createCollectionTrash(env.DB).purge(device.ownerId);
+    await createCollectionTrash(database).purge(device.ownerId);
     const id = crypto.randomUUID(),
       now = new Date().toISOString(),
       collectionId = `session-${id}`;
@@ -51,7 +53,7 @@ export async function POST(request: Request) {
       typeof body.title === "string" && body.title.trim()
         ? body.title.trim().slice(0, 120)
         : `A session with ${body.provider}`;
-    const created = await ensureSubscription(env.DB, {
+    const created = await ensureSubscription(database, {
       id,
       collectionId,
       ownerId: device.ownerId,
@@ -75,12 +77,14 @@ export async function POST(request: Request) {
       .from(sessions)
       .where(
         and(
-          eq(sessions.deviceId, device.id),
+          eq(sessions.ownerId, device.ownerId),
           eq(sessions.externalId, body.sessionId),
           ne(sessions.state, "revoked"),
           eq(sessions.provider, body.provider),
         ),
-      );
+      )
+      .orderBy(desc(sessions.createdAt))
+      .limit(1);
     if (existing) {
       const [collection] = await db
         .select()
@@ -89,7 +93,7 @@ export async function POST(request: Request) {
       if (!collection) throw new HttpError(404, "Collection not found.");
       let restored = false;
       if (collection.deletedAt) {
-        const trash = createCollectionTrash(env.DB);
+        const trash = createCollectionTrash(database);
         if (DEMO_SESSIONS[body.sessionId]) {
           // Preserve the presentation rule: follow restores, then showDemo below
           // reloads the prepared Story/Map. One-time demo imports stay unchanged.
@@ -110,6 +114,23 @@ export async function POST(request: Request) {
             "This collection is unavailable. Connect again to start fresh.",
           );
       }
+      const attached = await database
+        .prepare(
+          `UPDATE sessions SET device_id=?,token_hash=CASE WHEN device_id IS NOT ? THEN ? ELSE token_hash END
+        WHERE id=? AND owner_id=? AND state!='revoked'
+        AND EXISTS(SELECT 1 FROM collections WHERE id=sessions.collection_id AND owner_id=? AND deleted_at IS NULL AND frozen_at IS NULL)`,
+        )
+        .bind(
+          device.id,
+          device.id,
+          await hash(newToken()),
+          existing.id,
+          device.ownerId,
+          device.ownerId,
+        )
+        .run();
+      if (!attached.meta.changes)
+        throw new HttpError(409, "This collection changed. Connect again.");
       // Connect resumes a paused session. Disconnected sessions are never reused.
       if (body.mode === "follow") {
         const changed = await db

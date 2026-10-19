@@ -19,6 +19,7 @@ import { updateNox } from "./update.mjs";
 import { createVisibilityPolicy } from "./visibility.mjs";
 import {
   afterBackgroundSync,
+  syncFailureState,
   noxState,
   pointerDirection,
 } from "../lib/nox-motion.mjs";
@@ -191,15 +192,14 @@ async function tick() {
         }
         await persist();
       } catch (error) {
-        subscription.error = error.message;
+        const nextState = syncFailureState(error);
+        subscription.error = nextState === "waiting" ? "" : error.message;
         if (!dragController?.isDragging()) {
-          lastError = error.message;
-          status = afterBackgroundSync(
-            status,
-            error.status === 409 ? "paused" : "error",
-          );
+          lastError = subscription.error;
+          status = afterBackgroundSync(status, nextState);
         }
         if (error.status === 401) subscription.paused = true;
+        await persist();
       }
     }
   } finally {
@@ -384,7 +384,7 @@ async function findCandidate() {
     let connected = false;
     if (connection) {
       const r = await request(
-        `${connection.origin}/api/device-session?externalId=${encodeURIComponent(found.sessionId)}`,
+        `${connection.origin}/api/device-session?externalId=${encodeURIComponent(found.sessionId)}&provider=${encodeURIComponent(found.provider)}`,
         { headers: { Authorization: `Bearer ${connection.token}` } },
       );
       if (r.ok) connected = !!(await r.json()).connected;

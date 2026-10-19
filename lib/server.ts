@@ -8,6 +8,7 @@ export class HttpError extends Error {
   constructor(
     public status: number,
     message: string,
+    public code?: string,
   ) {
     super(message);
   }
@@ -37,7 +38,10 @@ export function fail(error: unknown) {
       { status: 409 },
     );
   if (error instanceof HttpError)
-    return Response.json({ error: error.message }, { status: error.status });
+    return Response.json(
+      { error: error.message, ...(error.code ? { code: error.code } : {}) },
+      { status: error.status },
+    );
   console.error("Newron request failed", error);
   return Response.json(
     { error: "Something went wrong. Please try again." },
@@ -100,7 +104,11 @@ export async function agentSession(request: Request, subscriptionId?: string) {
       );
   }
   if (!session || session.state === "revoked")
-    throw new HttpError(401, "This connection is no longer available.");
+    throw new HttpError(
+      401,
+      "This connection is no longer available.",
+      "SESSION_UNAVAILABLE",
+    );
   if (session.state === "paused")
     throw new HttpError(
       409,

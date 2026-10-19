@@ -311,6 +311,7 @@ export async function syncTranscript({
     if (!response.ok) {
       const error = new Error(result.error || "Unable to sync this session.");
       error.status = response.status;
+      error.code = result.code;
       throw error;
     }
     for (const entry of batch) seen.add(entry.key);

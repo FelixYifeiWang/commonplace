@@ -101,3 +101,14 @@ test("a background sync never settles a connect that is still working", () => {
   assert.equal(afterBackgroundSync("error", "following"), "following");
   assert.equal(afterBackgroundSync("following", "paused"), "paused");
 });
+
+test("intentional disconnection is quiet while real authentication failures stay visible", async () => {
+  const { syncFailureState } = await import("../lib/nox-motion.mjs");
+  assert.equal(
+    syncFailureState({ status: 401, code: "SESSION_UNAVAILABLE" }),
+    "waiting",
+  );
+  assert.equal(syncFailureState({ status: 409 }), "paused");
+  assert.equal(syncFailureState({ status: 401 }), "error");
+  assert.equal(syncFailureState({ status: 500 }), "error");
+});

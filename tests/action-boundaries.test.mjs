@@ -426,3 +426,106 @@ test("repeated Delete/Restore is idempotent without extending the recovery windo
   assert.equal(await trash.restore("u", "c"), true);
   assert.equal(await trash.restore("other", "c"), false);
 });
+
+for (const scenario of [
+  "legacy trash",
+  "new device",
+  "frozen",
+  "current revoked",
+  "other owner",
+  "other provider",
+])
+  test(`subscription matching handles ${scenario} safely`, async (t) => {
+    const { db, sql } = fixture(t);
+    const { ensureSubscription } =
+      await import("../lib/subscription-store.mjs");
+    sql.exec(
+      "INSERT INTO devices(id,owner_id,name,token_hash,created_at) VALUES('d','u','Nox','device','now'),('old','u','Old Nox','old-device','now');UPDATE sessions SET device_id='old',external_id='external' WHERE id='s'",
+    );
+    if (scenario !== "new device") {
+      if (scenario === "frozen")
+        sql.exec("UPDATE collections SET frozen_at='now' WHERE id='c'");
+      sql
+        .prepare("UPDATE collections SET deleted_at=? WHERE id='c'")
+        .run(new Date().toISOString());
+      sql.exec("UPDATE sessions SET state='revoked' WHERE id='s'");
+      if (scenario !== "current revoked")
+        sql.exec("UPDATE sessions SET state_before_trash=NULL WHERE id='s'");
+    }
+    const creates = [
+      "frozen",
+      "current revoked",
+      "other owner",
+      "other provider",
+    ].includes(scenario);
+    assert.equal(
+      await ensureSubscription(db, {
+        id: "new",
+        collectionId: "new-c",
+        ownerId: scenario === "other owner" ? "other" : "u",
+        deviceId: "d",
+        externalId: "external",
+        provider: scenario === "other provider" ? "Cursor" : "Codex",
+        title: "Test",
+        mode: "follow",
+        tokenHash: "new-token",
+        now: new Date().toISOString(),
+      }),
+      creates,
+    );
+    assert.equal(
+      sql.prepare("SELECT state FROM sessions WHERE id='s'").get().state,
+      scenario === "legacy trash"
+        ? "paused"
+        : scenario === "new device"
+          ? "following"
+          : "revoked",
+    );
+  });
+
+test("legacy recovery never replaces an already active collection or revives expired Trash", async (t) => {
+  const { db, sql } = fixture(t);
+  const { ensureSubscription } = await import("../lib/subscription-store.mjs");
+  sql.exec(
+    "INSERT INTO devices(id,owner_id,name,token_hash,created_at) VALUES('d','u','Nox','device','now');UPDATE sessions SET external_id='external' WHERE id='s'",
+  );
+  sql
+    .prepare("UPDATE collections SET deleted_at=? WHERE id='c'")
+    .run(new Date(Date.now() - 31 * 86400000).toISOString());
+  sql.exec(
+    "UPDATE sessions SET state='revoked',state_before_trash=NULL WHERE id='s'",
+  );
+  const input = {
+    ownerId: "u",
+    deviceId: "d",
+    externalId: "external",
+    provider: "Codex",
+    title: "Test",
+    mode: "follow",
+    tokenHash: "new-token",
+    now: new Date().toISOString(),
+  };
+  assert.equal(
+    await ensureSubscription(db, {
+      ...input,
+      id: "new",
+      collectionId: "new-c",
+    }),
+    true,
+  );
+  sql
+    .prepare("UPDATE collections SET deleted_at=? WHERE id='c'")
+    .run(new Date().toISOString());
+  assert.equal(
+    await ensureSubscription(db, {
+      ...input,
+      id: "extra",
+      collectionId: "extra-c",
+    }),
+    false,
+  );
+  assert.equal(
+    sql.prepare("SELECT state FROM sessions WHERE id='s'").get().state,
+    "revoked",
+  );
+});
