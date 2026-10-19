@@ -18,18 +18,22 @@ export function Modal({
   useEffect(() => {
     const dialog = ref.current;
     dialog?.showModal();
-    dialog
-      ?.querySelector<HTMLElement>(
+    (
+      dialog?.querySelector<HTMLElement>("[data-autofocus]") ||
+      dialog?.querySelector<HTMLElement>(
         "input:not([disabled]), textarea:not([disabled]), .button.primary:not([disabled])",
       )
-      ?.focus();
+    )?.focus();
     return () => dialog?.close();
   }, []);
   return (
     <dialog
       ref={ref}
       className={`modal ${wide ? "wide" : ""} ${className}`}
-      onCancel={onClose}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

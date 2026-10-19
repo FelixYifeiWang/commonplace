@@ -34,8 +34,13 @@ export async function POST(request: Request) {
       store = createStoryStore(env.DB);
     if (typeof body.collectionId !== "string")
       throw new HttpError(400, "Choose a collection.");
-    if (!(await store.get(body.collectionId, user.userId)))
-      throw new HttpError(404, "Collection not found.");
+    const current = await store.get(body.collectionId, user.userId);
+    if (!current) throw new HttpError(404, "Collection not found.");
+    if (current.frozen)
+      throw new HttpError(
+        409,
+        "This collection is frozen. Connect the session again to start a new collection.",
+      );
     // "save" replaces the Story and Map with a curated document the story job never revises; "restore" puts
     // back the version it replaced; "rewrite" writes the Story again from the first turn; otherwise retry.
     if (body.action === "save") {

@@ -1,6 +1,6 @@
 import { getDb } from "@/db";
 import { sessions } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { deviceRequired, jsonBody, fail, HttpError } from "@/lib/server";
 export async function PATCH(request: Request) {
   try {
@@ -17,12 +17,19 @@ export async function PATCH(request: Request) {
           eq(sessions.id, body.subscriptionId),
           eq(sessions.deviceId, device.id),
           eq(sessions.ownerId, device.ownerId),
+          ne(sessions.state, "revoked"),
         ),
       );
     if (!session || session.state === "revoked")
       throw new HttpError(404, "This session is no longer connected.");
     const state = body.action === "pause" ? "paused" : "following";
-    await db.update(sessions).set({ state }).where(eq(sessions.id, session.id));
+    const changed = await db
+      .update(sessions)
+      .set({ state })
+      .where(and(eq(sessions.id, session.id), ne(sessions.state, "revoked")))
+      .returning({ id: sessions.id });
+    if (!changed.length)
+      throw new HttpError(409, "This session is disconnected.");
     return Response.json({ ok: true, state });
   } catch (e) {
     return fail(e);
@@ -40,6 +47,7 @@ export async function GET(request: Request) {
         and(
           eq(sessions.deviceId, device.id),
           eq(sessions.ownerId, device.ownerId),
+          ne(sessions.state, "revoked"),
           eq(sessions.externalId, url.searchParams.get("externalId") || ""),
         ),
       );

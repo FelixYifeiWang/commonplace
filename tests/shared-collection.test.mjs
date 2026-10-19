@@ -124,3 +124,17 @@ test("shared media uses collection-scoped routes while owner media routes stay u
     `/api/shared/session-abc/media/${item.id}/screenshot?v=3`,
   );
 });
+
+test("disconnect keeps the same shared collection URL and its media available", async () => {
+  const { sqlite, add, store } = fixture();
+  try {
+    add("one");
+    const before = await store.get("a");
+    sqlite.exec("UPDATE collections SET frozen_at='2026-10-19' WHERE id='a'");
+    assert.deepEqual(await store.get("a"), before);
+    assert.ok(await store.media("a", "one"));
+    assert.equal((await store.story("a")).pending, false);
+  } finally {
+    sqlite.close();
+  }
+});

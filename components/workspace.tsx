@@ -115,6 +115,11 @@ export default function Workspace({
   const [busy, setBusy] = useState(false),
     [toast, setToast] = useState(""),
     [modalError, setModalError] = useState("");
+  const [disconnectSession, setDisconnectSession] = useState<Session | null>(
+    null,
+  );
+  const [disconnectBusy, setDisconnectBusy] = useState(false);
+  const [disconnectError, setDisconnectError] = useState("");
   // Dev mode reveals the item grid and guided map for this workspace visit.
   const [view, setView] = useState<"gallery" | "map" | "story">("map");
   const [devMode, setDevMode] = useState(false);
@@ -256,7 +261,13 @@ export default function Workspace({
   }, [toast, undo]);
   useEffect(() => {
     if (demo || previewBusy.current) return;
-    const pending = data.items.filter(needsPreview).slice(0, 4);
+    const pending = data.items
+      .filter(
+        (item) =>
+          needsPreview(item) &&
+          !data.collections.find((c) => c.id === item.collectionId)?.frozenAt,
+      )
+      .slice(0, 4);
     if (!pending.length) return;
     previewBusy.current = true;
     void api("/api/previews", "POST", { ids: pending.map((item) => item.id) })
@@ -267,12 +278,14 @@ export default function Workspace({
       .finally(() => {
         previewBusy.current = false;
       });
-  }, [data.items, demo, refresh]);
+  }, [data.items, data.collections, demo, refresh]);
   const collections = [...data.collections].sort(
     (a, b) =>
       Number(!!b.favorite) - Number(!!a.favorite) ||
       b.createdAt.localeCompare(a.createdAt),
   );
+  const writableCollections = collections.filter((c) => !c.frozenAt);
+  const frozen = !!collections.find((c) => c.id === selected)?.frozenAt;
   const hasBuddy = data.devices.some((device) => !device.revoked);
   const connectionLabel = hasBuddy ? "Connect a session" : "Set up Nox";
   const allItems =
@@ -300,6 +313,14 @@ export default function Workspace({
       if (demo) {
         setData((d) => ({
           ...d,
+          collections:
+            action === "revoke"
+              ? d.collections.map((c) =>
+                  c.id === session.collectionId
+                    ? { ...c, frozenAt: new Date().toISOString() }
+                    : c,
+                )
+              : d.collections,
           sessions: d.sessions.map((s) =>
             s.id === session.id
               ? {
@@ -323,10 +344,15 @@ export default function Workspace({
           ? "Session paused."
           : action === "resume"
             ? "Ready for new updates."
-            : "Session disconnected. Your ideas stay here.",
+            : "Disconnected. Your collection is saved.",
       );
+      return true;
     } catch (e) {
-      setToast(e instanceof Error ? e.message : "Could not update session.");
+      const message =
+        e instanceof Error ? e.message : "Could not update session.";
+      if (action === "revoke") setDisconnectError(message);
+      else setToast(message);
+      return false;
     }
   }
   async function createCollection(event: React.FormEvent<HTMLFormElement>) {
@@ -388,6 +414,14 @@ export default function Workspace({
     }
   }
   async function deleteBlocks(ids: string[]) {
+    if (
+      data.items.some(
+        (item) =>
+          ids.includes(item.id) &&
+          collections.find((c) => c.id === item.collectionId)?.frozenAt,
+      )
+    )
+      throw new Error("This collection is frozen.");
     const previous = demo ? structuredClone(data) : undefined;
     if (!demo) await api("/api/items", "DELETE", { ids });
     setData((d) => ({
@@ -504,7 +538,8 @@ export default function Workspace({
     }
   }
   function addFromGallery(drop?: { files?: File[]; text?: string }) {
-    if (!collections.length) {
+    if (frozen) return;
+    if (!writableCollections.length) {
       openModal("collection");
       return;
     }
@@ -522,7 +557,13 @@ export default function Workspace({
       >
         <Provider name={session.provider} />
         <div className="session-row-main">
-          <strong>{session.title}</strong>
+          <button
+            className="session-collection-link"
+            onClick={() => chooseCollection(session.collectionId)}
+          >
+            {collections.find((c) => c.id === session.collectionId)?.name ||
+              session.title}
+          </button>
           <span>
             {session.provider}
             <i>·</i>
@@ -557,7 +598,10 @@ export default function Workspace({
             <button
               className="icon-button"
               aria-label={`Disconnect ${session.title}`}
-              onClick={() => void sessionAction(session, "revoke")}
+              onClick={() => {
+                setDisconnectError("");
+                setDisconnectSession(session);
+              }}
             >
               <Unplug size={14} />
             </button>
@@ -573,11 +617,13 @@ export default function Workspace({
       items={visibleItems}
       onOpen={setDetail}
       onDelete={deleteBlocks}
-      canAdd={collections.length > 0}
+      readOnly={frozen}
+      canAdd={writableCollections.length > 0}
       onQuickAdd={(text) =>
         saveBlock({
           ...parseBlockInput(text),
-          collectionId: selected === "all" ? collections[0]?.id : selected,
+          collectionId:
+            selected === "all" ? writableCollections[0]?.id : selected,
         })
       }
       onAdd={addFromGallery}
@@ -590,7 +636,7 @@ export default function Workspace({
         if (!modal) e.preventDefault();
       }}
       onDrop={(e) => {
-        if (modal || !collections.length) return;
+        if (modal || frozen || !writableCollections.length) return;
         e.preventDefault();
         setDroppedFiles(Array.from(e.dataTransfer.files));
         setDroppedText(
@@ -880,7 +926,13 @@ export default function Workspace({
                     <div className="sessions-table">
                       <div className="table-label">
                         <span>YOUR SESSIONS</span>
-                        <span>{data.sessions.length} connected</span>
+                        <span>
+                          {
+                            data.sessions.filter((s) => s.state !== "revoked")
+                              .length
+                          }{" "}
+                          connected
+                        </span>
                       </div>
                       {data.sessions.length ? (
                         data.sessions.map((s) => renderSession(s))
@@ -980,6 +1032,55 @@ export default function Workspace({
         />
       )}
 
+      {disconnectSession && (
+        <Modal
+          title="Disconnect this session?"
+          className="disconnect-dialog"
+          onClose={() => {
+            if (!disconnectBusy) setDisconnectSession(null);
+          }}
+        >
+          <p className="disconnect-copy">
+            Your collection stays here. Its content, Story, and Map will be
+            frozen.
+          </p>
+          <p className="disconnect-copy">
+            This can’t be undone. Connecting this session again creates a new
+            collection.
+          </p>
+          {disconnectError && (
+            <p className="form-error" role="alert">
+              {disconnectError}
+            </p>
+          )}
+          <div className="disconnect-actions">
+            <button
+              className="button"
+              data-autofocus
+              disabled={disconnectBusy}
+              onClick={() => setDisconnectSession(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className="button primary"
+              disabled={disconnectBusy}
+              onClick={async () => {
+                setDisconnectBusy(true);
+                setDisconnectError("");
+                const success = await sessionAction(
+                  disconnectSession,
+                  "revoke",
+                );
+                setDisconnectBusy(false);
+                if (success) setDisconnectSession(null);
+              }}
+            >
+              {disconnectBusy ? "Disconnecting…" : "Disconnect"}
+            </button>
+          </div>
+        </Modal>
+      )}
       {modal === "collection" && (
         <Modal title="New collection" onClose={() => setModal(null)}>
           <form onSubmit={createCollection} className="form">
@@ -1016,8 +1117,10 @@ export default function Workspace({
       {modal === "item" && (
         <AddBlock
           allowFiles={!demo}
-          collections={collections}
-          collectionId={selected === "all" ? collections[0]?.id : selected}
+          collections={writableCollections}
+          collectionId={
+            selected === "all" ? writableCollections[0]?.id : selected
+          }
           initialFiles={droppedFiles}
           initialText={droppedText}
           onSave={saveBlock}
@@ -1026,7 +1129,8 @@ export default function Workspace({
       )}
       {detail && (
         <Modal title={detail.title} onClose={() => setDetail(null)} wide>
-          {detail.deletedAt ? (
+          {collections.find((c) => c.id === detail.collectionId)
+            ?.frozenAt ? null : detail.deletedAt ? (
             <div className="deleted-item-notice">
               <span>Recently deleted</span>
               <button

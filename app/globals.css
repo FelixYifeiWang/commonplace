@@ -1203,7 +1203,8 @@ p {
   flex: 1;
   min-width: 0;
 }
-.session-row-main strong {
+.session-row-main strong,
+.session-row-main .session-collection-link {
   display: block;
   font-size: 12px;
   font-weight: 500;
@@ -1259,7 +1260,8 @@ p {
 .session-row.compact {
   padding: 13px 5px;
 }
-.session-row.compact .session-row-main strong {
+.session-row.compact .session-row-main strong,
+.session-row.compact .session-row-main .session-collection-link {
   font-size: 10px;
 }
 .session-row.compact .session-row-main > span {
@@ -2133,7 +2135,8 @@ p {
 .desktop-panel .session-row-main {
   min-width: 0;
 }
-.desktop-panel .session-row-main strong {
+.desktop-panel .session-row-main strong,
+.desktop-panel .session-row-main .session-collection-link {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2601,7 +2604,8 @@ p {
     gap: 8px;
     flex-wrap: wrap;
   }
-  .session-row-main strong {
+  .session-row-main strong,
+  .session-row-main .session-collection-link {
     font-size: 10px;
   }
   .session-row-main > span {
@@ -8839,4 +8843,37 @@ a[href].gm-detail.gm-commit b::after {
     :is(.gm-core, .gm-tile, .gm-bubble, .gm-detail) {
     transition: none;
   }
+}
+
+/* Disconnect preserves a read-only collection, with a deliberate confirmation. */
+.disconnect-dialog .modal-head h2 {
+  font-family: var(--sans);
+  font-size: 20px;
+  color: var(--ink);
+  letter-spacing: -0.3px;
+}
+.disconnect-copy {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #777;
+  margin: 0 0 12px;
+}
+.disconnect-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 28px;
+}
+.session-collection-link {
+  max-width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+}
+.session-collection-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }

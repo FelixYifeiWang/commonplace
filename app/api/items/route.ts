@@ -33,6 +33,8 @@ export async function POST(request: Request) {
         ),
       );
     if (!collection) throw new HttpError(404, "Choose a collection.");
+    if (collection.frozenAt)
+      throw new HttpError(409, "This collection is frozen.");
     if (body.url && !isReferenceUrl(body.url))
       throw new HttpError(
         400,
@@ -105,6 +107,7 @@ export async function PATCH(request: Request) {
       db = getDb();
     if (body.action === "restore") {
       const ids = validateIds(body.ids);
+      await assertWritableItems(user.userId, ids);
       const restored = await createItemTrash(env.DB).restore(user.userId, ids);
       if (!restored.length)
         throw new HttpError(410, "These items can no longer be restored.");
@@ -115,6 +118,7 @@ export async function PATCH(request: Request) {
       .from(items)
       .where(and(eq(items.id, body.id), eq(items.ownerId, user.userId)));
     if (!item) throw new HttpError(404, "Item not found.");
+    await assertWritableItems(user.userId, [item.id]);
     if (
       typeof body.title !== "string" ||
       !body.title.trim() ||
@@ -148,6 +152,7 @@ export async function DELETE(request: Request) {
       body = await jsonBody(request),
       ids = validateIds(body.ids),
       db = getDb();
+    await assertWritableItems(user.userId, ids);
     for (let i = 0; i < ids.length; i += 80)
       await db
         .update(items)
@@ -162,5 +167,20 @@ export async function DELETE(request: Request) {
     return storyResponse({ ok: true });
   } catch (e) {
     return fail(e);
+  }
+}
+
+async function assertWritableItems(ownerId: string, ids: string[]) {
+  const database = env.DB;
+  if (!database) throw new HttpError(503, "Storage is unavailable.");
+  for (let offset = 0; offset < ids.length; offset += 80) {
+    const chunk = ids.slice(offset, offset + 80);
+    const frozen = await database
+      .prepare(
+        `SELECT i.id FROM items i JOIN collections c ON c.id=i.collection_id WHERE i.owner_id=? AND c.frozen_at IS NOT NULL AND i.id IN (${chunk.map(() => "?").join(",")}) LIMIT 1`,
+      )
+      .bind(ownerId, ...chunk)
+      .first();
+    if (frozen) throw new HttpError(409, "This collection is frozen.");
   }
 }

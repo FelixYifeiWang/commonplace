@@ -1,7 +1,7 @@
 import { storyResponse } from "@/lib/story-response";
 import { getDb } from "@/db";
 import { sessions, collections, devices } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import {
   deviceRequired,
   jsonBody,
@@ -30,6 +30,7 @@ export async function POST(request: Request) {
         and(
           eq(sessions.deviceId, device.id),
           eq(sessions.externalId, body.sessionId),
+          ne(sessions.state, "revoked"),
           eq(sessions.provider, body.provider),
         ),
       );
@@ -41,18 +42,20 @@ export async function POST(request: Request) {
       if (!collection) throw new HttpError(404, "Collection not found.");
       if (collection.deletedAt && body.mode !== "follow")
         throw new HttpError(409, "Reconnect this collection to restore it.");
-      // An explicit Connect resumes the existing channel without reimporting deleted blocks.
+      // Connect resumes a paused session. Disconnected sessions are never reused.
       if (body.mode === "follow") {
-        await db.batch([
-          db
-            .update(collections)
-            .set({ deletedAt: null })
-            .where(eq(collections.id, collection.id)),
-          db
-            .update(sessions)
-            .set({ mode: "follow", state: "reading" })
-            .where(eq(sessions.id, existing.id)),
-        ]);
+        const changed = await db
+          .update(sessions)
+          .set({ mode: "follow", state: "reading" })
+          .where(
+            and(eq(sessions.id, existing.id), ne(sessions.state, "revoked")),
+          )
+          .returning({ id: sessions.id });
+        if (!changed.length)
+          throw new HttpError(
+            409,
+            "This session was disconnected. Connect again to start a new collection.",
+          );
       }
       return storyResponse({
         subscriptionId: existing.id,

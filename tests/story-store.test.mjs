@@ -715,3 +715,144 @@ test("a curated save is never revised by new turns, and restore puts back exactl
     sqlite.close();
   }
 });
+
+test("disconnect freezes content and cancels in-flight generation without removing the collection", async () => {
+  const { sqlite, store, add } = fixture();
+  try {
+    sqlite.exec(
+      "INSERT INTO sessions(id,owner_id,collection_id,title,provider,token_hash,created_at,state) VALUES('s','u','c','Original session','Codex','old-token','2026-10-17','following')",
+    );
+    add();
+    const original = {
+      collectionName: "Quiet",
+      steps: [{ title: "Original" }],
+      map: { nodes: [{ id: "original" }] },
+    };
+    sqlite
+      .prepare("UPDATE stories SET session_json=? WHERE collection_id='c'")
+      .run(JSON.stringify(original));
+    const job = await store.claim();
+    sqlite.exec("UPDATE collections SET frozen_at='2026-10-19' WHERE id='c'");
+    const snapshot = await store.get("c", "u");
+    assert.equal(snapshot.pending, false);
+    assert.equal(snapshot.status, "ready");
+    assert.deepEqual(snapshot.session, original);
+    assert.equal(
+      sqlite.prepare("SELECT deleted_at FROM collections WHERE id='c'").get()
+        .deleted_at,
+      null,
+    );
+    assert.equal(
+      sqlite.prepare("SELECT state FROM sessions WHERE id='s'").get().state,
+      "revoked",
+    );
+    assert.equal(
+      await store.completeSession(
+        job,
+        await prepareSessionBatch(job),
+        { ...original, collectionName: "Changed" },
+        "test",
+      ),
+      false,
+    );
+    assert.equal(
+      await store.complete(job, await prepareStoryBatch(job), [beat], "test"),
+      false,
+    );
+    assert.equal(await store.claim(), null);
+    assert.deepEqual((await store.get("c", "u")).session, original);
+    assert.equal(
+      sqlite.prepare("SELECT name FROM collections WHERE id='c'").get().name,
+      "Quiet",
+    );
+  } finally {
+    sqlite.close();
+  }
+});
+
+test("frozen content rejects late capture, preview changes, regeneration and resume", async () => {
+  const { sqlite, store, add } = fixture();
+  try {
+    sqlite.exec(
+      "INSERT INTO sessions(id,owner_id,collection_id,title,provider,token_hash,created_at,state) VALUES('s','u','c','Original session','Codex','token','2026-10-17','following')",
+    );
+    add();
+    sqlite.exec("UPDATE collections SET frozen_at='2026-10-19' WHERE id='c'");
+    add("late");
+    sqlite.exec(
+      "UPDATE items SET title='Changed',image_url='https://example.org/new.png',deleted_at='2026-10-19' WHERE id='i'",
+    );
+    sqlite.exec(
+      "INSERT INTO turns(id,owner_id,session_id,external_id,role,body,created_at) VALUES('t','u','s','t','user','Late capture','2026-10-19')",
+    );
+    sqlite.exec("UPDATE sessions SET state='following' WHERE id='s'");
+    assert.equal(sqlite.prepare("SELECT count(*) AS n FROM items").get().n, 1);
+    assert.equal(
+      sqlite.prepare("SELECT title FROM items WHERE id='i'").get().title,
+      "Quiet",
+    );
+    assert.equal(sqlite.prepare("SELECT count(*) AS n FROM turns").get().n, 0);
+    assert.equal(
+      sqlite.prepare("SELECT state FROM sessions WHERE id='s'").get().state,
+      "revoked",
+    );
+    assert.equal(await store.rewrite("c", "u"), 0);
+    assert.equal(
+      await store.save("c", "u", { collectionName: "Changed" }),
+      false,
+    );
+    assert.throws(() =>
+      sqlite.exec("UPDATE collections SET frozen_at=NULL WHERE id='c'"),
+    );
+    sqlite.exec("UPDATE collections SET deleted_at='2026-10-19' WHERE id='c'");
+    assert.equal(await store.get("c", "u"), null);
+    sqlite.exec("UPDATE collections SET deleted_at=NULL WHERE id='c'");
+    assert.equal((await store.get("c", "u")).pending, false);
+    assert.equal(await store.claim(), null);
+  } finally {
+    sqlite.close();
+  }
+});
+
+test("pause remains reversible and a new subscription can collect independently of the frozen original", async () => {
+  const { sqlite, store, add } = fixture();
+  try {
+    sqlite.exec(
+      "INSERT INTO sessions(id,owner_id,collection_id,title,provider,token_hash,created_at,state,external_id) VALUES('s','u','c','Session','Codex','token','2026-10-17','following','same-session')",
+    );
+    add();
+    sqlite.exec("UPDATE sessions SET state='paused' WHERE id='s'");
+    assert.equal(
+      sqlite.prepare("SELECT frozen_at FROM collections WHERE id='c'").get()
+        .frozen_at,
+      null,
+    );
+    sqlite.exec("UPDATE sessions SET state='following' WHERE id='s'");
+    assert.equal(
+      sqlite.prepare("SELECT state FROM sessions WHERE id='s'").get().state,
+      "following",
+    );
+    sqlite.exec("UPDATE collections SET frozen_at='2026-10-19' WHERE id='c'");
+    sqlite.exec(
+      "INSERT INTO collections(id,owner_id,name,created_at) VALUES('new','u','Session','2026-10-19')",
+    );
+    sqlite.exec(
+      "INSERT INTO sessions(id,owner_id,collection_id,title,provider,token_hash,created_at,state,external_id) VALUES('new-s','u','new','Session','Codex','new-token','2026-10-19','following','same-session')",
+    );
+    sqlite.exec(
+      "INSERT INTO turns(id,owner_id,session_id,external_id,role,body,created_at) VALUES('t','u','new-s','t','user','Independent new collection','2026-10-19')",
+    );
+    assert.equal((await store.get("c", "u")).pending, false);
+    assert.equal((await store.get("new", "u")).pending, true);
+    assert.equal(
+      sqlite
+        .prepare(
+          "SELECT count(*) AS n FROM collections WHERE deleted_at IS NULL",
+        )
+        .get().n,
+      2,
+    );
+  } finally {
+    sqlite.close();
+  }
+});

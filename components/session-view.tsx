@@ -11,6 +11,7 @@ import type { SessionDocument } from "@/lib/session-types";
 
 type StoryState = {
   session: SessionDocument | null;
+  frozen?: boolean;
   preview?: boolean;
   previewSession?: SessionDocument | null;
   pending: boolean;
@@ -133,7 +134,7 @@ export function SessionView({
                   ? "Update paused."
                   : "Update paused. Your last version is here."}
             </span>
-            {!shared && (
+            {!shared && !story?.frozen && (
               <button onClick={() => void retry()} disabled={retrying}>
                 {retrying ? "Retrying…" : "Retry"}
               </button>
@@ -175,7 +176,7 @@ export function SessionView({
             // With no view to fall back on, the failure is the page's message.
             <div className="session-await-problem">
               <p>{problem}</p>
-              {!shared && (
+              {!shared && !story?.frozen && (
                 <button onClick={() => void retry()} disabled={retrying}>
                   {retrying ? "Retrying…" : "Retry"}
                 </button>
@@ -190,7 +191,7 @@ export function SessionView({
                   ? "Not available yet."
                   : working
                     ? `Creating ${mode === "gallery" ? "map" : "story"}…`
-                    : shared
+                    : shared || story.frozen
                       ? "Nothing here yet."
                       : "Add sources or connect a session to begin."}
             </p>

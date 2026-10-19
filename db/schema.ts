@@ -15,6 +15,7 @@ export const devices = sqliteTable("devices", {
   createdAt: text("created_at").notNull(),
 });
 export const collections = sqliteTable("collections", {
+  frozenAt: text("frozen_at"),
   favorite: integer("favorite", { mode: "boolean" }).notNull().default(false),
   deletedAt: text("deleted_at"),
   id: text("id").primaryKey(),

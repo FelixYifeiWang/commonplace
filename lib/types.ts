@@ -19,6 +19,7 @@ export type SessionState =
   | "error"
   | "revoked";
 export type Collection = {
+  frozenAt?: string | null;
   favorite?: boolean;
   id: string;
   name: string;

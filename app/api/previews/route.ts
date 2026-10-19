@@ -1,6 +1,6 @@
 import { getDb } from "@/db";
-import { items } from "@/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { items, collections } from "@/db/schema";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import {
   userRequired,
   jsonBody,
@@ -25,11 +25,18 @@ export async function POST(request: Request) {
     )
       throw new HttpError(400, "Choose up to four blocks.");
     const rows = await db
-      .select()
+      .select({ item: items })
       .from(items)
-      .where(and(eq(items.ownerId, user.userId), inArray(items.id, body.ids)));
+      .innerJoin(collections, eq(items.collectionId, collections.id))
+      .where(
+        and(
+          eq(items.ownerId, user.userId),
+          inArray(items.id, body.ids),
+          isNull(collections.frozenAt),
+        ),
+      );
     await Promise.all(
-      rows.map(async (item) => {
+      rows.map(async ({ item }) => {
         if (!item.url || item.deletedAt || !needsPreview(item)) return;
         let data;
         try {
