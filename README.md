@@ -28,7 +28,7 @@ Collections, manual blocks, source passages, account sign-in, revocable connecti
 
 ## Unfinished
 
-Images pasted into a Claude Code or Codex session become your own image items. When Claude publishes an artifact from a local HTML file, Nox renders that file in an isolated window and saves the capture as the picture of the artifact's link; a claude.ai link never shows Claude's generic cover or a sign-in page. Update Nox by running the setup or connect prompt again. Other screenshots of local websites are not imported yet. The model reads text and media metadata, not image pixels.
+Images pasted into a Claude Code or Codex session become your own image items. When Claude publishes an artifact from a local HTML file, Nox renders that file in an isolated window and saves the capture as the picture of the artifact's link; a claude.ai link never shows Claude's generic cover or a sign-in page. Nox updates itself: it checks for a new release shortly after launch and every six hours, verifies every file, and restarts on it when idle. A release that changes the Electron runtime still needs the setup prompt. Other screenshots of local websites are not imported yet. The model reads text and media metadata, not image pixels.
 
 The example collection is sample content, not a live extraction. Clicking Nox to identify an open window currently supports Codex and Claude Code in the Claude desktop app. Inactive sidebar rows must be opened first. The setup-prompt route supports local Codex, Claude Code and Cursor JSONL transcripts; see `COMPATIBILITY.md`. Map nodes can be moved, but their text and relationships are generated. There is no signed desktop installer yet.
 

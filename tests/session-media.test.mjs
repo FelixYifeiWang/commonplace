@@ -50,6 +50,32 @@ test("an image pasted in Claude Code becomes the human's own picture, with the w
   });
 });
 
+test("the words saved with an image are the human's, not notes the agent app added", () => {
+  const [event] = read([
+    {
+      type: "user",
+      uuid: "u3",
+      message: {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: { type: "base64", media_type: "image/png", data: png64 },
+          },
+          {
+            type: "text",
+            text: "<system-reminder>\nLinked sessions now: idle\n</system-reminder>\nwhen this session is fetched by newron, it shows broken images",
+          },
+        ],
+      },
+    },
+  ]);
+  assert.equal(
+    event.context,
+    "when this session is fetched by newron, it shows broken images",
+  );
+});
+
 test("an image sent while the assistant was working is read too", () => {
   const events = read([
     {
