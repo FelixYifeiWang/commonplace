@@ -8775,6 +8775,10 @@ a[href].gm-detail.gm-commit b::after {
 .gm-curated .gm-stage::after {
   content: none;
 }
+/* The mockup's map buttons keep the browser's own letter-spacing; Tailwind's reset would inherit the page's. */
+.gm-curated button {
+  letter-spacing: normal;
+}
 .gm-curated .gm-world .gm-bubble {
   font-size: 14.5px;
   line-height: 1.35;
