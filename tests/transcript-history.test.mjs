@@ -214,67 +214,73 @@ test("pasted pictures beyond the upload batch are retried before old history is 
   assert.ok(args.subscription.historyVersions[old]);
 });
 
-test("one-time imports finish only after all pasted images are acknowledged", async (t) => {
-  const root = await fixture(t),
-    file = join(root, "once.jsonl");
-  await writeFile(
-    file,
-    Array.from({ length: 10 }, (_, i) =>
-      JSON.stringify({
-        uuid: `once-${i}`,
-        type: "user",
-        message: {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: "image/png",
-                data: Buffer.from(`image-${i}`).toString("base64"),
+for (const folder of [false, true])
+  test(`one-time ${folder ? "project" : "session"} imports finish only after all pasted images are acknowledged`, async (t) => {
+    const root = await fixture(t),
+      file = join(root, "once.jsonl");
+    await writeFile(
+      file,
+      Array.from({ length: 10 }, (_, i) =>
+        JSON.stringify({
+          uuid: `once-${i}`,
+          type: "user",
+          message: {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: "image/png",
+                  data: Buffer.from(`image-${i}`).toString("base64"),
+                },
               },
-            },
-            { type: "text", text: `Picture ${i}` },
-          ],
-        },
-      }),
-    ).join("\n"),
-  );
-  let completed = false;
-  const uploaded = new Set();
-  const args = {
-    connection: { origin: "https://example.test", token: "t" },
-    subscription: { id: "s", file, mode: "once" },
-    cursors: {},
-    media: {},
-    resolveTranscript: async () => ({ file, files: [file] }),
-    request: async (url, options) => {
-      const body = JSON.parse(options.body);
-      if (url.endsWith("/media")) {
-        uploaded.add(body.data);
+              { type: "text", text: `Picture ${i}` },
+            ],
+          },
+        }),
+      ).join("\n"),
+    );
+    let completed = false;
+    const uploaded = new Set();
+    const args = {
+      connection: { origin: "https://example.test", token: "t" },
+      subscription: {
+        id: "s",
+        file: folder ? root : file,
+        folder,
+        mode: "once",
+      },
+      cursors: {},
+      media: {},
+      resolveTranscript: async () => ({ file, files: [file] }),
+      request: async (url, options) => {
+        const body = JSON.parse(options.body);
+        if (url.endsWith("/media")) {
+          uploaded.add(body.data);
+          return Response.json({ ok: true });
+        }
+        if (completed)
+          return Response.json(
+            { error: "This import is complete." },
+            { status: 409 },
+          );
+        if (body.complete) {
+          assert.equal(
+            uploaded.size,
+            10,
+            "completion must follow media acknowledgement",
+          );
+          completed = true;
+        }
         return Response.json({ ok: true });
-      }
-      if (completed)
-        return Response.json(
-          { error: "This import is complete." },
-          { status: 409 },
-        );
-      if (body.complete) {
-        assert.equal(
-          uploaded.size,
-          10,
-          "completion must follow media acknowledgement",
-        );
-        completed = true;
-      }
-      return Response.json({ ok: true });
-    },
-  };
-  await syncTranscript(args);
-  assert.equal(completed, false);
-  assert.equal(args.subscription.historyRemaining, true);
-  await syncTranscript(args);
-  assert.equal(uploaded.size, 10);
-  assert.equal(completed, true);
-  assert.equal(args.subscription.historyRemaining, false);
-});
+      },
+    };
+    await syncTranscript(args);
+    assert.equal(completed, false);
+    assert.equal(args.subscription.historyRemaining, true);
+    await syncTranscript(args);
+    assert.equal(uploaded.size, 10);
+    assert.equal(completed, true);
+    assert.equal(args.subscription.historyRemaining, false);
+  });

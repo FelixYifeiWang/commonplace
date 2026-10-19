@@ -418,8 +418,6 @@ export async function syncTranscript({
   // Persist the new path only after the server has acknowledged its contents.
   Object.assign(subscription, source);
   if (subscription.folder) {
-    // Remember which transcripts were read only after every batch is acknowledged.
-    subscription.versions = versions;
     total = Object.values(versions).reduce((n, v) => n + v.turns, 0);
   }
   const mediaResult = media
@@ -439,8 +437,11 @@ export async function syncTranscript({
     !mediaResult.pendingPasted
   )
     await sendBatch(true, true);
-  if (!subscription.folder && !mediaResult.pendingPasted)
-    subscription.historyVersions = historyVersions;
+  // Revisit either kind of transcript until its remaining pictures are stored.
+  if (!mediaResult.pendingPasted) {
+    if (subscription.folder) subscription.versions = versions;
+    else subscription.historyVersions = historyVersions;
+  }
   subscription.responseBoundary = boundary.snapshot();
   subscription.artifacts = [...found.artifacts.values()];
   subscription.historyRemaining = historyRemaining || mediaResult.pendingPasted;
