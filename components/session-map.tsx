@@ -90,6 +90,8 @@ export function SessionMap({
   // the Story mockup's.
   const curated = !!doc.curated;
   const detailLimit = curated ? 5 : 3;
+  // Guided, a link is framed before it opens; in a curated map it opens at once, as in the mockup.
+  const focusFirst = guided && !curated;
   const nodes: MapNode[] = map.nodes.slice(0, 6);
   // Lines a story canvas already shows are not shown again on a tile; the tile shows its name instead.
   const shown = useMemo(
@@ -730,7 +732,7 @@ export function SessionMap({
           <svg className="gm-lines" ref={svgRef} aria-hidden="true" />
           <Target
             url={center.url}
-            focusFirst={guided && focusedKey !== "core"}
+            focusFirst={focusFirst && focusedKey !== "core"}
             className="gm-core"
             dataKey="core"
             label={center.label}
@@ -744,7 +746,9 @@ export function SessionMap({
             <span className="gm-lbl">
               <b>
                 {center.label}
-                {center.url && (!guided || focusedKey === "core") ? " ↗" : ""}
+                {center.url && (!focusFirst || focusedKey === "core")
+                  ? " ↗"
+                  : ""}
               </b>
               Session output
             </span>
@@ -753,7 +757,7 @@ export function SessionMap({
             <Fragment key={`${i}-${n.label}`}>
               <Target
                 url={urlOf(n.url, n.itemId)}
-                focusFirst={guided && focusedKey !== `m${i}`}
+                focusFirst={focusFirst && focusedKey !== `m${i}`}
                 className={`gm-tile w-${n.weight}`}
                 dataKey={`m${i}`}
                 node={i}
@@ -769,7 +773,7 @@ export function SessionMap({
               </Target>
               <Target
                 url={urlOf(n.url, n.itemId)}
-                focusFirst={guided && focusedKey !== `b${i}`}
+                focusFirst={focusFirst && focusedKey !== `b${i}`}
                 className="gm-bubble"
                 dataKey={`b${i}`}
                 node={i}
@@ -792,7 +796,7 @@ export function SessionMap({
                   <Target
                     key={j}
                     url={urlOf(d.url, d.itemId)}
-                    focusFirst={guided && focusedKey !== `d${i}.${j}`}
+                    focusFirst={focusFirst && focusedKey !== `d${i}.${j}`}
                     className={`gm-detail${picture || still ? " has-pic" : ""}${d.commit ? " gm-commit" : ""}`}
                     dataKey={`d${i}.${j}`}
                     node={i}
