@@ -1057,3 +1057,52 @@ test("expired collection cleanup removes only expired owned data and invalidates
     sqlite.close();
   }
 });
+
+test("reconnecting a demo session brings its collection back from Trash, curated again", async () => {
+  const { createCollectionTrash } = await import("../lib/collection-trash.mjs");
+  const { sqlite, db, store, advance } = fixture();
+  const curated = normalizeCuratedSession(
+    JSON.parse(readFileSync("examples/newron-story.json", "utf8")),
+  );
+  const state = () =>
+    sqlite.prepare("SELECT state FROM sessions WHERE id='main'").get().state;
+  try {
+    sqlite
+      .prepare(
+        "INSERT INTO collections(id,owner_id,name,created_at) VALUES('session-main','u','Newron','2026-10-19')",
+      )
+      .run();
+    sqlite
+      .prepare(
+        "INSERT INTO sessions(id,owner_id,collection_id,title,provider,external_id,state,token_hash,created_at) VALUES('main','u','session-main','neuron','Claude Code','763053fe','following','hash','2026-10-19')",
+      )
+      .run();
+    assert.equal(await store.save("session-main", "u", curated), true);
+    const trash = createCollectionTrash(db);
+    // Delete moves it to Trash and pauses the session.
+    assert.equal(await trash.remove("u", "session-main"), true);
+    assert.equal(state(), "paused");
+    assert.equal(await store.get("session-main", "u"), null);
+    // What POST /api/subscribe now does for a demo session: restore, resume, save the curated document again.
+    advance(1000);
+    assert.equal(await trash.restore("u", "session-main"), true);
+    sqlite
+      .prepare(
+        "UPDATE sessions SET mode='follow',state='reading' WHERE id='main'",
+      )
+      .run();
+    assert.equal(state(), "reading");
+    assert.equal(await store.save("session-main", "u", curated), true);
+    const story = await store.get("session-main", "u");
+    assert.deepEqual(story.session, curated);
+    assert.equal(story.pending, false);
+    assert.equal(
+      sqlite
+        .prepare("SELECT name FROM collections WHERE id='session-main'")
+        .get().name,
+      "Newron",
+    );
+  } finally {
+    sqlite.close();
+  }
+});

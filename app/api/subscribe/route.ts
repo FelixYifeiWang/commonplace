@@ -60,7 +60,18 @@ export async function POST(request: Request) {
         .from(collections)
         .where(eq(collections.id, existing.collectionId));
       if (!collection) throw new HttpError(404, "Collection not found.");
-      if (collection.deletedAt)
+      // Demo video only: connecting a demo session again brings its collection back from Trash.
+      if (
+        collection.deletedAt &&
+        !(
+          DEMO_SESSIONS[body.sessionId] &&
+          body.mode === "follow" &&
+          (await createCollectionTrash(env.DB).restore(
+            existing.ownerId,
+            collection.id,
+          ))
+        )
+      )
         throw new HttpError(
           409,
           "Restore this collection from Trash before reconnecting.",
