@@ -245,3 +245,28 @@ test("one-time artifact upload retries preserve successful pasted pictures", asy
   assert.equal(media().filter((m) => m.kind === "artifact").length, 1);
   assert.equal(calls.at(-1).body.complete, true);
 });
+
+test("lost final media acknowledgement settles on retry without uploading pictures again", async (t) => {
+  const { args, calls } = await fixture(t);
+  args.subscription.mode = "once";
+  const request = args.request;
+  let complete = false;
+  args.request = async (url, opts) => {
+    if (complete)
+      return Response.json({ code: "IMPORT_COMPLETE" }, { status: 409 });
+    if (JSON.parse(opts.body).complete) {
+      complete = true;
+      throw new Error("Lost final acknowledgement");
+    }
+    return request(url, opts);
+  };
+  await assert.rejects(syncTranscript(args), /Lost final acknowledgement/);
+  const before = calls.filter((c) => c.path === "/api/capture/media").length;
+  assert.ok(before > 0);
+  const result = await syncTranscript(args);
+  assert.equal(result.completed, true);
+  assert.equal(
+    calls.filter((c) => c.path === "/api/capture/media").length,
+    before,
+  );
+});
