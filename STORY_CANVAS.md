@@ -295,6 +295,8 @@ A Story and Map can be written by hand for one collection, for example to show a
 - **Checked strictly:** `normalizeCuratedSession` in `lib/story.mjs` accepts known fields only, bounds every text, and returns the stored shape with every optional field filled. The model's schema is unchanged, so generated sessions never use these forms.
 - **Pictures:** static files under `public/story/<name>/`, listed in the document's `pictures` with their fit (page, ink or object) and, for Map tiles, their shape and focus. Every picture reference in the document must name one of them.
 
+- **Looks exactly like its mockup:** a curated collection is shown with the Story mockup's measurements, not the app's defaults: a 1160px Story column that starts right under the header, Geist for the Story and Map (DM Sans stays on the header and the Map's toolbar), the darker dot field, no rise-in, and a 1400px Map that fills the window under the header with no edge fade. The Map opens guided, with the Guided/Free toolbar, and its guided camera is the mockup's: the overview is the fitted map, a node is framed with its bubble and details at up to 2.6× the fit, one detail at 2.8×, gliding over 0.6 s; the chosen widget doesn't lift, and everything else, the center too, steps back to the same faintness.
+
 A curated step's canvas follows the same rules as any other, in one pattern: pictures fill it, a short caption sits under each, and the human's own words sit in one line at the foot ("I said"), in the same place on every canvas.
 
 | Layout | What it draws |

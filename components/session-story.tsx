@@ -97,7 +97,11 @@ export function SessionStory({
     };
   }, [stepKeys]);
   return (
-    <div className="sv sv-rise" ref={root}>
+    // A curated Story is still, as its mockup is; any other Story rises in step by step.
+    <div
+      className={document.curated ? "sv sv-curated" : "sv sv-rise"}
+      ref={root}
+    >
       <div className="sv-dots" aria-hidden="true" />
       {document.steps.map((step, i) => (
         <article className="sv-step" key={`${i}-${step.title}`}>

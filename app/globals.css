@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Instrument+Serif:ital@0;1&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Geist:wght@300..600&family=Instrument+Serif:ital@0;1&display=swap");
 @import "tailwindcss";
 :root {
   --paper: #ffffff;
@@ -8718,5 +8718,121 @@ a[href].gm-detail.gm-commit b::after {
     bottom: 10px;
     transform: translateX(-50%);
     max-width: calc(100% - 40px);
+  }
+}
+
+/* ---------- Curated documents look exactly like their mockup (STORY_CANVAS.md, "Curated documents") ---------- */
+/* Values measured from the Story mockup at 1440 × 900: Geist for the content, DM Sans for the bars, a 1160px
+   Story column, a 1400px Map that fills the window under the header, and the guided Map's toolbar. */
+.workspace:has(.session-curated) .minimal-header {
+  padding-top: 34px;
+  padding-bottom: 30px;
+}
+.workspace:has(.session-curated) .minimal-header .pill-nav {
+  top: calc(50% + 2px);
+}
+.workspace:has(.session-curated) .open-buddy {
+  color: #8e8e8a;
+}
+.session-curated > .session-feedback {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+  min-height: 0;
+  padding: 0;
+}
+.workspace main:has(.session-curated.session-story) {
+  padding-top: 0;
+  padding-bottom: 64px;
+}
+.workspace main.map-main:has(.session-curated) {
+  padding-inline: 16px;
+}
+.session-curated > .sv > .sv-step {
+  animation: none;
+}
+.sv.sv-curated,
+.gm.gm-curated {
+  font-family: "Geist", "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+}
+.sv.sv-curated {
+  --sv-dot: #d2d2ce;
+  max-width: 1160px;
+  margin-inline: auto;
+}
+.sv-curated .sv-dots {
+  left: max(0px, calc((100vw - 1160px) / 2 - 80px));
+}
+.gm.gm-curated .gm-stage {
+  height: calc(100svh - 98px);
+  min-height: 380px;
+}
+.gm-curated .gm-stage::after {
+  content: none;
+}
+.gm-curated .gm-world .gm-bubble {
+  font-size: 14.5px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+.gm-curated .gm-world .gm-detail {
+  font-size: 12px;
+  line-height: 1.3;
+}
+.gm-curated .gm-say:not(.gm-fixes) {
+  width: calc(var(--h) * 1.15);
+}
+.gm-curated .gm-say {
+  height: var(--h);
+  min-height: 0;
+}
+.gm-curated .gm-toolbar {
+  font-family: var(--sans);
+}
+/* The guided map as in the mockup: its glide, no lift on the chosen widget, everything else (the center too) steps
+   back to the same faintness, hover outlines as in the free map, and the grab cursor on tiles. */
+.gm-curated.gm-guided .gm-world.glide {
+  transition: transform 0.6s cubic-bezier(0.3, 0, 0.1, 1);
+}
+.gm-curated.gm-guided .gm-world :is(.gm-core, .gm-tile, .gm-bubble) {
+  transition: opacity 0.4s;
+}
+.gm-curated.gm-guided .gm-world .gm-detail {
+  transition: opacity 0.8s cubic-bezier(0.6, 0, 0.2, 1);
+}
+.gm-curated.gm-guided .gm-world .gm-focused {
+  transform: translateX(-50%);
+  filter: none;
+  z-index: auto;
+}
+.gm-curated.gm-guided .gm-world[data-focus] .gm-core,
+.gm-curated.gm-guided .gm-world[data-focus] .gm-core:hover {
+  opacity: 0.16;
+}
+.gm-curated.gm-guided .gm-world[data-focus] .gm-lines path.is-current {
+  stroke: var(--gm-line);
+}
+.gm-curated.gm-guided .gm-world :is(.gm-tile, .gm-bubble, .gm-detail) {
+  cursor: grab;
+}
+.gm-curated .gm-core:hover .gm-box {
+  box-shadow: inset 0 0 0 1px var(--gm-ink);
+}
+.gm-curated .gm-tile:hover .gm-sheet i:nth-child(1)::before,
+.gm-curated .gm-detail.has-pic:hover .gm-sheet i:nth-child(1)::before,
+.gm-curated .gm-detail:not(.has-pic):hover > .gm-sheet i:nth-child(1)::before {
+  box-shadow: inset 0 0 0 1.5px var(--gm-ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gm-curated.gm-guided .gm-world.glide,
+  .gm-curated.gm-guided
+    .gm-world
+    :is(.gm-core, .gm-tile, .gm-bubble, .gm-detail) {
+    transition: none;
   }
 }

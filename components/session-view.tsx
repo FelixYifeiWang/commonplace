@@ -112,9 +112,11 @@ export function SessionView({
     mode === "gallery"
       ? !!session?.map?.nodes?.length
       : !!session?.steps.length || !!story?.beats.length;
+  // A curated document is shown exactly as its mockup: its own page width, type and the guided Map.
+  const curated = !!session?.curated;
   return (
     <section
-      className={`session-view session-${mode}${hasView ? "" : " session-waiting"}`}
+      className={`session-view session-${mode}${hasView ? "" : " session-waiting"}${curated ? " session-curated" : ""}`}
       aria-label={mode === "gallery" ? "Collection map" : "Collection story"}
     >
       <div className="session-feedback" aria-live="polite">
@@ -153,7 +155,7 @@ export function SessionView({
         ) : null}
       </div>
       {session && mode === "gallery" && session.map?.nodes?.length ? (
-        devMode ? (
+        devMode || curated ? (
           <DevSessionMap doc={session} items={items} />
         ) : (
           <SessionMap doc={session} items={items} />

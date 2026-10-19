@@ -18,7 +18,7 @@ import type {
 import Image from "next/image";
 import { SheetMedia } from "./sheet-media";
 import { ArrowLeft, ArrowRight, Move, Scan } from "lucide-react";
-import { guidedBounds, guidedCamera } from "@/lib/guided-map.mjs";
+import { guidedBounds, guidedCamera, mockupCamera } from "@/lib/guided-map.mjs";
 // The Map tab: do's session map, curated by the model (STORY_CANVAS.md, "Map").
 const screenshots = true;
 const LEVELS = ["Overview", "Details", "Messages"];
@@ -86,8 +86,10 @@ export function SessionMap({
     () => visibleSessionMap(doc.map, items, Object.keys(pictures)),
     [doc.map, items, pictures],
   );
-  // A curated map shows up to five details a tile, as written; the model's maps keep three.
-  const detailLimit = doc.curated ? 5 : 3;
+  // A curated map shows up to five details a tile, as written; the model's maps keep three. Its guided camera is
+  // the Story mockup's.
+  const curated = !!doc.curated;
+  const detailLimit = curated ? 5 : 3;
   const nodes: MapNode[] = map.nodes.slice(0, 6);
   // Lines a story canvas already shows are not shown again on a tile; the tile shows its name instead.
   const shown = useMemo(
@@ -356,14 +358,44 @@ export function SessionMap({
         index < 0 ? !w.det : w.node === index,
       );
       if (key && W[key]) group = [W[key]];
-      const camera = guidedCamera(guidedBounds(group), {
-        width: stage!.clientWidth,
-        height: stage!.clientHeight,
-      });
       if (animate) startGlide();
-      z = camera.scale;
-      px = camera.x - stage!.clientWidth / 2 + cx0 * z;
-      py = camera.y - (stage!.clientHeight - 60) / 2 + cy0 * z;
+      if (curated) {
+        // The overview is the fitted map; a node is framed with its bubble and details; one widget is shown close.
+        const target =
+          index < 0 && !key
+            ? { x: cx0, y: cy0, scale: fit }
+            : key && W[key] && !key.startsWith("m")
+              ? { ...center(W[key]), scale: fit * 2.8 }
+              : mockupCamera(
+                  group
+                    .filter((w) => w.w)
+                    .map((w) => {
+                      const p = at(w);
+                      return {
+                        l: p.x - w.w / 2,
+                        r: p.x + w.w / 2,
+                        t: p.y - w.cy,
+                        b: p.y - w.cy + w.h,
+                      };
+                    }),
+                  {
+                    fit,
+                    width: stage!.clientWidth,
+                    height: stage!.clientHeight,
+                  },
+                );
+        z = target.scale;
+        px = -(target.x - cx0) * z;
+        py = -(target.y - cy0) * z;
+      } else {
+        const camera = guidedCamera(guidedBounds(group), {
+          width: stage!.clientWidth,
+          height: stage!.clientHeight,
+        });
+        z = camera.scale;
+        px = camera.x - stage!.clientWidth / 2 + cx0 * z;
+        py = camera.y - (stage!.clientHeight - 60) / 2 + cy0 * z;
+      }
       view();
       draw(false);
     }
@@ -540,6 +572,12 @@ export function SessionMap({
           draw(false);
           return;
         }
+        // A curated map goes back to its overview, as the mockup does.
+        if (curated) {
+          guidedFocus.current = null;
+          guidedFrame();
+          return;
+        }
         // A round trip without navigation keeps the exact same branch framing.
         if (
           freeStart &&
@@ -642,7 +680,7 @@ export function SessionMap({
       resize.disconnect();
       engine.current = null;
     };
-  }, [docKey, mediaKey]);
+  }, [docKey, mediaKey, curated]);
   useEffect(() => {
     modeRef.current = guided;
     engine.current?.setMode(guided);
@@ -650,7 +688,7 @@ export function SessionMap({
   const { center } = map;
   return (
     <section
-      className={`gm${guided ? " gm-guided" : ""}`}
+      className={`gm${guided ? " gm-guided" : ""}${doc.curated ? " gm-curated" : ""}`}
       aria-label={guided ? "Guided session map" : "Session map"}
     >
       <div
@@ -735,7 +773,12 @@ export function SessionMap({
                 className="gm-bubble"
                 dataKey={`b${i}`}
                 node={i}
-                onActivate={() => engine.current?.focusOn(`b${i}`)}
+                // In a curated map a summary frames its whole node, as the mockup's does.
+                onActivate={() =>
+                  curated
+                    ? engine.current?.focusNode(i)
+                    : engine.current?.focusOn(`b${i}`)
+                }
               >
                 <Sheet />
                 <span className="gm-t">{soft(n.summary)}</span>
