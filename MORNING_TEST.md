@@ -4,7 +4,7 @@ Open [Newron](https://newron.app). Use Vercel for testing unless local testing i
 
 1. Sign in with Google. A new account starts with an empty space. If you previously used the access code in this browser, choose **Open existing space** to retain its collections and Nox connections.
 2. **All collections** opens the overview. Hover a collection to delete it. **Undo** restores it but leaves capture disconnected.
-3. Open a collection. **Gallery** shows saved media, **Map** connects sources, and **Story** explains decisions. Gallery is the default. All three views use the same collection.
+3. Open a collection. **Map** connects sources and **Story** explains decisions. Map is the default. Dev mode (**Cmd/Ctrl+Shift+G**) adds **Gallery**, which shows saved media. All views use the same collection.
 4. Use **Set up Nox** from the hosted app. The setup prompt installs and pairs without collecting the setup conversation. Open a meaningful conversation, move Nox over it, click it, then choose **Connect**.
 5. Keep Nox running. New turns appear automatically. Map and Story update in the background. An error preserves the last good view and offers Retry.
 

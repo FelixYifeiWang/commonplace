@@ -2,7 +2,7 @@
 
 Design rules for the canvas beside each Story step. Every canvas is the same size: a soft grey sheet with nothing boxed inside it, filled without cutting anything important off. Mockup: https://claude.ai/artifact/PkxxssFTMZtnyjsktQMNM4
 
-## How a story and gallery get made
+## How a story and map get made
 
 The first mockup was curated by hand: I extracted the transcripts, picked the decisions and quotes, captured and cropped the pictures, and cut out their backgrounds. Each step of that work is listed here with the code that now does it, so any future session gets the same result without a person in the loop.
 
@@ -13,12 +13,12 @@ The first mockup was curated by hand: I extracted the transcripts, picked the de
 | 3. Capture references | Every URL mentioned becomes an item with a page screenshot | `app/api/capture`, `desktop/screenshot-worker.mjs` | Existed |
 | 4. Capture what was built | Artifacts Claude publishes are rendered from their local HTML by Nox and become the picture of their link; public pages get server screenshots | `desktop/media-tools.mjs`; hosted screenshots | Built for artifacts; shipped URLs on phone size still open |
 | 5. Fit every picture | Classify as page, object or ink; store the edge colour and trim box; make the cut-out for objects. Website captures are always pages | `lib/image-fit.mjs` (`classifyImage`, `cutOut`), run once in the screenshot worker | Library built; wiring after the merge |
-| 6. Write the story and gallery | One call (about 20 s) returns the whole story and gallery, revising the current version. IDs, URLs, fonts and quotes are checked against the session. A rejected answer is retried once, and the retry names the rule it broke | `prepareSessionBatch`, `generateSession`, `validateSession` | Built |
-| 7. Store them | Save the whole story and gallery on each run; earlier versions are replaced, not appended. The local and hosted workers both call it | `completeSession` in `lib/story-store.mjs`, migration 0007 (`stories.session_json`) | Built |
-| 8. Render | Story steps and the Gallery, following the rules in this file | `components/session-view.tsx` (data, status, Retry) with `components/session-story.tsx` and `components/session-map.tsx` | Built (light mode; dark mode comes with the shared shell) |
+| 6. Write the story and map | One call (about 20 s) returns the whole story and map, revising the current version. IDs, URLs, fonts and quotes are checked against the session. A rejected answer is retried once, and the retry names the rule it broke | `prepareSessionBatch`, `generateSession`, `validateSession` | Built |
+| 7. Store them | Save the whole story and map on each run; earlier versions are replaced, not appended. The local and hosted workers both call it | `completeSession` in `lib/story-store.mjs`, migration 0007 (`stories.session_json`) | Built |
+| 8. Render | Story steps and the Map, following the rules in this file | `components/session-view.tsx` (data, status, Retry) with `components/session-story.tsx` and `components/session-map.tsx` | Built (light mode; dark mode comes with the shared shell) |
 
 The model never sees the pictures, so it cannot crop to a subject. The rules make up for that:
-- **Fonts:** a typography node names its font and a sample, and the gallery renders a live specimen.
+- **Fonts:** a typography node names its font and a sample, and the map renders a live specimen.
 - **Mixed pictures:** if no picture shows only the subject, the model leaves it out rather than showing something confusing.
 - **Trimming:** the renderer trims to the content box from step 5.
 
@@ -70,14 +70,14 @@ Text inside the canvas scales with its width (container units) and never drops b
 
 ### One sheet everywhere
 
-The Story canvas and every Gallery tile use the same sheet component: a rounded grey shape with a hairline rim at the top that blurs gently toward the bottom. Size settings scale it: the corner radius, the blur, and how far the soft edge reaches. A tile is a small canvas, with the same image rules: ink blends in, objects sit on the sheet, and pages are inset with rounded corners.
+The Story canvas and every Map tile use the same sheet component: a rounded grey shape with a hairline rim at the top that blurs gently toward the bottom. Size settings scale it: the corner radius, the blur, and how far the soft edge reaches. A tile is a small canvas, with the same image rules: ink blends in, objects sit on the sheet, and pages are inset with rounded corners.
 
 ### Text and measuring
 
 - **Wrapping:** text wraps only at spaces and after `/`, `-` and `_`. The renderer inserts break points after those characters, and breaks inside a word only when nothing else fits.
 - **Measuring:** every box is measured at the size it will render (fixed widths, not "shrink to fit") before layout runs. Otherwise the collision pass spaces the wrong boxes.
-- **Dot field:** the faint dot grid sits behind the Gallery and behind each Story step's words.
-  - In the Gallery it is fixed to the stage. Panning and dragging leave it still; zooming only changes its spacing.
+- **Dot field:** the faint dot grid sits behind the Map and behind each Story step's words.
+  - In the Map it is fixed to the stage. Panning and dragging leave it still; zooming only changes its spacing.
 
 ### Only necessary images
 
@@ -244,16 +244,16 @@ Canvas: padding 28, header 32, gap 14, body 944 × 460. The body is always a **m
 
 For a result that isn't visual (a library, a command-line tool, an API): the main frame shows the README's first screen or a terminal session, and the side column shows the version, the install command and the test results.
 
-## Gallery
+## Map
 
-The Gallery is not the Story. It keeps what is worth reusing from the session: the look and the rules behind it, key components, references and what was liked about each, principles, and strong choices. Layout follows do's Session Map.
+The Map is not the Story. It keeps what is worth reusing from the session: the look and the rules behind it, key components, references and what was liked about each, principles, and strong choices. Layout follows do's Session Map.
 
 - **Center:** no node repeats it. do's design, unchanged: a white box with a hairline border and the dot ring, with the output's name and "Session output" underneath. It links out when it has a URL. It does not use the sheet.
 - **Main nodes:** up to six, evenly spaced around the center. Each is a tile sized by weight: about 196px tall for "major" (at most two), 128px for "normal", 92px for "minor". A tile shows its picture, or the node's quote when it has none.
 - **Tile text:** a node with no picture shows its quote, growing to fit it (at most six lines). If a story canvas already shows that line, the tile shows the node's label in display type instead, so the two views never show the same line.
 - **Summary bubble:** beside each tile on its outer side, shown by default. It holds the one-line summary and the node's name, but no kind or category label.
 - **Details:** 1–3 per node. When you zoom in they fade in together with the line that leads to them, on the same timing, without scaling, inside the node's own slice of the map. A detail with a picture is a small tile; one without is an outlined label. The human's quote appears under each detail at the closest zoom.
-- **Item grid:** a collection has two views, Gallery and Story. The Gallery shows the item grid until a map exists; Cmd/Ctrl+Shift+G switches the Gallery between the map and the grid, where items are added and removed.
+- **Item grid:** a collection has two views, Map and Story. Cmd/Ctrl+Shift+G turns on Dev mode, which adds Gallery, the item grid where items are added and removed.
 - **Links:** a reference node or detail opens its site in a new tab. Nothing opens a pop-up. There is no filter column and no link to the Story.
 - **Interaction:**
   - Scroll or pinch zooms around the pointer.
@@ -299,11 +299,11 @@ Each piece of feedback was turned into a general rule, so it holds for any sessi
 | "template" was confusing | Internal names are plain words: each step has a layout (choice, reference, before-after, detour, words, none), and readers never see it | Schema; validator |
 | "4 fixes after launch" | Name each thing; never counts or vague summaries | Prompt; validator rejects aggregate text |
 | "Change log · sketch → shipped" labels | Labels name content, never the format: no layout names, layout arrows or meta words | Prompt; validator rejects format words |
-| Too many words | Titles 2–7 words, step text about 15–45 words, gallery summaries one line, details a few words | Prompt; validator word limits |
+| Too many words | Titles 2–7 words, step text about 15–45 words, map summaries one line, details a few words | Prompt; validator word limits |
 | Tone should be mine | Write in the human's voice, vocabulary and casing, in both views | Prompt |
 | "too fancy" landed on the wrong reference | Every claim must be backed by evidence about the same subject; each step quotes the conversation itself | Prompt; validator requires conversation evidence |
 | Peer review was not that important | Other people's suggestions count only if the human adopted them and they changed the direction; routine review is not a step | Prompt |
-| Gallery repeated the Story | The two views do different jobs; the gallery keeps reusable things, not events | Prompt; validator rejects gallery text that repeats a step |
+| Map repeated the Story | The two views do different jobs; the map keeps reusable things, not events | Prompt; validator rejects map text that repeats a step |
 | Three windows at a glance | Each node is a different subject; merge duplicates into one node and its details | Prompt |
 | The font node showed a window | A picture shows only its own subject and is used once | Prompt; validator rejects a reused picture |
 | Every node looked equally important | Nodes carry a weight; at most two are major; the renderer sizes by weight | Prompt; validator caps major nodes; renderer |
@@ -323,7 +323,7 @@ Each piece of feedback was turned into a general rule, so it holds for any sessi
 | A reference without a link was missed ("like X's left bar") | A reference can be named without a link | Prompt |
 | The retry repeated the same mistake | The retry tells the model which rule the first answer broke | `lib/story-provider.mjs` |
 | Codex wrappers hid the request | Strip app wrappers and keep the request inside | `cleanSessionText` in `lib/story.mjs` |
-| Gallery and story showed the same line | The renderer swaps the tile's quote for its label; the model is only asked to prefer another line (a hard rule made runs fail) | Prompt; renderer |
+| Map and story showed the same line | The renderer swaps the tile's quote for its label; the model is only asked to prefer another line (a hard rule made runs fail) | Prompt; renderer |
 | Detail lines stopped short at mid zoom | Lines end on the always-visible part of their target, measured live | Renderer |
 | The text-only canvas was confusing; one line was too narrow | The canvas shows what happened in the shape that fits the step (flow, change, spec, line, number), readable without the paragraph | Schema; prompt; validator; renderer |
 | A whole answer was discarded for one small slip | Code repairs what it can fix without guessing (a reused picture, extra major nodes, a node repeating the center); only invented items, links or quotes are rejected | Validator |

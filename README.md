@@ -8,7 +8,7 @@ See [the morning test guide](MORNING_TEST.md) for controls, verified flows and c
 
 Open [Newron](https://newron.app) and sign in with Google. Choose Set up Nox to connect this hosted space to your Mac. Open a conversation, move Nox over it, click it, then click Connect. Dragging only moves Nox. Test on Vercel by default; use localhost only when explicitly requested. Local and hosted collections are separate.
 
-The default collection views are **Gallery** (the free map) and **Story**. Press **Cmd/Ctrl+Shift+G** to toggle Dev mode: **Gallery**, **Map**, and **Story**, opening the saved-media grid first. In Dev mode, Map uses a guided camera. Click any node, including a leaf, to focus it. Click a focused URL node again to open its source. Use the arrow keys to explore branches; Escape or Overview returns to the full map. **Free move** inside the bottom control bar restores dragging and zooming; **Guided** switches back. Press the shortcut again to leave Dev mode. Nox only appears on the desktop. Connections are in Settings.
+The default collection views are **Map** and **Story**. Press **Cmd/Ctrl+Shift+G** to toggle Dev mode: **Gallery** (the saved-media grid), **Map**, and **Story**, opening Gallery first. In Dev mode, Map uses a guided camera. Click any node, including a leaf, to focus it. Click a focused URL node again to open its source. Use the arrow keys to explore branches; Escape or Overview returns to the full map. **Free move** inside the bottom control bar restores dragging and zooming; **Guided** switches back. Press the shortcut again to leave Dev mode. Nox only appears on the desktop. Connections are in Settings.
 
 ## Collection links
 
@@ -73,11 +73,11 @@ The `drizzle/0002_yellow_freak.sql` migration separates existing sessions into n
 
 ## Collection stories
 
-Choose a collection, then **Gallery**, **Map** or **Story**. New transcript turns and gallery edits queue a continuation automatically; opening Story is not required. Keep Nox running for subscribed session capture.
+Choose a collection, then **Map** or **Story** (Dev mode adds **Gallery**, the saved-media grid). New transcript turns and gallery edits queue a continuation automatically; opening Story is not required. Keep Nox running for subscribed session capture.
 
 Set `OPENAI_API_KEY` in the ignored `.env.local` file. The local worker reads it for each job and uses `gpt-6-luna` via the OpenAI Responses API with provider storage disabled. The key stays server-side. Session text and media metadata are sent to OpenAI after credential redaction; images themselves are not sent. Reference arrows describe relationships supported by the transcript, rather than inferring visual details from thumbnails.
 
-Migration `0005_lucky_frightful_four.sql` adds durable checkpoints and queue triggers. Migration `0007_session_views.sql` adds the combined Story and Gallery document while retaining legacy moments. New batches receive the current document and its verified evidence. Existing choices and wording are retained unless later input changes them; long histories are condensed to at most five steps. Updates received during generation stay queued. Deleted media disappears without rewriting the narrative or returning during sync. Failed generation preserves the last view and cursor, then waits for Retry or new content rather than retrying endlessly.
+Migration `0005_lucky_frightful_four.sql` adds durable checkpoints and queue triggers. Migration `0007_session_views.sql` adds the combined Story and Map document while retaining legacy moments. New batches receive the current document and its verified evidence. Existing choices and wording are retained unless later input changes them; long histories are condensed to at most five steps. Updates received during generation stay queued. Deleted media disappears without rewriting the narrative or returning during sync. Failed generation preserves the last view and cursor, then waits for Retry or new content rather than retrying endlessly.
 
 Run `node tests/story.integration.mjs` against the local server with a valid key to test real generation, continuation and deletion. It makes paid API requests for its own temporary collection, checks retained context, new decisions and deletion replay, then removes its fixtures.
 

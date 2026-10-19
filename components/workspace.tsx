@@ -635,9 +635,7 @@ export default function Workspace({
                   aria-pressed={view === option}
                   onClick={() => setView(option)}
                 >
-                  {option === "map" && !devMode
-                    ? "Gallery"
-                    : option[0].toUpperCase() + option.slice(1)}
+                  {option[0].toUpperCase() + option.slice(1)}
                 </button>
               ))}
             </div>

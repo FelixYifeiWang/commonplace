@@ -14,7 +14,7 @@ import type { MapNode, SessionDocument } from "@/lib/session-types";
 import { SheetMedia } from "./sheet-media";
 import { ArrowLeft, ArrowRight, Move, Scan } from "lucide-react";
 import { guidedBounds, guidedCamera } from "@/lib/guided-map.mjs";
-// The Gallery tab: do's session map, curated by the model (STORY_CANVAS.md, "Gallery").
+// The Map tab: do's session map, curated by the model (STORY_CANVAS.md, "Map").
 const screenshots = true;
 const LEVELS = ["Overview", "Details", "Messages"];
 const squash = (s: string) =>
@@ -631,7 +631,7 @@ export function SessionMap({
   return (
     <section
       className={`gm${guided ? " gm-guided" : ""}`}
-      aria-label={guided ? "Guided session map" : "Gallery: session map"}
+      aria-label={guided ? "Guided session map" : "Session map"}
     >
       <div
         className="gm-stage"

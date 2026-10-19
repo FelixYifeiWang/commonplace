@@ -136,9 +136,7 @@ export function SharedCollection({
               aria-pressed={view === option}
               onClick={() => setView(option)}
             >
-              {option === "map" && !dev
-                ? "Gallery"
-                : option[0].toUpperCase() + option.slice(1)}
+              {option[0].toUpperCase() + option.slice(1)}
             </button>
           ))}
         </div>
