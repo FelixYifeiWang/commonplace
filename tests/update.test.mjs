@@ -82,11 +82,13 @@ async function fixture(t, { next = {} } = {}) {
     return Buffer.from(published.files[path]);
   };
   // `runtime` is the release Nox is running from: after an update, Nox restarts on the new one.
+  let remove;
   const update = (runtime = running) =>
     updateNox({
       origin: ORIGIN,
       root,
       runtime,
+      ...(remove ? { remove } : {}),
       download,
       clone: (from, to) => cp(from, to, { recursive: true }),
     });
@@ -97,6 +99,12 @@ async function fixture(t, { next = {} } = {}) {
     downloads,
     update,
     tamperWith: (path) => (tamper = path),
+    refuseRemoval: () =>
+      (remove = async () => {
+        throw Object.assign(new Error("Operation not permitted"), {
+          code: "EPERM",
+        });
+      }),
     current: () => readlink(join(root, "current")),
   };
 }
@@ -128,6 +136,20 @@ test("Nox running through the current link knows which release it is", async (t)
   const { root, update } = await fixture(t);
   await update();
   assert.deepEqual(await update(join(root, "current")), { status: "current" });
+});
+
+test("an old release macOS will not delete never stops the update", async (t) => {
+  const { root, published, update, refuseRemoval, current } = await fixture(t);
+  await mkdir(join(root, "releases", "older"), { recursive: true });
+  refuseRemoval();
+  assert.deepEqual(await update(), {
+    status: "updated",
+    release: published.manifest.release,
+  });
+  assert.equal(
+    await current(),
+    join(root, "releases", published.manifest.release),
+  );
 });
 
 test("a file that does not match the published release never becomes current", async (t) => {

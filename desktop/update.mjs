@@ -33,6 +33,7 @@ export async function updateNox({
   runtime,
   download: get = download,
   clone = cloneDir,
+  remove = (dir) => rm(dir, { recursive: true, force: true }),
 }) {
   // The installer holds the same lock; never change releases under it.
   const lock = join(root, "install.lock");
@@ -76,13 +77,12 @@ export async function updateNox({
     await verifyRuntime(next);
     await writeFile(join(next, ".installed"), "1");
     await pointCurrent(root, next);
-    // Keep the release that is running and the new one; older releases are no longer needed.
+    // Keep the release that is running and the new one; older releases are no longer needed. Removal is
+    // best-effort: macOS App Management can refuse to delete an old Electron.app, and a leftover folder
+    // must never stop the restart onto the new release.
     for (const name of await readdir(join(root, "releases")))
       if (![basename(runtime), basename(next)].includes(name))
-        await rm(join(root, "releases", name), {
-          recursive: true,
-          force: true,
-        });
+        await remove(join(root, "releases", name)).catch(() => {});
     return { status: "updated", release: fetched.release };
   } finally {
     await rm(lock, { recursive: true, force: true });
