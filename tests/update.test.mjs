@@ -10,10 +10,13 @@ import {
   rm,
   cp,
   symlink,
+  rename,
+  lstat,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
+import { verifyRuntime } from "../desktop/install.mjs";
 import { updateNox } from "../desktop/update.mjs";
 
 const digest = (value) => createHash("sha256").update(value).digest("hex");
@@ -83,6 +86,7 @@ async function fixture(t, { next = {} } = {}) {
   };
   // `runtime` is the release Nox is running from: after an update, Nox restarts on the new one.
   let remove;
+  let cloneRuntime = (from, to) => cp(from, to, { recursive: true });
   const update = (runtime = running) =>
     updateNox({
       origin: ORIGIN,
@@ -90,7 +94,7 @@ async function fixture(t, { next = {} } = {}) {
       runtime,
       ...(remove ? { remove } : {}),
       download,
-      clone: (from, to) => cp(from, to, { recursive: true }),
+      clone: (from, to) => cloneRuntime(from, to),
     });
   return {
     root,
@@ -98,6 +102,10 @@ async function fixture(t, { next = {} } = {}) {
     published,
     downloads,
     update,
+    failClone: () =>
+      (cloneRuntime = async () => {
+        throw new Error("copy interrupted");
+      }),
     tamperWith: (path) => (tamper = path),
     refuseRemoval: () =>
       (remove = async () => {
@@ -183,4 +191,56 @@ test("Nox never updates while setup is running", async (t) => {
   await mkdir(join(root, "install.lock"));
   assert.deepEqual(await update(), { status: "busy" });
   assert.equal(await current(), running);
+});
+
+async function linkOlderRuntime(root, running) {
+  const older = join(root, "releases", "older-runtime");
+  await mkdir(older, { recursive: true });
+  await rename(join(running, "node_modules"), join(older, "node_modules"));
+  await symlink(join(older, "node_modules"), join(running, "node_modules"));
+  return older;
+}
+
+test("updating a linked runtime makes an independent copy and preserves the running app", async (t) => {
+  const { root, running, update, current } = await fixture(t);
+  const older = await linkOlderRuntime(root, running);
+  await update();
+  await verifyRuntime(await current());
+  await verifyRuntime(running);
+  assert.equal(
+    (await lstat(join(await current(), "node_modules"))).isSymbolicLink(),
+    false,
+  );
+  // Once the old app stops, removing its runtime cannot break the new release.
+  await rm(older, { recursive: true });
+  await verifyRuntime(await current());
+});
+
+test("a cached release with linked dependencies is materialized before activation", async (t) => {
+  const { root, running, published, update, current } = await fixture(t);
+  const next = join(root, "releases", published.manifest.release);
+  await mkdir(next, { recursive: true });
+  await symlink(join(running, "node_modules"), join(next, "node_modules"));
+  await update();
+  assert.equal(
+    (await lstat(join(await current(), "node_modules"))).isSymbolicLink(),
+    false,
+  );
+  await rm(running, { recursive: true });
+  await verifyRuntime(await current());
+});
+
+test("a failed runtime copy leaves the current app launchable and clears staging", async (t) => {
+  const { root, running, published, update, current, failClone } =
+    await fixture(t);
+  failClone();
+  await assert.rejects(update(), /copy interrupted/);
+  assert.equal(await current(), running);
+  await verifyRuntime(running);
+  await assert.rejects(
+    lstat(
+      join(root, "releases", published.manifest.release, ".runtime-staging"),
+    ),
+    { code: "ENOENT" },
+  );
 });
