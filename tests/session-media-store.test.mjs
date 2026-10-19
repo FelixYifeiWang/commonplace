@@ -108,8 +108,14 @@ test("an artifact capture becomes the picture of its link, replacing the generic
     url: ARTIFACT,
     title: "Portfolio Story",
   });
+  sqlite.prepare("UPDATE items SET title='Claude Artifact' WHERE id='l'").run();
   const saved = await store.save(session, capture);
   assert.equal(saved.itemId, "l");
+  // claude.ai's generic preview title gives way to the page's own.
+  assert.equal(
+    sqlite.prepare("SELECT title FROM items WHERE id='l'").get().title,
+    "Portfolio Story",
+  );
   const [link] = rows();
   assert.equal(link.kind, "link");
   assert.equal(link.imageUrl, null);
