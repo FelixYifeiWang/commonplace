@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { followGaze } from "../lib/nox-motion.mjs";
+import {
+  followGaze,
+  noxState,
+  afterBackgroundSync,
+} from "../lib/nox-motion.mjs";
 test("pointer easing takes the same time at 30, 60 and 120Hz", () => {
   const results = [30, 60, 120].map((hz) => {
     let value = 0;
@@ -70,4 +74,30 @@ test("after work, the right-hand drops let go within a fifth of a second and res
   assert.ok(releaseAfter(1.5) > 0.99);
   assert.ok(releaseAfter(2.5) > 0 && releaseAfter(2.5) < 1);
   assert.equal(releaseAfter(4), 0);
+});
+
+test("Nox keeps working for as long as a connect is running", () => {
+  assert.equal(
+    noxState({ state: "following", connecting: true }),
+    "connecting",
+  );
+  assert.equal(
+    noxState({ state: "collecting", connecting: true }),
+    "collecting",
+  );
+  assert.equal(noxState({ state: "error", connecting: true }), "error");
+  assert.equal(
+    noxState({ state: "following", connecting: false }),
+    "following",
+  );
+  assert.equal(noxState({}), "waiting");
+});
+
+test("a background sync never settles a connect that is still working", () => {
+  for (const working of ["connecting", "collecting", "reading"]) {
+    assert.equal(afterBackgroundSync(working, "following"), working);
+    assert.equal(afterBackgroundSync(working, "error"), working);
+  }
+  assert.equal(afterBackgroundSync("error", "following"), "following");
+  assert.equal(afterBackgroundSync("following", "paused"), "paused");
 });

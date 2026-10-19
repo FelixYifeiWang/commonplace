@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Plus } from "lucide-react";
 import { Nox } from "@/components/nox";
+import { noxState } from "@/lib/nox-motion.mjs";
 import type { SessionState } from "@/lib/types";
 type Snapshot = {
   separateControls?: boolean;
@@ -177,7 +178,7 @@ export default function Companion() {
         }}
       >
         <Nox
-          state={snapshot?.state || "waiting"}
+          state={noxState(snapshot || {}) as SessionState}
           gaze={snapshot?.gaze}
           trackPointer
         />

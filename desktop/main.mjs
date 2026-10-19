@@ -17,7 +17,11 @@ import path from "node:path";
 import { createMediaTools } from "./media-tools.mjs";
 import { updateNox } from "./update.mjs";
 import { createVisibilityPolicy } from "./visibility.mjs";
-import { pointerDirection } from "../lib/nox-motion.mjs";
+import {
+  afterBackgroundSync,
+  noxState,
+  pointerDirection,
+} from "../lib/nox-motion.mjs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { resolveLocalTarget } from "./target.mjs";
@@ -182,14 +186,17 @@ async function tick() {
         if (subscription.mode === "once") subscription.done = true;
         if (!dragController?.isDragging()) {
           lastError = "";
-          status = "following";
+          status = afterBackgroundSync(status, "following");
         }
         await persist();
       } catch (error) {
         subscription.error = error.message;
         if (!dragController?.isDragging()) {
           lastError = error.message;
-          status = error.status === 409 ? "paused" : "error";
+          status = afterBackgroundSync(
+            status,
+            error.status === 409 ? "paused" : "error",
+          );
         }
         if (error.status === 401) subscription.paused = true;
       }
@@ -346,7 +353,7 @@ function buddySnapshot() {
       turns: s.turns,
       error: s.error,
     })),
-    state: status,
+    state: noxState({ state: status, connecting }),
     error: lastError,
     origin: ORIGIN,
   };
