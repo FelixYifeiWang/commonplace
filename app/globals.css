@@ -8981,3 +8981,313 @@ a[href].gm-detail.gm-commit b::after {
 .button.primary.permanent-delete-confirm:hover {
   background: #982e2e;
 }
+
+/* Settings and Trash share a quiet, centered reading column. */
+.utility-page {
+  width: 100%;
+  max-width: 840px;
+  margin: 24px auto 0;
+}
+.utility-heading {
+  margin-bottom: 40px;
+}
+.utility-heading h1 {
+  margin: 0;
+  font: 450 30px/1.2 var(--sans);
+  letter-spacing: -0.8px;
+  color: #242424;
+}
+.utility-page .settings-section {
+  max-width: none;
+  margin-top: 44px;
+}
+.utility-page .settings-section:first-of-type {
+  margin-top: 0;
+}
+.utility-page .settings-section h2,
+.trash-section h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 16px;
+  font: 500 14px/1.4 var(--sans);
+  color: #303030;
+}
+.section-count {
+  color: #797979;
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.utility-page .section-heading {
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 16px;
+}
+.utility-page .section-heading h2 {
+  margin: 0;
+}
+.utility-page .text-button {
+  font-size: 13px;
+  color: #666;
+  min-height: 32px;
+  border-radius: 5px;
+}
+.utility-page .text-button:hover {
+  color: #222;
+  background: #f5f5f5;
+}
+.utility-page .utility-connect {
+  padding: 5px 8px;
+  margin-right: -8px;
+}
+.utility-page .account-row {
+  padding: 22px 0;
+  gap: 14px;
+  border-color: #eaeaea;
+}
+.utility-page .space-avatar {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 50%;
+  background: #f3f3f3;
+  color: #666;
+  font-size: 16px;
+}
+.utility-page .account-row strong {
+  font-size: 14px;
+  font-weight: 450;
+}
+.utility-page .account-row p {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #737373;
+  overflow-wrap: anywhere;
+}
+.utility-page .account-row > div {
+  min-width: 0;
+}
+.utility-page .account-controls {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+.utility-page .account-controls .text-button {
+  padding: 5px 8px;
+}
+.utility-page .sessions-table,
+.utility-list {
+  border: 0;
+  border-top: 1px solid #eaeaea;
+  border-radius: 0;
+  background: transparent;
+}
+.settings-page .session-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 94px 102px;
+  gap: 16px;
+  min-height: 86px;
+  padding: 18px 0;
+  border-bottom: 1px solid #eeeeee;
+}
+.settings-page .session-row:last-child {
+  border-bottom: 0;
+}
+.settings-page .session-row > .provider-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: #f6f6f6;
+  color: #777;
+}
+.settings-page .session-row-main .session-collection-link {
+  max-width: 100%;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 450;
+}
+.settings-page .session-row-main > span {
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 3px;
+  gap: 6px;
+  color: #737373;
+}
+.settings-page .session-status {
+  font-size: 12px;
+  min-width: 0;
+  color: #737373;
+}
+.settings-page .session-actions {
+  justify-content: flex-end;
+  gap: 3px;
+  margin: 0;
+}
+.settings-page .session-actions .icon-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+.settings-page
+  .session-actions
+  .icon-button:not(.session-delete):not(.session-disconnect) {
+  color: #737373;
+}
+.utility-description {
+  margin: -26px 0 36px;
+  color: #737373;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.trash-section + .trash-section {
+  margin-top: 36px;
+}
+.trash-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 90px 112px;
+  align-items: center;
+  gap: 16px;
+  min-height: 84px;
+  padding: 18px 0;
+  border-bottom: 1px solid #eeeeee;
+}
+.trash-row:last-child {
+  border-bottom: 0;
+}
+.utility-row-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  color: #858585;
+  background: #f6f6f6;
+}
+.utility-page .trash-item-title {
+  cursor: default;
+}
+.utility-page button.trash-item-title {
+  cursor: pointer;
+  border-radius: 4px;
+}
+.utility-page button.trash-item-title:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.utility-page .trash-item-title strong {
+  font-size: 14px;
+  font-weight: 450;
+  line-height: 1.5;
+}
+.utility-page .trash-item-title small {
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 3px;
+  color: #737373;
+}
+.trash-retention {
+  color: #737373;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+.utility-page .trash-actions {
+  justify-content: flex-end;
+  gap: 10px;
+}
+.utility-page .trash-actions .text-button {
+  padding: 4px 8px;
+}
+.utility-page .trash-delete {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+.utility-empty,
+.utility-page .empty-sessions {
+  padding: 64px 20px;
+  text-align: center;
+  color: #737373;
+}
+.utility-empty > svg {
+  margin: 0 auto 18px;
+  color: #999;
+}
+.utility-empty h2,
+.utility-page .empty-sessions h3 {
+  margin: 0 0 8px;
+  font: 450 16px/1.5 var(--sans);
+  color: #454545;
+}
+.utility-empty p {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+.utility-page :is(button, a):focus-visible {
+  outline: 2px solid #888;
+  outline-offset: 3px;
+}
+@media (max-width: 640px) {
+  .workspace main:has(.utility-page) {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+  .utility-page {
+    margin-top: 16px;
+  }
+  .utility-heading {
+    margin-bottom: 32px;
+  }
+  .utility-heading h1 {
+    font-size: 26px;
+  }
+  .utility-description {
+    margin-top: -18px;
+    margin-bottom: 28px;
+  }
+  .settings-page .session-row,
+  .trash-row {
+    grid-template-columns: 30px minmax(0, 1fr) 102px;
+    column-gap: 10px;
+    row-gap: 6px;
+    padding: 18px 0;
+  }
+  .settings-page .session-row > .provider-icon,
+  .utility-row-icon {
+    width: 30px;
+    height: 30px;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-self: start;
+    margin-top: 3px;
+  }
+  .settings-page .session-row-main,
+  .trash-item-title {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .settings-page .session-status,
+  .trash-retention {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: left;
+    font-size: 11px;
+  }
+  .settings-page .session-actions,
+  .utility-page .trash-actions {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+  .utility-page .account-row {
+    gap: 10px;
+  }
+  .utility-page .space-avatar {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+    font-size: 14px;
+  }
+}

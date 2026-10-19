@@ -1,6 +1,12 @@
 "use client";
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import {
+  Trash2,
+  Layers2,
+  Image as ImageIcon,
+  FileText,
+  Link2,
+} from "lucide-react";
 import type { Item, Collection } from "@/lib/types";
 import { daysToRestore, itemAvailable } from "@/lib/item-retention.mjs";
 import { Modal } from "./modal";
@@ -31,6 +37,15 @@ export function RecentlyDeleted({
   const visibleCollections = collections.filter(
     (c) => c.deletedAt && itemAvailable(c),
   );
+  const empty = !visible.length && !visibleCollections.length;
+  function retention(deletedAt: string) {
+    const days = daysToRestore(deletedAt);
+    return (
+      <span className="trash-retention">
+        {days} {days === 1 ? "day" : "days"} left
+      </span>
+    );
+  }
   async function perform(id: string, action: () => Promise<void>) {
     setBusy(id);
     setError("");
@@ -80,34 +95,80 @@ export function RecentlyDeleted({
   }
   return (
     <section className="recently-deleted" aria-label="Trash">
-      <p className="section-description">
-        Restore collections and items for 30 days.
-      </p>
-      {visibleCollections.map((c) => (
-        <div className="setting-row" key={c.id}>
-          <div className="trash-item-title">
-            <strong>{c.name}</strong>
-            <small>
-              Collection · {daysToRestore(c.deletedAt)} days left
-              {c.resumeOnRestore ? " · Restores and resumes syncing" : ""}
-            </small>
+      {!empty && (
+        <p className="utility-description">
+          Restore within 30 days, or delete permanently.
+        </p>
+      )}
+      {visibleCollections.length > 0 && (
+        <section
+          className="trash-section"
+          aria-labelledby="trash-collections-heading"
+        >
+          <h2 id="trash-collections-heading">
+            Collections{" "}
+            <span className="section-count">{visibleCollections.length}</span>
+          </h2>
+          <div className="utility-list">
+            {visibleCollections.map((c) => (
+              <div className="trash-row" key={c.id}>
+                <span className="utility-row-icon" aria-hidden="true">
+                  <Layers2 size={19} strokeWidth={1.5} />
+                </span>
+                <div className="trash-item-title">
+                  <strong title={c.name}>{c.name}</strong>
+                  <small>
+                    {c.resumeOnRestore
+                      ? "Resumes syncing when restored"
+                      : c.frozenAt
+                        ? "Disconnected"
+                        : "Saved collection"}
+                  </small>
+                </div>
+                {retention(c.deletedAt!)}
+                {actions({ kind: "collection", value: c })}
+              </div>
+            ))}
           </div>
-          {actions({ kind: "collection", value: c })}
+        </section>
+      )}
+      {visible.length > 0 && (
+        <section
+          className="trash-section"
+          aria-labelledby="trash-items-heading"
+        >
+          <h2 id="trash-items-heading">
+            Items <span className="section-count">{visible.length}</span>
+          </h2>
+          <div className="utility-list">
+            {visible.map((i) => (
+              <div className="trash-row" key={i.id}>
+                <span className="utility-row-icon" aria-hidden="true">
+                  {i.kind === "image" ? (
+                    <ImageIcon size={19} strokeWidth={1.5} />
+                  ) : i.kind === "link" ? (
+                    <Link2 size={19} strokeWidth={1.5} />
+                  ) : (
+                    <FileText size={19} strokeWidth={1.5} />
+                  )}
+                </span>
+                <button className="trash-item-title" onClick={() => onOpen(i)}>
+                  <strong title={i.title}>{i.title}</strong>
+                  <small>{i.collectionName || "Saved item"}</small>
+                </button>
+                {retention(i.deletedAt!)}
+                {actions({ kind: "item", value: i })}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {empty && (
+        <div className="utility-empty">
+          <Trash2 size={24} strokeWidth={1.25} aria-hidden="true" />
+          <h2>Nothing in Trash</h2>
+          <p>Deleted collections and items stay here for 30 days.</p>
         </div>
-      ))}
-      {visible.map((i) => (
-        <div className="setting-row" key={i.id}>
-          <button className="trash-item-title" onClick={() => onOpen(i)}>
-            <strong>{i.title}</strong>
-            <small>
-              {i.collectionName} · {daysToRestore(i.deletedAt)} days left
-            </small>
-          </button>
-          {actions({ kind: "item", value: i })}
-        </div>
-      ))}
-      {!visible.length && !visibleCollections.length && (
-        <p className="section-description">Trash is empty.</p>
       )}
       {error && !confirm && <p role="alert">{error}</p>}
       {confirm && (

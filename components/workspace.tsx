@@ -1017,8 +1017,8 @@ export default function Workspace({
                   </div>
                 )}
               {screen === "trash" && (
-                <>
-                  <div className="page-heading">
+                <div className="utility-page">
+                  <div className="utility-heading">
                     <h1>Trash</h1>
                   </div>
                   <RecentlyDeleted
@@ -1032,18 +1032,16 @@ export default function Workspace({
                     }
                     onDeleteItem={(i) => permanentlyDelete(i, "item")}
                   />
-                </>
+                </div>
               )}
               {screen === "settings" && (
-                <>
-                  <div className="page-heading">
-                    <div>
-                      <h1>Settings</h1>
-                    </div>
+                <div className="utility-page settings-page">
+                  <div className="utility-heading">
+                    <h1>Settings</h1>
                   </div>
                   <section className="settings-section">
-                    <h2>Your account</h2>
-                    <div className="setting-row">
+                    <h2>Account</h2>
+                    <div className="setting-row account-row">
                       <span className="space-avatar">
                         {data.user?.displayName.slice(0, 1) || "Y"}
                       </span>
@@ -1077,26 +1075,29 @@ export default function Workspace({
                   </section>
                   <section className="settings-section">
                     <div className="section-heading">
-                      <h2>Connections</h2>
-                      <button
-                        className="text-button"
-                        onClick={() => openModal("connect")}
-                      >
-                        <Plus size={15} />
-                        {connectionLabel}
-                      </button>
-                    </div>
-                    <div className="sessions-table">
-                      <div className="table-label">
-                        <span>YOUR SESSIONS</span>
-                        <span>
+                      <h2>
+                        Connections{" "}
+                        <span
+                          className="section-count"
+                          aria-label={`${data.sessions.filter((s) => s.state !== "revoked").length} connected sessions`}
+                        >
                           {
                             data.sessions.filter((s) => s.state !== "revoked")
                               .length
                           }{" "}
                           connected
                         </span>
-                      </div>
+                      </h2>
+                      <button
+                        className="text-button utility-connect"
+                        aria-label={connectionLabel}
+                        onClick={() => openModal("connect")}
+                      >
+                        <Plus size={14} />
+                        Connect
+                      </button>
+                    </div>
+                    <div className="sessions-table">
                       {data.sessions.length ? (
                         data.sessions.map((s) => renderSession(s))
                       ) : (
@@ -1113,7 +1114,7 @@ export default function Workspace({
                       )}
                     </div>
                   </section>
-                </>
+                </div>
               )}
             </>
           )}
