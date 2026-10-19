@@ -10,6 +10,10 @@ Open [Newron](https://newron.app) and sign in with Google. Choose Set up Nox to 
 
 The default collection views are **Gallery** (the free map) and **Story**. Press **Cmd/Ctrl+Shift+G** to toggle Dev mode: **Gallery**, **Map**, and **Story**, opening the saved-media grid first. In Dev mode, Map uses a guided camera. Click any node, including a leaf, to focus it. Click a focused URL node again to open its source. Use the arrow keys to explore branches; Escape or Overview returns to the full map. **Free move** inside the bottom control bar restores dragging and zooming; **Guided** switches back. Press the shortcut again to leave Dev mode. Nox only appears on the desktop. Connections are in Settings.
 
+## Collection links
+
+Every live collection is viewable by anyone with its existing `?collection=…` link, without signing in. Link views are read-only and are not listed in a public directory or intended for search indexing. This applies in normal and Dev mode. Media, Map, and Story are shared; account details, raw session transcripts, connection credentials, and the owner's other collections are not. Editing, deletion, favorites, uploads, and generation retries still require the owner's account. Deleting a collection closes its link; deleted media is unavailable to link visitors.
+
 ## Connection routes
 
 - **Desktop (macOS preview):** open one Codex window, open the conversation, then move Nox over the conversation area, click it and choose Connect. It connects and follows new turns while the companion runs. No Accessibility or screen-recording permission is requested. It checks the selected transcript every 15 seconds; the webpage refreshes every four seconds.
@@ -91,7 +95,7 @@ npm run db:migrate:hosted
 vercel deploy --prod
 ```
 
-The migration runner records applied SQL files and batches each migration atomically. Hosted uploads use scoped presigned URLs and OIDC, then authenticated file delivery. The OpenAI key is only used by server functions. Source changes schedule background Story work after the response; durable leases and checkpoints prevent duplicate continuations. Each invocation is bounded; pending work resumes on subsequent updates, Story visits, or the daily recovery cron. Very long imports may need more than one invocation.
+The migration runner records applied SQL files and batches each migration atomically. Hosted uploads use scoped presigned URLs and OIDC, then owner-authenticated or collection-scoped read-only file delivery. The OpenAI key is only used by server functions. Source changes schedule background Story work after the response; durable leases and checkpoints prevent duplicate continuations. Each invocation is bounded; pending work resumes on subsequent updates, Story visits, or the daily recovery cron. Very long imports may need more than one invocation.
 
 Hosted website cards use metadata covers. The native browser screenshot renderer remains local. No Electron or session-history reader runs on Vercel. To connect to the hosted space, copy its setup prompt and paste it into a local agent. The pairing link selects that destination; existing local subscriptions are not migrated.
 

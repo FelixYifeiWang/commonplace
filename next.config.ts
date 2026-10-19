@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
   ],
   outputFileTracingIncludes: {
     "/api/screenshots/*": ["./node_modules/@sparticuz/chromium/bin/**"],
+    "/api/shared/*/media/*/*": ["./node_modules/@sparticuz/chromium/bin/**"],
   },
   webpack(config, { webpack }) {
     const runtimes: Record<string, string> = {

@@ -3,7 +3,7 @@ import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { FileText, Play, Music2, ArrowUpRight, File } from "lucide-react";
 import type { Item } from "@/lib/types";
-import { imageSource } from "@/lib/media-source.mjs";
+import { imageSource, mediaPath } from "@/lib/media-source.mjs";
 import { embedFor } from "@/lib/media.mjs";
 import { createLimiter } from "@/lib/limit.mjs";
 // A page screenshot can take half a minute to render. Browsers allow about six requests per host,
@@ -84,7 +84,7 @@ export function MediaCard({
     };
   }, [page]);
   const finishPage = () => stopPage.current?.();
-  const mediaUrl = item.fileKey ? `/api/files/${item.id}` : item.url;
+  const mediaUrl = item.fileKey ? mediaPath(item, "file") : item.url;
   const directVideo =
     item.kind === "video" &&
     mediaUrl &&
@@ -178,7 +178,7 @@ export function MediaCard({
           unoptimized
           width={960}
           height={720}
-          src={`/api/screenshots/${item.id}?v=2`}
+          src={mediaPath(item, "screenshot")}
           alt={`Page preview of ${item.title}`}
           // Loading is already gated by distance and a slot; a lazy image that never loads would keep its slot.
           loading="eager"
@@ -211,7 +211,7 @@ export function MediaCard({
 }
 export function MediaDetail({ item }: { item: Item }) {
   const embed = item.url ? embedFor(item.url) : null;
-  const mediaUrl = item.fileKey ? `/api/files/${item.id}` : item.url;
+  const mediaUrl = item.fileKey ? mediaPath(item, "file") : item.url;
   return (
     <>
       {item.kind === "video" && embed ? (

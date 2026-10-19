@@ -31,6 +31,7 @@ export function Gallery({
   onAdd,
   onQuickAdd,
   canAdd = true,
+  readOnly = false,
 }: {
   items: Item[];
   onOpen: (item: Item) => void;
@@ -38,6 +39,7 @@ export function Gallery({
   onAdd: (drop?: Drop) => void;
   onQuickAdd: (text: string) => Promise<void>;
   canAdd?: boolean;
+  readOnly?: boolean;
 }) {
   const [query, setQuery] = useState(""),
     [expanded, setExpanded] = useState<string[]>([]),
@@ -163,7 +165,7 @@ export function Gallery({
           </div>
           {cover && <span className="sr-only">Group cover</span>}
         </button>
-        {!stack && !selecting && (
+        {!readOnly && !stack && !selecting && (
           <button
             className="gallery-item-delete"
             aria-label={`Delete ${item.title}`}
@@ -213,18 +215,20 @@ export function Gallery({
             )}
           </label>
 
-          <button
-            className={`gallery-tool ${selecting ? "active" : ""}`}
-            aria-label={selecting ? "Cancel selection" : "Select blocks"}
-            title="Select blocks"
-            onClick={() => {
-              setSelecting(!selecting);
-              setSelected([]);
-              setError("");
-            }}
-          >
-            <CheckSquare2 size={16} />
-          </button>
+          {!readOnly && (
+            <button
+              className={`gallery-tool ${selecting ? "active" : ""}`}
+              aria-label={selecting ? "Cancel selection" : "Select blocks"}
+              title="Select blocks"
+              onClick={() => {
+                setSelecting(!selecting);
+                setSelected([]);
+                setError("");
+              }}
+            >
+              <CheckSquare2 size={16} />
+            </button>
+          )}
         </div>
       </div>
       {selecting && (
@@ -278,7 +282,7 @@ export function Gallery({
             aria-hidden="true"
           />
         ))}
-        {!selecting && (
+        {!readOnly && !selecting && (
           <AddTile canAdd={canAdd} onAdd={onAdd} onSave={onQuickAdd} />
         )}
         {groups.map((group) => (

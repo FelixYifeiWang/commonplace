@@ -26,6 +26,7 @@ export function SessionView({
   onOpen,
   demo = false,
   devMode = false,
+  shared = false,
 }: {
   collectionId: string;
   name: string;
@@ -34,6 +35,7 @@ export function SessionView({
   onOpen: (item: Item) => void;
   demo?: boolean;
   devMode?: boolean;
+  shared?: boolean;
 }) {
   const [story, setStory] = useState<StoryState | null>(null);
   const [error, setError] = useState("");
@@ -47,7 +49,9 @@ export function SessionView({
       busy = true;
       try {
         const response = await fetch(
-          `/api/stories?collectionId=${encodeURIComponent(collectionId)}`,
+          shared
+            ? `/api/shared/${encodeURIComponent(collectionId)}/story`
+            : `/api/stories?collectionId=${encodeURIComponent(collectionId)}`,
           { cache: "no-store", signal: controller.signal },
         );
         const data = (await response.json()) as StoryState;
@@ -74,7 +78,7 @@ export function SessionView({
       clearInterval(timer);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [collectionId, demo]);
+  }, [collectionId, demo, shared]);
   const retry = async () => {
     setRetrying(true);
     try {
@@ -120,20 +124,32 @@ export function SessionView({
             <i aria-hidden="true" />
             <span>
               {showingSources
-                ? "Showing your sources."
-                : "Update paused. Your last version is here."}
+                ? shared
+                  ? "Showing sources."
+                  : "Showing your sources."
+                : shared
+                  ? "Update paused."
+                  : "Update paused. Your last version is here."}
             </span>
-            <button onClick={() => void retry()} disabled={retrying}>
-              {retrying ? "Retrying…" : "Retry"}
-            </button>
+            {!shared && (
+              <button onClick={() => void retry()} disabled={retrying}>
+                {retrying ? "Retrying…" : "Retry"}
+              </button>
+            )}
           </span>
         ) : working && session ? (
           <span className="session-updating">
             <i />
-            {showingSources ? "Organizing your sources…" : "Updating"}
+            {showingSources
+              ? shared
+                ? "Organizing sources…"
+                : "Organizing your sources…"
+              : "Updating"}
           </span>
         ) : showingSources ? (
-          <span className="session-updating">From your session</span>
+          <span className="session-updating">
+            {shared ? "From this session" : "From your session"}
+          </span>
         ) : null}
       </div>
       {session && mode === "gallery" && session.map?.nodes?.length ? (
@@ -145,16 +161,23 @@ export function SessionView({
       ) : session && mode === "story" && session.steps.length ? (
         <SessionStory document={session} items={items} onOpen={onOpen} />
       ) : mode === "story" && !!story?.beats.length ? (
-        <StoryView collectionId={collectionId} items={items} onOpen={onOpen} />
+        <StoryView
+          collectionId={collectionId}
+          items={items}
+          onOpen={onOpen}
+          shared={shared}
+        />
       ) : (
         <div className="session-await" role="status" aria-live="polite">
           {problem ? (
             // With no view to fall back on, the failure is the page's message.
             <div className="session-await-problem">
               <p>{problem}</p>
-              <button onClick={() => void retry()} disabled={retrying}>
-                {retrying ? "Retrying…" : "Retry"}
-              </button>
+              {!shared && (
+                <button onClick={() => void retry()} disabled={retrying}>
+                  {retrying ? "Retrying…" : "Retry"}
+                </button>
+              )}
             </div>
           ) : (
             <p className={working || !story ? "session-updating" : ""}>
@@ -165,7 +188,9 @@ export function SessionView({
                   ? "Not available yet."
                   : working
                     ? `Creating ${mode === "gallery" ? "map" : "story"}…`
-                    : "Add sources or connect a session to begin."}
+                    : shared
+                      ? "Nothing here yet."
+                      : "Add sources or connect a session to begin."}
             </p>
           )}
         </div>

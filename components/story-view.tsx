@@ -23,11 +23,13 @@ export function StoryView({
   items,
   onOpen,
   demo = false,
+  shared = false,
 }: {
   collectionId: string;
   items: Item[];
   onOpen: (item: Item) => void;
   demo?: boolean;
+  shared?: boolean;
 }) {
   const [story, setStory] = useState<Story | null>(null),
     [error, setError] = useState(""),
@@ -42,7 +44,9 @@ export function StoryView({
       busy = true;
       try {
         const response = await fetch(
-          `/api/stories?collectionId=${encodeURIComponent(collectionId)}`,
+          shared
+            ? `/api/shared/${encodeURIComponent(collectionId)}/story`
+            : `/api/stories?collectionId=${encodeURIComponent(collectionId)}`,
           { cache: "no-store" },
         );
         const data = (await response.json()) as Story;
@@ -66,7 +70,7 @@ export function StoryView({
       cancelled = true;
       clearInterval(timer);
     };
-  }, [collectionId, demo]);
+  }, [collectionId, demo, shared]);
   async function retry() {
     setRetrying(true);
     try {
@@ -110,10 +114,12 @@ export function StoryView({
       {problem && (
         <div className="story-error" role="alert">
           <span>{problem}</span>
-          <button onClick={() => void retry()} disabled={retrying}>
-            <RotateCw size={13} />
-            Retry
-          </button>
+          {!shared && (
+            <button onClick={() => void retry()} disabled={retrying}>
+              <RotateCw size={13} />
+              Retry
+            </button>
+          )}
         </div>
       )}
       {!story && !error && !demo && (
