@@ -736,6 +736,7 @@ export function SessionMap({
                     {picture ? (
                       <>
                         <Picture
+                          label={d.label}
                           item={item!}
                           fit={picture.fit}
                           src={picture.src}
@@ -937,7 +938,25 @@ function pictureOf(item: Item) {
     return { fit: "fit", src: "" };
   return pictureFor(item, { screenshots });
 }
-function Picture({ item, fit, src }: { item: Item; fit: string; src: string }) {
+function Picture({
+  item,
+  fit,
+  src,
+  label,
+}: {
+  item: Item;
+  fit: string;
+  src: string;
+  label: string;
+}) {
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+  if (failedSource === src)
+    return (
+      <span className="gm-say">
+        <Sheet />
+        <span className="gm-txt">{label || item.title}</span>
+      </span>
+    );
   return (
     <span
       className={`gm-pic gm-${fit}`}
@@ -952,7 +971,8 @@ function Picture({ item, fit, src }: { item: Item; fit: string; src: string }) {
           width={600}
           height={400}
           src={src}
-          alt=""
+          alt={label || item.title}
+          onError={() => setFailedSource(src)}
           draggable={false}
           referrerPolicy="no-referrer"
         />
@@ -989,7 +1009,14 @@ function Face({
     );
   const picture = item && pictureOf(item);
   if (picture)
-    return <Picture item={item!} fit={picture.fit} src={picture.src} />;
+    return (
+      <Picture
+        label={node.label}
+        item={item!}
+        fit={picture.fit}
+        src={picture.src}
+      />
+    );
   const quote = node.evidence?.quote;
   const say = quote && !shown.has(squash(quote)) ? `“${quote}”` : node.label;
   return (

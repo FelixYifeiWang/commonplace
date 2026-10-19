@@ -3,6 +3,7 @@ import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { FileText, Play, Music2, ArrowUpRight, File } from "lucide-react";
 import type { Item } from "@/lib/types";
+import { imageSource } from "@/lib/media-source.mjs";
 import { embedFor } from "@/lib/media.mjs";
 import { createLimiter } from "@/lib/limit.mjs";
 // A page screenshot can take half a minute to render. Browsers allow about six requests per host,
@@ -59,10 +60,7 @@ export function MediaCard({
     if (video.current) video.current.currentTime = 0;
   }, [hover, motion]);
   const [failed, setFailed] = useState<string | null>(null);
-  const cover =
-    item.fileKey && item.kind === "image"
-      ? `/api/files/${item.id}`
-      : item.imageUrl;
+  const cover = imageSource(item);
   const hasImage = !!cover && failed !== cover;
   const [pageLoaded, setPageLoaded] = useState(false);
   const [pageFailed, setPageFailed] = useState(false);
@@ -94,7 +92,8 @@ export function MediaCard({
   const embed = item.kind === "video" && item.url ? embedFor(item.url) : null;
   const gif =
     item.kind === "image" &&
-    (item.mimeType === "image/gif" || /\.gif(\?|$)/i.test(cover || item.title));
+    (item.mimeType === "image/gif" ||
+      /\.gif(\?|$)/i.test(item.imageUrl || item.title));
   const text = ["note", "idea", "quote"].includes(item.kind);
   const Icon =
     item.kind === "video"

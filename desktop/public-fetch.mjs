@@ -21,7 +21,13 @@ export function isPublicAddress(ip) {
 }
 export async function fetchPublic(
   value,
-  { lookup = dnsLookup, hops = 0, transport } = {},
+  {
+    lookup = dnsLookup,
+    hops = 0,
+    transport,
+    image = false,
+    maxBytes = 8 * 1024 * 1024,
+  } = {},
 ) {
   const safe = publicUrl(value);
   if (!safe) throw new Error("Not a public preview URL.");
@@ -53,7 +59,9 @@ export async function fetchPublic(
             : cb(null, address.address, address.family),
         headers: {
           "User-Agent": "Newron/0.1 (link preview)",
-          Accept: "text/html,application/xhtml+xml,*/*;q=0.5",
+          Accept: image
+            ? "image/*"
+            : "text/html,application/xhtml+xml,*/*;q=0.5",
           "Accept-Encoding": "identity",
         },
       },
@@ -64,13 +72,23 @@ export async function fetchPublic(
           location: res.headers.location,
           contentType,
           url: safe,
-          body: "",
+          body: image ? Buffer.alloc(0) : "",
         };
         if (
           (res.statusCode >= 300 && res.statusCode < 400) ||
-          !contentType.includes("html")
+          (!image && !contentType.includes("html"))
         ) {
           resolve(response);
+          res.destroy();
+          return;
+        }
+        if (
+          image &&
+          !/^image\/(png|jpeg|gif|webp|avif|svg\+xml|x-icon|vnd\.microsoft\.icon)(?:;|$)/i.test(
+            contentType,
+          )
+        ) {
+          reject(new Error("This preview is not a supported image."));
           res.destroy();
           return;
         }
@@ -79,7 +97,12 @@ export async function fetchPublic(
         res.on("data", (chunk) => {
           chunks.push(chunk);
           size += chunk.length;
-          if (size >= 1024 * 1024) {
+          if (image && size > maxBytes) {
+            reject(new Error("Preview image is too large."));
+            res.destroy();
+            return;
+          }
+          if (!image && size >= 1024 * 1024) {
             response.body = Buffer.concat(chunks)
               .subarray(0, 1024 * 1024)
               .toString("utf8");
@@ -88,7 +111,9 @@ export async function fetchPublic(
           }
         });
         res.on("end", () => {
-          response.body = Buffer.concat(chunks).toString("utf8");
+          response.body = image
+            ? Buffer.concat(chunks)
+            : Buffer.concat(chunks).toString("utf8");
           resolve(response);
         });
         res.on("error", reject);
@@ -112,6 +137,8 @@ export async function fetchPublic(
       lookup,
       hops: hops + 1,
       transport,
+      image,
+      maxBytes,
     });
   }
   if (result.status < 200 || result.status >= 400)

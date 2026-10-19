@@ -155,12 +155,12 @@ function Cell({
   lead: boolean;
   onOpen: (item: Item) => void;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
   const { item } = entry;
   // Pictures are fitted in the browser (page, object cut out, or ink); links show their page.
-  const still =
-    item.kind === "image" && !!(item.fileKey || item.imageUrl) && !failed;
-  const picture = still || failed ? null : pictureFor(item, { screenshots });
+  const still = item.kind === "image" && !!(item.fileKey || item.imageUrl);
+  const candidate = pictureFor(item, { screenshots });
+  const picture = still || failed === candidate?.src ? null : candidate;
   const tag = TAGS[entry.role];
   const state =
     entry.role === "option"
@@ -187,7 +187,7 @@ function Cell({
             alt=""
             loading="lazy"
             referrerPolicy="no-referrer"
-            onError={() => setFailed(true)}
+            onError={() => setFailed(picture.src)}
           />
         ) : (
           <span className="sv-tile">

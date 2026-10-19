@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { imageSource } from "@/lib/media-source.mjs";
 import { classifyImage, cutOut } from "@/lib/image-fit.mjs";
 import type { Item } from "@/lib/types";
 import { MediaCard } from "./media-card";
@@ -19,11 +20,11 @@ export function SheetMedia({
     url: string;
     kind: string;
   } | null>(null);
-  const source = item.fileKey ? `/api/files/${item.id}` : item.imageUrl;
+  const source = imageSource(item);
   const isStill =
     item.kind === "image" &&
     !/gif/i.test(item.mimeType || "") &&
-    !/\.gif(?:[?#]|$)/i.test(source || "");
+    !/\.gif(?:[?#]|$)/i.test(item.imageUrl || item.title);
   useEffect(() => {
     if (!isStill || !source) return;
     let cancelled = false;
@@ -70,7 +71,7 @@ export function SheetMedia({
       image.src = "";
     };
   }, [source, isStill]);
-  if (fit?.source === source)
+  if (fit && fit.source === source)
     return (
       <Image
         className={`fitted-media fitted-${fit.kind}`}
