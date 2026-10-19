@@ -2,6 +2,10 @@ import { head, get } from "@vercel/blob";
 import { previewUrl } from "../../desktop/preview.mjs";
 const bridge = {
   preview: previewUrl,
+  async image(url: string) {
+    const { loadCover } = await import("./preview-cover.mjs");
+    return loadCover(url);
+  },
   async screenshot(url: string) {
     const { hostedScreenshot } = await import("./screenshot.mjs");
     return hostedScreenshot(url);

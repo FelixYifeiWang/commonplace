@@ -44,7 +44,7 @@ function transport(
 }
 const lookup = async () => [{ address: "93.184.216.34", family: 4 }];
 test("saved remote previews use an owned same-origin endpoint", () => {
-  assert.equal(imageSource(item), `/api/images/${id}?v=2026-10-18`);
+  assert.equal(imageSource(item), `/api/images/${id}?v=2026-10-18&p=2`);
   assert.equal(
     imageSource({ ...item, kind: "image", fileKey: "private" }),
     `/api/files/${id}`,

@@ -109,11 +109,11 @@ test("shared media uses collection-scoped routes while owner media routes stay u
     imageUrl: "https://example.com/a.png",
     updatedAt: "now",
   };
-  assert.equal(imageSource(item), `/api/images/${item.id}?v=now`);
+  assert.equal(imageSource(item), `/api/images/${item.id}?v=now&p=2`);
   const shared = { ...item, sharedCollectionId: "session-abc" };
   assert.equal(
     imageSource(shared),
-    `/api/shared/session-abc/media/${item.id}/image?v=now`,
+    `/api/shared/session-abc/media/${item.id}/image?v=now&p=2`,
   );
   assert.equal(
     mediaPath(shared, "file"),

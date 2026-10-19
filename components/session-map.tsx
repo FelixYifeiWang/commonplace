@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import Image from "next/image";
+import { PreviewImage } from "./preview-image";
 import type { Item } from "@/lib/types";
 import { pictureFor } from "@/lib/story-canvas.mjs";
 import {
@@ -964,17 +964,12 @@ function Picture({
       {fit === "fit" ? (
         <SheetMedia item={item} screenshots={screenshots} />
       ) : (
-        <Image
-          unoptimized
-          width={600}
-          height={400}
+        <PreviewImage
           src={picture!.src}
           alt={label || item.title}
           onError={() =>
             setFailedSources((failed) => [...failed, picture!.src])
           }
-          draggable={false}
-          referrerPolicy="no-referrer"
         />
       )}
     </span>

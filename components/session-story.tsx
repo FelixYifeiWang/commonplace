@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import Image from "next/image";
+import { PreviewImage } from "./preview-image";
 import type { Item } from "@/lib/types";
 import type {
   CanvasItem,
@@ -180,14 +180,8 @@ function Cell({
         {still ? (
           <SheetMedia item={item} screenshots={screenshots} />
         ) : picture ? (
-          <Image
-            unoptimized
-            width={1200}
-            height={750}
+          <PreviewImage
             src={picture.src}
-            alt=""
-            loading="lazy"
-            referrerPolicy="no-referrer"
             onError={() =>
               setFailedSources((failed) => [...failed, picture.src])
             }

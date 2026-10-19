@@ -16,7 +16,11 @@ export async function GET(
     if (!item) throw new HttpError(404, "Media not found.");
     let response: Response;
     if (kind === "image")
-      response = await previewImageResponse(item, item.ownerId);
+      response = await previewImageResponse(
+        item,
+        item.ownerId,
+        preview.image ? { fetcher: preview.image } : {},
+      );
     else if (kind === "screenshot" && item.kind === "link" && item.url)
       response = await preview.screenshot(item.url);
     else if (kind === "file" && item.fileKey)
