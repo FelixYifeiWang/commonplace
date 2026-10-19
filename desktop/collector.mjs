@@ -167,6 +167,8 @@ export async function* readProjectTranscripts(
   }
 }
 const MEDIA_PER_SYNC = 8;
+// Raised when Nox frames artifacts differently (desktop/artifact-region.mjs), so each is captured again once.
+const ARTIFACT_FRAMING = 2;
 // Pictures go up after the turns, so an artifact's capture finds the link the conversation created.
 // Each is sent once; an artifact again only when its local file changes. A failed upload never fails
 // the sync: it is retried next time, unless the server rejected it as invalid.
@@ -236,7 +238,7 @@ async function uploadMedia({
     } catch {
       continue;
     }
-    const key = `artifact:${event.url}:${info.size}:${info.mtimeMs}`;
+    const key = `artifact:${ARTIFACT_FRAMING}:${event.url}:${info.size}:${info.mtimeMs}`;
     if (sent.has(key)) continue;
     let capture = null;
     try {

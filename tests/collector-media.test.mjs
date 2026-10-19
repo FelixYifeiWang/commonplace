@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile, rm, utimes } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, utimes, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { syncTranscript } from "../desktop/collector.mjs";
@@ -139,6 +139,17 @@ test("each picture is sent once, and an artifact again only after its file chang
     media().map((m) => m.kind),
     ["pasted", "artifact", "artifact"],
   );
+});
+
+test("an artifact captured before Nox framed its work is captured again, once", async (t) => {
+  const { args, html, captured } = await fixture(t);
+  const info = await stat(html);
+  args.cursors = {
+    "media:selected": [`artifact:${ARTIFACT}:${info.size}:${info.mtimeMs}`],
+  };
+  await syncTranscript(args);
+  await syncTranscript(args);
+  assert.equal(captured.length, 1);
 });
 
 test("a failed picture upload never fails the turns, and is retried on the next sync", async (t) => {
