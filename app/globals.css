@@ -7669,7 +7669,7 @@ a[href].gm-detail b::after {
   }
 }
 
-/* ---------- Nox: a flat glass lens with a neuron inside (components/nox.tsx) ---------- */
+/* ---------- Nox: a flat glass lens with Newron's mark inside (components/nox.tsx) ---------- */
 .nox {
   position: relative;
   display: inline-block;
@@ -7681,13 +7681,12 @@ a[href].gm-detail b::after {
     0px 8px 24px rgba(17, 17, 26, 0.05),
     0px 16px 56px rgba(17, 17, 26, 0.05);
 }
-/* The neuron, already bent by the lens shader, clipped to the circle. */
-.nox-neuron {
+/* The mark sits on top of the glass, centred and sharp (62% of the bubble, as in components/nox.tsx). */
+.nox-mark {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
+  inset: 19%;
+  width: 62%;
+  height: 62%;
   pointer-events: none;
 }
 /* The glass frame, after React Bits' frame and the reference lens: a crisp hairline edge, a soft light crescent

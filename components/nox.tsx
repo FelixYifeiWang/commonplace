@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useRef } from "react";
 import type { SessionState } from "@/lib/types";
-import { createNeuron } from "@/lib/nox-neuron";
-import type { NeuronMood } from "@/lib/nox-neuron";
+import { createMark } from "@/lib/nox-mark";
+import type { MarkMood } from "@/lib/nox-mark";
 
-// Nox (formerly the buddy): a flat glass lens with a neuron inside. The neuron is drawn through React Bits'
-// glass shader (lib/glass-lens.ts), which bends it near the rim; the frame is React Bits' glass frame.
-const MOOD: Record<SessionState, NeuronMood> = {
+// Nox (formerly the buddy): a flat glass lens with Newron's mark inside. At rest the mark is the N; while Nox
+// works it melts into the firing cell (lib/nox-mark.ts). The mark sits sharp on the glass, unbent, like a label.
+const MOOD: Record<SessionState, MarkMood> = {
   waiting: "rest",
   following: "rest",
   complete: "rest",
@@ -17,6 +17,8 @@ const MOOD: Record<SessionState, NeuronMood> = {
   revoked: "muted",
   error: "alert",
 };
+// The mark's share of the bubble's width.
+const MARK = 0.62;
 export function Nox({
   state = "following",
   gaze,
@@ -29,32 +31,32 @@ export function Nox({
   trackPointer?: boolean;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const neuron = useRef<ReturnType<typeof createNeuron> | null>(null);
+  const mark = useRef<ReturnType<typeof createMark> | null>(null);
   useEffect(() => {
     if (!canvas.current) return;
     try {
-      neuron.current = createNeuron(canvas.current, size);
+      mark.current = createMark(canvas.current, size * MARK);
     } catch {
       // Without WebGL the bubble stays empty glass rather than breaking the window.
-      neuron.current = null;
+      mark.current = null;
     }
     const unsubscribe = trackPointer
       ? window.commonplaceDesktop?.onGaze?.(({ x, y }) =>
-          neuron.current?.setGaze(x, y),
+          mark.current?.setGaze(x, y),
         )
       : undefined;
     return () => {
       unsubscribe?.();
-      neuron.current?.dispose();
-      neuron.current = null;
+      mark.current?.dispose();
+      mark.current = null;
     };
   }, [size, trackPointer]);
   useEffect(() => {
-    neuron.current?.setMood(MOOD[state] || "rest");
+    mark.current?.setMood(MOOD[state] || "rest");
   }, [state, size, trackPointer]);
   useEffect(() => {
     if (trackPointer && window.commonplaceDesktop?.onGaze) return;
-    neuron.current?.setGaze(gaze?.x || 0, gaze?.y || 0);
+    mark.current?.setGaze(gaze?.x || 0, gaze?.y || 0);
   }, [gaze?.x, gaze?.y, size, trackPointer]);
   return (
     <span
@@ -62,8 +64,8 @@ export function Nox({
       style={{ width: size, height: size }}
       aria-hidden="true"
     >
-      <canvas ref={canvas} className="nox-neuron" width={size} height={size} />
       <span className="nox-frame" />
+      <canvas ref={canvas} className="nox-mark" />
     </span>
   );
 }

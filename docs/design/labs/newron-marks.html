@@ -1,0 +1,949 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Newron Marks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* Layout: a white page with a short header and a two-column sheet of directions; each direction is a grey canvas
+   with the mark, the mark inside Nox's glass, then its sizes and lockup. Colours are Newron's own. */
+:root {
+  --paper: #ffffff;
+  --ink: #1b1b1a;
+  --muted: #7c7c78;
+  --canvas: #f2f2f0;
+  --edge: #dcdcd8;
+  --indigo: #3b36d4;
+  --mark: #161616;
+  --mark-reverse: #f4f4f0;
+  --sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121211; --ink: #ededea; --muted: #9a9a95; --canvas: #1c1c1b; --edge: #2e2e2c;
+    --indigo: #a19dff; --mark: #f0f0ec; --mark-reverse: #161616; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121211; --ink: #ededea; --muted: #9a9a95; --canvas: #1c1c1b; --edge: #2e2e2c;
+  --indigo: #a19dff; --mark: #f0f0ec; --mark-reverse: #161616; color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--sans); }
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 20px 40px; }
+h1 { margin: 0; font: 400 48px/1 var(--serif); letter-spacing: -0.01em; text-wrap: balance; }
+.lede { margin: 12px 0 0; max-width: 58ch; color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; gap: 4px; padding: 3px; border-radius: 999px; background: var(--canvas); }
+.seg button, .btn {
+  font: 500 13px/1 var(--sans);
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--paper); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
+.btn { background: var(--canvas); }
+button:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px; }
+
+.rounds { display: flex; flex-direction: column; gap: 64px; }
+.round { display: flex; flex-direction: column; gap: 28px; }
+.round + .round { border-top: 1px solid var(--edge); padding-top: 48px; }
+.round-head h2 { margin: 0; font: 400 36px/1.05 var(--serif); text-wrap: balance; }
+.round-head p { margin: 8px 0 0; max-width: 62ch; color: var(--muted); }
+.sheet { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px 40px; }
+.sheet.three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 48px 28px; }
+@media (max-width: 1100px) { .sheet.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.direction { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.views { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.view {
+  position: relative;
+  aspect-ratio: 1;
+  max-width: 100%;
+  border-radius: 14px;
+  background: var(--canvas);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.view.reverse { background: var(--mark); }
+.view canvas.big { width: 62%; height: 62%; }
+.glass { background-size: cover; background-repeat: no-repeat; }
+.lens {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgb(227 228 222 / 0.15);
+  box-shadow: inset 0 0 0 1px rgb(200 200 195 / 0.45);
+  -webkit-backdrop-filter: blur(1.5px);
+  backdrop-filter: blur(1.5px);
+}
+.lens canvas { width: 62%; height: 62%; }
+.view-label {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  font: 500 11px/1 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.glass .view-label { color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / 0.35); }
+.view.reverse .view-label { color: var(--mark-reverse); opacity: 0.6; }
+h3 { margin: 0; font: 400 30px/1.1 var(--serif); }
+.idea { margin: 4px 0 0; color: var(--muted); max-width: 52ch; }
+.states { margin-top: 12px; }
+.uses { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; }
+.sizes { display: flex; align-items: end; gap: 16px; }
+.sizes figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.sizes figcaption { font: 11px/1 var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+.tile { border-radius: 13px; box-shadow: 0 0 0 1px var(--edge); }
+.lockup { display: flex; align-items: center; gap: 10px; }
+.lockup span { font: 600 26px/1 var(--sans); letter-spacing: -0.02em; }
+.notice { margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--canvas); }
+@media (max-width: 900px) {
+  .sheet, .sheet.three { grid-template-columns: minmax(0, 1fr); }
+  h1 { font-size: 40px; }
+}
+@media (max-width: 420px) {
+  .lens { width: 104px; height: 104px; }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs id="filters"></defs></svg>
+
+<div class="page">
+  <header>
+    <div>
+      <h1>Newron marks</h1>
+      <p class="lede">Fluid directions for Newron's logo, which is also what Nox holds inside its glass. Each is shown large, inside the lens measured from your photo, at icon sizes and beside the name.</p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Colour">
+        <button type="button" data-ink="ink" aria-pressed="true">Ink</button>
+        <button type="button" data-ink="indigo" aria-pressed="false">Indigo</button>
+        <button type="button" data-ink="reverse" aria-pressed="false">Reverse</button>
+      </div>
+      <button class="btn" id="play" type="button">Pause</button>
+      <button class="btn" id="backdrop" type="button">New glass backdrop</button>
+    </div>
+  </header>
+  <p class="notice" id="no-webgl" hidden>These marks are drawn with WebGL, which this browser has turned off.</p>
+  <main class="rounds" id="rounds"></main>
+</div>
+
+<script>
+(() => {
+  // Each direction: its name, the idea in a sentence, and the shader routine that draws it.
+  const MORPHS = [
+    { mark: 18, name: "Rewire", idea: "At rest, the N. While Nox works, the four drops switch between whole shapes: N, Z, square and cross. Each bond lets go at its middle as the next ones grow in from the drops." },
+    { mark: 19, name: "Relay", idea: "At rest, the N. While Nox works, it lets go, and two connections travel between the drops: each reaches from one drop to the next, flows into it, and reaches on. They trace the N first, then every other pair." },
+    { mark: 20, name: "Mesh", idea: "At rest, the N. While Nox works, every pair of drops connects and lets go on its own rhythm, each drop leans toward the ones it is holding, and the whole mark thins out, so the network never quite repeats." },
+    { mark: 12, name: "Melt", idea: "In use in Nox, and the resting N is Newron's logo. At rest it is the N. When Nox starts working, the N melts into one drop, and the drop branches into the firing cell. When work stops, the cell gathers back into a drop and settles into the N." },
+  ];
+  const VARIATIONS = [
+    { mark: 6, name: "Firing", idea: "Your sketch as drawn: a three-armed centre, three dendrites between its arms, three loose drops and the ring with its gap. As each dendrite fires, a thread briefly links it to the centre." },
+    { mark: 7, name: "Wired", idea: "The threads made permanent, so the centre and its dendrites are one connected cell. The loose drops stay loose." },
+    { mark: 8, name: "Swirl", idea: "Every arm and dendrite bends the same way, so the mark turns like a pinwheel. It spins slowly while Nox works." },
+    { mark: 9, name: "Terminals", idea: "Each arm of the centre runs out to its drop, so six lines reach outward instead of nine separate parts." },
+    { mark: 10, name: "Compact", idea: "Only the centre and the three dendrites, thickened, so it still holds together at favicon size." },
+    { mark: 11, name: "Membrane", idea: "The ring becomes the cell wall, and each dendrite pushes out through an opening in it." },
+  ];
+  const DIRECTIONS = [
+    { mark: 0, name: "Tetra", idea: "Your sketch's pyramid as a molecule: four round nodes and six liquid bonds. The front node sits off-centre, so it still reads as 3D." },
+    { mark: 1, name: "Node", idea: "The concave centre of the sketch on its own, after the needle-pointed triangle you pinned, with each point ending in a drop." },
+    { mark: 2, name: "Bond N", idea: "An N made of four drops. Three are already bonded and the fourth keeps reaching for the last link." },
+    { mark: 3, name: "Bloom", idea: "A cell with three long arms and three short ones, after the liquid clusters you pinned. Drops break off and rejoin as Nox works." },
+    { mark: 4, name: "Synapse", idea: "Two drops about to join, with a third on its way. Newron's job in one picture: noticing that two things connect." },
+    { mark: 5, name: "Cell", idea: "The pyramid as one soft body with three openings: the triangular version from before, made fluid." },
+  ];
+
+  const ROUNDS = [
+    { title: "Idle and working", states: true, note: "All four rest exactly as Melt does: the N's stem and diagonal bonded, the top right drop a little apart, its link slowly forming and letting go. While Nox works, the four drops connect to each other in new ways, the N's own bonds included, and when work stops they settle back into that same N. Switch a card between Idle and Working, or leave it on Auto, which switches every few seconds.", items: MORPHS },
+    { title: "Variations on your new sketch", note: "Three-fold like your drawing, and tilted the way you drew it: a three-armed centre, three dendrites set between its arms, and three loose drops.", items: VARIATIONS },
+    { title: "First round", note: "Fluid directions from the pyramid sketch and the four marks you pinned.", items: DIRECTIONS },
+  ];
+
+  const vertex = `attribute vec2 aPos; varying vec2 vP; void main() { vP = aPos; gl_Position = vec4(aPos, 0.0, 1.0); }`;
+  const fragment = `
+precision highp float;
+varying vec2 vP;
+uniform float uTime;
+uniform float uWork;
+// Just after work ends, the two right-hand drops let go of each other quickly: 1 while that release holds, back to
+// 0 as the slow resting rhythm takes over again.
+uniform float uSplit;
+uniform float uPx;
+uniform vec3 uInk;
+
+float smin(float a, float b, float k) { float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0); return mix(b, a, h) - k * h * (1.0 - h); }
+float smax(float a, float b, float k) { return -smin(-a, -b, k); }
+float circle(vec2 p, vec2 c, float r) { return length(p - c) - r; }
+vec2 dir(float a) { return vec2(cos(a), sin(a)); }
+// A straight stroke whose radius eases from ra to rb.
+float taper(vec2 p, vec2 a, vec2 b, float ra, float rb) {
+  vec2 pa = p - a, ba = b - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return length(pa - ba * h) - mix(ra, rb, h);
+}
+vec2 bez(vec2 a, vec2 c, vec2 b, float t) { return mix(mix(a, c, t), mix(c, b, t), t); }
+// A curved stroke (quadratic, through control c) whose radius eases from ra to rb.
+float curve(vec2 p, vec2 a, vec2 c, vec2 b, float ra, float rb) {
+  float d = 1e5; vec2 q0 = a;
+  for (int i = 1; i <= 16; i++) {
+    float t1 = float(i) / 16.0, t0 = float(i - 1) / 16.0;
+    vec2 q1 = bez(a, c, b, t1);
+    d = min(d, taper(p, q0, q1, mix(ra, rb, t0), mix(ra, rb, t1)));
+    q0 = q1;
+  }
+  return d;
+}
+// A curved stroke that is thick at both ends and pinched in the middle, like a drop stretched between two points.
+float pinch(vec2 p, vec2 a, vec2 c, vec2 b, float rEnd, float rMid) {
+  float d = 1e5; vec2 q0 = a;
+  for (int i = 1; i <= 16; i++) {
+    float t1 = float(i) / 16.0, t0 = float(i - 1) / 16.0;
+    vec2 q1 = bez(a, c, b, t1);
+    float r0 = mix(rMid, rEnd, pow(abs(2.0 * t0 - 1.0), 2.2));
+    float r1 = mix(rMid, rEnd, pow(abs(2.0 * t1 - 1.0), 2.2));
+    d = min(d, taper(p, q0, q1, r0, r1));
+    q0 = q1;
+  }
+  return d;
+}
+
+float bond(vec2 p, vec2 a, vec2 b, float r) { return taper(p, a, b, r, r); }
+
+// Tetra: three outer nodes and an inner one, joined by liquid bonds; a signal swells each front bond in turn.
+float tetra(vec2 p, float t) {
+  vec2 v1 = vec2(0.0, 0.7), v2 = vec2(-0.64, -0.42), v3 = vec2(0.64, -0.42);
+  vec2 v0 = vec2(0.09, -0.04) + 0.045 * vec2(sin(t * 1.1), cos(t * 0.9));
+  float k = 0.09;
+  float d = circle(p, v0, 0.2);
+  for (int i = 0; i < 3; i++) {
+    vec2 v = i == 0 ? v1 : (i == 1 ? v2 : v3);
+    float s = 0.5 + 0.5 * sin(t * 2.0 - float(i) * 2.0944);
+    d = smin(d, bond(p, v0, v, 0.055 + 0.025 * s), k);
+    d = smin(d, circle(p, v, 0.16), k);
+  }
+  d = smin(d, bond(p, v1, v2, 0.034), k);
+  d = smin(d, bond(p, v2, v3, 0.034), k);
+  d = smin(d, bond(p, v3, v1, 0.034), k);
+  return d;
+}
+
+// Node: an equilateral triangle whose sides are bowed in by three circles until the corners are needles, each
+// needle ending in a drop.
+float node(vec2 p, float t) {
+  float R = 0.6, h = R * 0.5, hs = R * 0.866;
+  float body = -1e5;
+  for (int i = 0; i < 3; i++) {
+    vec2 n = dir(-1.5708 + float(i) * 2.0944);
+    float D = 1.02 + 0.06 * sin(t * 1.3);
+    body = max(body, -circle(p, n * (h + D), sqrt(hs * hs + D * D)));
+    body = max(body, dot(p, n) - h);
+  }
+  float d = body;
+  for (int i = 0; i < 3; i++) {
+    float a = 1.5708 + float(i) * 2.0944;
+    float s = 0.5 + 0.5 * sin(t * 1.7 + float(i) * 2.1);
+    d = smin(d, circle(p, (R + 0.03 + 0.04 * s) * dir(a), 0.065), 0.09);
+  }
+  return d;
+}
+
+// Bond N: four drops on a square. The left stem and the diagonal are bonded; the last link grows in from both
+// ends and lets go again.
+float bondN(vec2 p, float t) {
+  float s = 0.5 + 0.5 * sin(t * 0.9);
+  vec2 bl = vec2(-0.44, -0.44), tl = vec2(-0.44, 0.44), br = vec2(0.44, -0.44);
+  vec2 tr = mix(vec2(0.47, 0.5), vec2(0.44, 0.44), s);
+  float r = 0.235, k = 0.12;
+  float d = circle(p, bl, r);
+  d = smin(d, circle(p, tl, r), 0.06);
+  d = smin(d, bond(p, bl, tl, 0.085), k);
+  d = smin(d, bond(p, tl, br, 0.085), k);
+  d = smin(d, circle(p, br, r), 0.06);
+  d = smin(d, circle(p, tr, r * mix(0.9, 1.0, s)), 0.06);
+  vec2 m = mix(br, tr, 0.5);
+  float g = smoothstep(0.15, 0.95, s);
+  d = smin(d, taper(p, br, mix(br, m, g), 0.085, 0.06), k * g + 0.001);
+  d = smin(d, taper(p, tr, mix(tr, m, g), 0.085, 0.06), k * g + 0.001);
+  return d;
+}
+
+// Bloom: a centre with three long arms and three short ones; a drop at the end of each long arm comes and goes.
+float bloom(vec2 p, float t) {
+  float d = circle(p, vec2(0.0), 0.2);
+  for (int i = 0; i < 6; i++) {
+    float a = 1.5708 + float(i) * 1.0472;
+    bool isLong = mod(float(i), 2.0) < 0.5;
+    float ph = sin(t * 1.3 + float(i) * 1.7);
+    vec2 c = (isLong ? 0.55 + 0.035 * ph : 0.38 + 0.03 * ph) * dir(a);
+    d = smin(d, bond(p, vec2(0.0), c, 0.05), 0.08);
+    d = smin(d, circle(p, c, isLong ? 0.13 : 0.1), 0.08);
+    if (isLong) d = smin(d, circle(p, (0.84 + 0.045 * ph) * dir(a), 0.06), 0.1);
+  }
+  return d;
+}
+
+// Cell: three soft lobes as one body, with a breathing opening in each.
+float cell(vec2 p, float t) {
+  float body = 1e5;
+  float holes = 1e5;
+  for (int i = 0; i < 3; i++) {
+    float a = 1.5708 + float(i) * 2.0944;
+    body = smin(body, circle(p, 0.34 * dir(a), 0.46), 0.32);
+    float r = 0.215 + 0.025 * sin(t * 1.6 + float(i) * 2.1);
+    holes = min(holes, circle(p, 0.37 * dir(a) + 0.03 * dir(a + 1.5708), r));
+  }
+  return smax(body, -holes, 0.09);
+}
+
+// Synapse: a large drop and a small one bridging, a third drifting in.
+float synapse(vec2 p, float t) {
+  float s = 0.5 + 0.5 * sin(t * 0.9);
+  float d = circle(p, vec2(-0.26, 0.12), 0.38);
+  d = smin(d, circle(p, mix(vec2(0.18, -0.16), vec2(0.33, -0.3), s), 0.2), 0.32);
+  d = smin(d, circle(p, mix(vec2(0.46, 0.34), vec2(0.6, 0.46), 1.0 - s), 0.085), 0.16);
+  return d;
+}
+
+// ---- variations on the three-fold sketch ----
+// The drawing's tilt: the centre's first arm points 111 degrees round from the right; dendrites sit 60 degrees off it.
+const float A0 = 1.9373;
+vec2 rot(vec2 p, float a) { float c = cos(a), s = sin(a); return vec2(c * p.x - s * p.y, s * p.x + c * p.y); }
+float yNode(vec2 q, float L, float r) {
+  float d = 1e5;
+  for (int k = 0; k < 3; k++) d = smin(d, bond(q, vec2(0.0), L * dir(A0 - float(k) * 2.0944), r), 0.07);
+  return d;
+}
+// A dendrite as drawn: a fat drop near the centre narrowing along a neck to a smaller knob further out.
+float stick(vec2 q, vec2 b, vec2 k, float rb, float rk, float rn) {
+  float d = smin(circle(q, b, rb), bond(q, b, k, rn), 0.08);
+  return smin(d, circle(q, k, rk), 0.05);
+}
+float ringLine(vec2 q, float R, float w) { return abs(length(q) - R) - w; }
+
+float firing(vec2 p, float t) {
+  vec2 q = p / 0.9;
+  float d = yNode(q, 0.36, 0.1);
+  for (int k = 0; k < 3; k++) {
+    float a = A0 + 1.0472 - float(k) * 2.0944;
+    float pulse = 0.5 + 0.5 * sin(t * 2.2 - float(k) * 2.0944);
+    d = min(d, stick(q, 0.37 * dir(a), 0.79 * dir(a), 0.115 + 0.015 * pulse, 0.085, 0.045));
+    if (pulse > 0.7) d = smin(d, bond(q, 0.12 * dir(a), 0.3 * dir(a), 0.026 * smoothstep(0.7, 1.0, pulse)), 0.03);
+    d = min(d, circle(q, 0.7 * dir(A0 - float(k) * 2.0944), 0.085));
+  }
+  float ring = max(ringLine(q, 1.0, 0.022), -circle(q, dir(2.06), 0.07));
+  return min(d, ring) * 0.9;
+}
+
+float wired(vec2 p, float t) {
+  vec2 q = p / 0.98;
+  float d = yNode(q, 0.34, 0.1);
+  float dots = 1e5;
+  for (int k = 0; k < 3; k++) {
+    float a = A0 + 1.0472 - float(k) * 2.0944;
+    float pulse = 0.5 + 0.5 * sin(t * 1.8 - float(k) * 2.0944);
+    d = smin(d, bond(q, vec2(0.0), 0.36 * dir(a), 0.035 + 0.012 * pulse), 0.08);
+    d = smin(d, stick(q, 0.38 * dir(a), 0.8 * dir(a), 0.115, 0.085, 0.045), 0.06);
+    dots = min(dots, circle(q, 0.7 * dir(A0 - float(k) * 2.0944), 0.085));
+  }
+  return min(d, dots) * 0.98;
+}
+
+float swirl(vec2 p, float t) {
+  vec2 q = rot(p, -t * 0.25) / 0.98;
+  float d = 1e5;
+  for (int k = 0; k < 3; k++) {
+    float ay = A0 - float(k) * 2.0944;
+    d = smin(d, curve(q, vec2(0.0), 0.2 * dir(ay + 0.3), 0.36 * dir(ay + 0.12), 0.11, 0.09), 0.07);
+    float a = ay + 1.0472;
+    vec2 b = 0.38 * dir(a), tip = 0.8 * dir(a + 0.5);
+    float s = smin(circle(q, b, 0.115), curve(q, b, 0.64 * dir(a + 0.1), tip, 0.055, 0.04), 0.07);
+    d = min(d, smin(s, circle(q, tip, 0.08), 0.05));
+    d = min(d, circle(q, 0.7 * dir(ay + 0.42), 0.08));
+  }
+  return d * 0.98;
+}
+
+float terminals(vec2 p, float t) {
+  vec2 q = p / 0.98;
+  float d = 1e5;
+  for (int k = 0; k < 3; k++) {
+    float ay = A0 - float(k) * 2.0944;
+    float s = 0.5 + 0.5 * sin(t * 1.6 + float(k) * 2.0944);
+    vec2 tip = (0.68 + 0.04 * s) * dir(ay);
+    d = smin(d, bond(q, vec2(0.0), 0.34 * dir(ay), 0.1), 0.07);
+    d = smin(d, taper(q, 0.34 * dir(ay), tip, 0.06, 0.03), 0.06);
+    d = smin(d, circle(q, tip, 0.085), 0.06);
+    float a = ay + 1.0472;
+    d = min(d, stick(q, 0.38 * dir(a), 0.8 * dir(a), 0.115, 0.085, 0.045));
+  }
+  return d * 0.98;
+}
+
+float compact(vec2 p, float t) {
+  float d = yNode(p, 0.3, 0.125);
+  for (int k = 0; k < 3; k++) {
+    float a = A0 + 1.0472 - float(k) * 2.0944;
+    float s = 0.5 + 0.5 * sin(t * 1.9 - float(k) * 2.0944);
+    d = min(d, stick(p, (0.4 - 0.02 * s) * dir(a), 0.76 * dir(a), 0.14, 0.105, 0.065));
+  }
+  return d;
+}
+
+float membrane(vec2 p, float t) {
+  vec2 q = p / 0.92;
+  float d = yNode(q, 0.3, 0.1);
+  float ring = ringLine(q, 1.0, 0.045);
+  for (int k = 0; k < 3; k++) {
+    float a = A0 + 1.0472 - float(k) * 2.0944;
+    float s = 0.5 + 0.5 * sin(t * 1.4 - float(k) * 2.0944);
+    ring = smax(ring, -circle(q, dir(a), 0.13), 0.04);
+    d = min(d, stick(q, 0.36 * dir(a), (0.95 + 0.05 * s) * dir(a), 0.11, 0.09, 0.045));
+    d = min(d, circle(q, 0.62 * dir(A0 - float(k) * 2.0944), 0.075));
+  }
+  return smin(d, ring, 0.05) * 0.92;
+}
+
+// ---- idle and working ----
+// Bond N at rest: four drops, the left stem and diagonal bonded, the last link slowly forming and letting go.
+float idleN(vec2 p, float t) {
+  float s = 0.5 + 0.5 * sin(t * 1.1);
+  vec2 bl = vec2(-0.42, -0.42), tl = vec2(-0.42, 0.42), br = vec2(0.42, -0.42);
+  vec2 tr = vec2(0.42, 0.42) + vec2(0.03, 0.05) * (1.0 - s);
+  float r = 0.21, k = 0.12;
+  float d = circle(p, bl, r);
+  d = smin(d, circle(p, tl, r), 0.06);
+  d = smin(d, bond(p, bl, tl, 0.08), k);
+  d = smin(d, bond(p, tl, br, 0.08), k);
+  d = smin(d, circle(p, br, r), 0.06);
+  d = smin(d, circle(p, tr, r), 0.06);
+  float g = smoothstep(0.25, 0.95, s) * (1.0 - uSplit);
+  vec2 m = mix(br, tr, 0.5);
+  d = smin(d, taper(p, br, mix(br, m, g), 0.08, 0.055), k * g + 0.001);
+  d = smin(d, taper(p, tr, mix(tr, m, g), 0.08, 0.055), k * g + 0.001);
+  return d;
+}
+
+// The firing cell, upright: arms at 90, -30 and -150 degrees, dendrites halfway between them. Branch k fires on its
+// own beat: c runs from rest (0) to the full drawing (1), and the loose drop links to the arm a little later (e).
+const float ARM0 = 1.5708;
+void branch(int k, float t, out vec2 tip, out vec2 blob, out vec2 knob, out vec2 drop, out vec4 r, out float link) {
+  float ph = t * 2.6 - float(k) * 2.0944;
+  float c = 0.5 - 0.5 * cos(ph);
+  float e = 0.5 - 0.5 * cos(ph - 1.5);
+  vec2 u = dir(ARM0 - float(k) * 2.0944), v = dir(ARM0 + 1.0472 - float(k) * 2.0944);
+  tip = (0.34 + 0.04 * c) * u;
+  blob = (0.36 + 0.03 * c) * v;
+  knob = mix(0.42, 0.82, c) * v;
+  drop = mix(0.82, 0.64, e) * u;
+  r = vec4(mix(0.08, 0.125, c), mix(0.04, 0.09, c), mix(0.024, 0.047, c), mix(0.05, 0.09, e));
+  link = smoothstep(0.4, 0.92, e);
+}
+// A link grows from both ends toward the middle: g = 0 apart, 1 joined.
+float linkLine(vec2 p, vec2 a, vec2 b, float g) {
+  vec2 m = mix(a, b, 0.5);
+  return min(taper(p, a, mix(a, m, g), 0.05, 0.032), taper(p, b, mix(b, m, g), 0.05, 0.032));
+}
+float firingCell(vec2 p, float t) {
+  // The central chunk: a slightly fuller body and arms than the drawing it came from.
+  float d = circle(p, vec2(0.0), 0.19);
+  for (int k = 0; k < 3; k++) {
+    vec2 tip, blob, knob, drop; vec4 r; float g;
+    branch(k, t, tip, blob, knob, drop, r, g);
+    d = smin(d, bond(p, vec2(0.0), tip, 0.115), 0.07);
+    d = min(d, stick(p, blob, knob, r.x, r.y, r.z));
+    d = min(d, circle(p, drop, r.w));
+    d = smin(d, linkLine(p, tip, drop, g), 0.06 * g + 0.001);
+  }
+  return d;
+}
+
+// Melt: the N melts into a single drop, which then branches into the cell.
+float melt(vec2 p, float t, float w) {
+  float drop = circle(p, vec2(0.0), 0.36);
+  float d = mix(idleN(p, t), drop, smoothstep(0.0, 0.5, w));
+  return mix(d, firingCell(p, t), smoothstep(0.5, 1.0, w));
+}
+
+// ---- an N that connects ----
+// The N's four drops. At rest the N joins bottom left, top left, bottom right and top right in that order; while
+// working, the three pairs it leaves open join too: the top, the other diagonal and the bottom.
+const vec2 NBL = vec2(-0.42, -0.42);
+const vec2 NTL = vec2(-0.42, 0.42);
+const vec2 NBR = vec2(0.42, -0.42);
+const vec2 NTR = vec2(0.42, 0.42);
+// A liquid link growing in from both ends: g = 0 apart, 1 joined. Shrinking g splits it at the middle.
+float grow(vec2 p, vec2 a, vec2 b, float g, float r0, float r1) {
+  vec2 m = mix(a, b, 0.5);
+  return min(taper(p, a, mix(a, m, g), r0, r1), taper(p, b, mix(b, m, g), r0, r1));
+}
+
+// Every connecting design rests exactly as Melt does (idleN): the stem and diagonal bonded, the top right drop a
+// little apart and drifting while its link slowly forms and lets go. w moves it toward working, where n holds the
+// strengths of the stem, diagonal and right link, and o those of the top, the other diagonal and the bottom. shiftA
+// and shiftB move the drops (bottom left, top left | bottom right, top right); lite thins drops and bonds.
+float restN(vec2 p, float t, float w, vec3 n, vec3 o, vec4 shiftA, vec4 shiftB, float lite) {
+  float s = 0.5 + 0.5 * sin(t * 1.1);
+  vec2 bl = NBL + shiftA.xy, tl = NTL + shiftA.zw, br = NBR + shiftB.xy;
+  float wr = smoothstep(0.55, 1.0, w);
+  vec2 tr = NTR + shiftB.zw + (1.0 - wr) * vec2(0.03, 0.05) * (1.0 - s);
+  float r = mix(0.21, 0.17, lite), rb = mix(0.08, 0.052, lite), rt = mix(0.055, 0.036, lite), k = 0.12;
+  float nl = mix(1.0, n.x, w), nd = mix(1.0, n.y, w), nr = mix(smoothstep(0.25, 0.95, s) * (1.0 - uSplit), n.z, wr);
+  vec3 ow = o * w;
+  float d = circle(p, bl, r);
+  d = smin(d, circle(p, tl, r), 0.06);
+  d = smin(d, grow(p, bl, tl, nl, rb, rb), max(k * nl, 0.0001));
+  d = smin(d, grow(p, tl, br, nd, rb, rb), max(k * nd, 0.0001));
+  d = smin(d, circle(p, br, r), 0.06);
+  d = smin(d, circle(p, tr, r), 0.06);
+  vec2 m = mix(br, tr, 0.5);
+  d = smin(d, taper(p, br, mix(br, m, nr), rb, rt), k * nr + 0.001);
+  d = smin(d, taper(p, tr, mix(tr, m, nr), rb, rt), k * nr + 0.001);
+  d = smin(d, grow(p, tl, tr, ow.x, rb, rt), k * ow.x + 0.001);
+  d = smin(d, grow(p, bl, tr, ow.y, rb, rt), k * ow.y + 0.001);
+  return smin(d, grow(p, bl, br, ow.z, rb, rt), k * ow.z + 0.001);
+}
+
+// Rewire: whole shapes in turn, N, Z, square, cross.
+void shapeOf(int k, out vec3 n, out vec3 o) {
+  if (k == 0) { n = vec3(1.0); o = vec3(0.0); }
+  else if (k == 1) { n = vec3(0.0); o = vec3(1.0); }
+  else if (k == 2) { n = vec3(1.0, 0.0, 1.0); o = vec3(1.0, 0.0, 1.0); }
+  else { n = vec3(0.0, 1.0, 0.0); o = vec3(0.0, 1.0, 0.0); }
+}
+float rewire(vec2 p, float t, float w) {
+  float u = t / 1.7;
+  float k = mod(floor(u), 4.0);
+  float f = smoothstep(0.4, 1.0, fract(u));
+  vec3 n0, o0, n1, o1;
+  shapeOf(int(k), n0, o0);
+  shapeOf(int(mod(k + 1.0, 4.0)), n1, o1);
+  return restN(p, t, w, mix(n0, n1, f), mix(o0, o1, f), vec4(0.0), vec4(0.0), 0.0);
+}
+
+// Relay: the N lets go and two travelling connections take over. Each hop reaches from one drop to the next, then
+// flows into it.
+vec4 hop(int h) {
+  if (h == 0) return vec4(NBL, NTL);
+  if (h == 1) return vec4(NTL, NBR);
+  if (h == 2) return vec4(NBR, NTR);
+  if (h == 3) return vec4(NTR, NTL);
+  if (h == 4) return vec4(NTL, NBL);
+  if (h == 5) return vec4(NBL, NTR);
+  if (h == 6) return vec4(NTR, NBR);
+  return vec4(NBR, NBL);
+}
+float messenger(vec2 p, float u) {
+  vec4 e = hop(int(mod(floor(u), 8.0)));
+  float f = fract(u);
+  float head = smoothstep(0.0, 0.55, f), tail = smoothstep(0.45, 1.0, f);
+  return taper(p, mix(e.xy, e.zw, tail), mix(e.xy, e.zw, head), 0.06, 0.08);
+}
+float relay(vec2 p, float t, float w) {
+  float d = restN(p, t, w, vec3(0.0), vec3(0.0), vec4(0.0), vec4(0.0), 0.0);
+  float u = t / 0.85;
+  // Half a hop apart, so one connection is always reaching while the other hands over. Hidden at rest.
+  float m = min(messenger(p, u), messenger(p, u + 4.5)) + (1.0 - w) * 0.1;
+  return smin(d, m, 0.1 * w + 0.001);
+}
+
+// Mesh: every pair on its own rhythm; drops lean toward the drops they hold, and the mark thins as it works.
+float beat(float t, float i) { return smoothstep(0.3, 0.75, 0.5 + 0.5 * sin(t * (1.1 + 0.21 * i) + i * 2.3)); }
+float mesh(vec2 p, float t, float w) {
+  vec3 n = vec3(beat(t, 0.0), beat(t, 1.0), beat(t, 2.0));
+  vec3 o = vec3(beat(t, 3.0), beat(t, 4.0), beat(t, 5.0));
+  float lean = 0.07 * w;
+  vec2 bl = lean * (n.x * normalize(NTL - NBL) + o.y * normalize(NTR - NBL) + o.z * normalize(NBR - NBL));
+  vec2 tl = lean * (n.x * normalize(NBL - NTL) + n.y * normalize(NBR - NTL) + o.x * normalize(NTR - NTL));
+  vec2 br = lean * (n.y * normalize(NTL - NBR) + n.z * normalize(NTR - NBR) + o.z * normalize(NBL - NBR));
+  vec2 tr = lean * (n.z * normalize(NBR - NTR) + o.x * normalize(NTL - NTR) + o.y * normalize(NBL - NTR));
+  return restN(p, t, w, n, o, vec4(bl, tl), vec4(br, tr), w);
+}
+
+float cover(float d) { return clamp(0.5 - d / uPx, 0.0, 1.0); }
+void main() {
+  vec2 p = vP * 1.04;
+  float t = uTime;
+  float a;
+  a = cover(MARK_CALL);
+  gl_FragColor = vec4(uInk * a, a);
+}`;
+
+  // ---------- page ----------
+  const roundsEl = document.getElementById("rounds");
+  // Each idle/working card keeps how far it is into the working state (w, 0 to 1). A critically damped spring moves
+  // w toward the chosen state, so a change is smooth even when it is reversed halfway.
+  const states = [];
+  const ease = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+  // The release after work: on within a fifth of a second, held, then handed back to the resting rhythm.
+  function releaseOf(st) {
+    if (st.restedAt == null) return 0;
+    const since = (performance.now() - st.restedAt) / 1000;
+    return ease(0, 0.2, since) * (1 - ease(1.6, 3.8, since));
+  }
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function addState(el) {
+    const st = { mode: reducedMotion ? "idle" : "auto", target: 0, w: 0, v: 0, flipAt: performance.now() + 4200 + states.length * 900 };
+    const buttons = el.querySelectorAll("[data-state]");
+    const sync = () => buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.state === st.mode)));
+    buttons.forEach((b) => b.addEventListener("click", () => {
+      st.mode = b.dataset.state;
+      if (st.mode === "idle") { if (st.target === 1) st.restedAt = performance.now(); st.target = 0; }
+      if (st.mode === "working") st.target = 1;
+      if (st.mode === "auto") st.flipAt = performance.now() + 1200;
+      sync();
+      wake();
+    }));
+    sync();
+    states.push(st);
+    return st;
+  }
+  const targets = [];
+  for (const round of ROUNDS) {
+    const section = document.createElement("section");
+    section.className = "round";
+    section.innerHTML = `<div class="round-head"><h2>${round.title}</h2><p>${round.note}</p></div><div class="sheet${round.items.length === 3 ? " three" : ""}"></div>`;
+    roundsEl.appendChild(section);
+    const sheet = section.querySelector(".sheet");
+    round.items.forEach((d) => {
+    const i = d.mark;
+    const el = document.createElement("article");
+    el.className = "direction";
+    el.innerHTML = `
+      <div class="views">
+        <div class="view plain"><span class="view-label">Mark</span><canvas class="big" aria-label="${d.name} mark"></canvas></div>
+        <div class="view glass"><span class="view-label">In Nox</span><div class="lens"><canvas aria-label="${d.name} mark inside Nox's glass"></canvas></div></div>
+      </div>
+      <div><h3>${d.name}</h3><p class="idea">${d.idea}</p>${round.states ? `
+        <div class="seg states" role="group" aria-label="${d.name} state">
+          <button type="button" data-state="idle" aria-pressed="false">Idle</button>
+          <button type="button" data-state="working" aria-pressed="false">Working</button>
+          <button type="button" data-state="auto" aria-pressed="true">Auto</button>
+        </div>` : ""}</div>
+      <div class="uses">
+        <div class="sizes">
+          <figure><canvas data-size="56" class="tile"></canvas><figcaption>App</figcaption></figure>
+          <figure><canvas data-size="48"></canvas><figcaption>48</figcaption></figure>
+          <figure><canvas data-size="32"></canvas><figcaption>32</figcaption></figure>
+          <figure><canvas data-size="16"></canvas><figcaption>16</figcaption></figure>
+        </div>
+        <div class="lockup"><canvas data-size="30"></canvas><span>Newron</span></div>
+      </div>`;
+    sheet.appendChild(el);
+    const state = round.states ? addState(el) : null;
+    const big = el.querySelector("canvas.big");
+    targets.push({ mark: i, canvas: big, kind: "big", view: el.querySelector(".view.plain"), state });
+    targets.push({ mark: i, canvas: el.querySelector(".lens canvas"), kind: "lens", state });
+    el.querySelectorAll("canvas[data-size]").forEach((c) => {
+      targets.push({ mark: i, canvas: c, kind: c.classList.contains("tile") ? "tile" : "icon", size: +c.dataset.size, state });
+      c.style.width = c.style.height = `${c.dataset.size}px`;
+    });
+    });
+  }
+
+  // ---------- drawing ----------
+  const glCanvas = document.createElement("canvas");
+  glCanvas.width = glCanvas.height = 640;
+  const gl = glCanvas.getContext("webgl", { premultipliedAlpha: true, preserveDrawingBuffer: true, antialias: false });
+  if (!gl) {
+    document.getElementById("no-webgl").hidden = false;
+    return;
+  }
+  const shader = (type, src) => {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  };
+  // One small program per mark, compiled the first time it is drawn, so each pixel only runs its own mark.
+  const CALLS = {
+    0: "tetra(p, t)", 1: "node(p, t)", 2: "bondN(p, t)", 3: "bloom(p, t)", 4: "synapse(p, t)", 5: "cell(p, t)",
+    6: "firing(p, t)", 7: "wired(p, t)", 8: "swirl(p, t)", 9: "terminals(p, t)", 10: "compact(p, t)", 11: "membrane(p, t)",
+    12: "melt(p, t, uWork)", 18: "rewire(p, t, uWork)", 19: "relay(p, t, uWork)", 20: "mesh(p, t, uWork)",
+  };
+  const vertexShader = shader(gl.VERTEX_SHADER, vertex);
+  const programs = {};
+  function programFor(mark) {
+    if (programs[mark]) return programs[mark];
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, fragment.replace("MARK_CALL", CALLS[mark])));
+    gl.bindAttribLocation(program, 0, "aPos");
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    const u = (name) => gl.getUniformLocation(program, name);
+    return (programs[mark] = { program, uTime: u("uTime"), uPx: u("uPx"), uInk: u("uInk"), uWork: u("uWork"), uSplit: u("uSplit") });
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+  let ink = "ink";
+  const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const rgb = (hex) => {
+    const n = parseInt(hex.replace("#", ""), 16);
+    return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+  };
+  let colours = {};
+  const readColours = () => {
+    const mark = token("--mark"), reverse = token("--mark-reverse"), indigo = token("--indigo");
+    colours = {
+      sheet: rgb(ink === "indigo" ? indigo : ink === "reverse" ? reverse : mark),
+      // Inside the glass the lens is a light haze, so the mark stays dark (or indigo) in every theme.
+      lens: rgb(ink === "indigo" ? "#3b36d4" : "#161616"),
+      tileGround: ink === "reverse" ? mark : token("--paper"),
+    };
+  };
+
+  // Draws one mark at n pixels in the shared WebGL canvas and reads it straight back as an image, so every target
+  // gets its own pixels even though all marks share one drawing surface.
+  let readBuffer = new Uint8Array(0);
+  function drawMark(mark, n, colour, time, work = 0, split = 0) {
+    gl.viewport(0, 0, n, n);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    const prog = programFor(mark);
+    gl.useProgram(prog.program);
+    gl.uniform1f(prog.uTime, time);
+    gl.uniform1f(prog.uWork, Math.min(1, Math.max(0, work)));
+    gl.uniform1f(prog.uSplit, split);
+    gl.uniform1f(prog.uPx, 2.08 / n);
+    gl.uniform3fv(prog.uInk, colour);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    if (readBuffer.length < n * n * 4) readBuffer = new Uint8Array(n * n * 4);
+    gl.readPixels(0, 0, n, n, gl.RGBA, gl.UNSIGNED_BYTE, readBuffer);
+    // WebGL rows run bottom-up and colours come premultiplied; the ink is one colour, so only coverage is needed.
+    const image = new ImageData(n, n);
+    const [r, g, b] = colour.map((c) => Math.round(c * 255));
+    for (let y = 0; y < n; y++) {
+      const from = (n - 1 - y) * n * 4, to = y * n * 4;
+      for (let x = 0; x < n; x++) {
+        const a = readBuffer[from + x * 4 + 3];
+        const k = to + x * 4;
+        image.data[k] = r;
+        image.data[k + 1] = g;
+        image.data[k + 2] = b;
+        image.data[k + 3] = a;
+      }
+    }
+    return image;
+  }
+  const scratch = document.createElement("canvas");
+
+  const ratio = () => Math.min(2, window.devicePixelRatio || 1);
+  function paint(target, time) {
+    const r = ratio();
+    const box = target.kind === "big" || target.kind === "lens" ? target.canvas.getBoundingClientRect().width : target.size;
+    const n = Math.max(8, Math.min(glCanvas.width, Math.round(box * r)));
+    if (target.canvas.width !== n) target.canvas.width = target.canvas.height = n;
+    const g = target.canvas.getContext("2d");
+    g.clearRect(0, 0, n, n);
+    const work = target.state ? target.state.w : 0;
+    const split = target.state ? releaseOf(target.state) : 0;
+    if (target.kind === "tile") {
+      g.fillStyle = colours.tileGround;
+      g.fillRect(0, 0, n, n);
+      const inner = Math.round(n * 0.62), off = Math.round((n - inner) / 2);
+      scratch.width = scratch.height = inner;
+      scratch.getContext("2d").putImageData(drawMark(target.mark, inner, colours.sheet, time, work, split), 0, 0);
+      g.drawImage(scratch, off, off);
+      return;
+    }
+    const colour = target.kind === "lens" ? colours.lens : colours.sheet;
+    g.putImageData(drawMark(target.mark, n, colour, time, work, split), 0, 0);
+  }
+
+  // ---------- glass ----------
+  // Nox's lens as measured from the photo: unbent in the middle, the outer third pulled inward until it folds,
+  // red shifting most for a warm fringe. Shared by every preview, all 128px across (104px on small phones).
+  function lensFilter(size) {
+    const px = size * 2, rim = 0.3, curve = 1.8, bend = 0.38, fringe = 2.5;
+    const c = document.createElement("canvas");
+    c.width = c.height = px;
+    const g = c.getContext("2d");
+    const img = g.createImageData(px, px);
+    const R = px / 2;
+    for (let j = 0; j < px; j++) for (let i = 0; i < px; i++) {
+      const dx = i + 0.5 - R, dy = j + 0.5 - R, dist = Math.hypot(dx, dy), r = dist / R;
+      const m = r > 1 - rim ? Math.pow(Math.min(1, (r - (1 - rim)) / rim), curve) : 0;
+      const k = (j * px + i) * 4;
+      img.data[k] = 128 - 127 * m * (dist ? dx / dist : 0);
+      img.data[k + 1] = 128 - 127 * m * (dist ? dy / dist : 0);
+      img.data[k + 2] = 128;
+      img.data[k + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    const s = bend * size;
+    const channel = (scale, row, name) => `
+      <feDisplacementMap in="SourceGraphic" in2="map" scale="${scale}" xChannelSelector="R" yChannelSelector="G" result="d${name}"/>
+      <feColorMatrix in="d${name}" type="matrix" values="${row}" result="${name}"/>`;
+    const f = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+    f.id = `nox-lens-${size}`;
+    for (const [k, v] of [["x", "0"], ["y", "0"], ["width", "100%"], ["height", "100%"], ["color-interpolation-filters", "sRGB"]]) f.setAttribute(k, v);
+    f.innerHTML = `
+      <feImage href="${c.toDataURL()}" x="0" y="0" width="${size}" height="${size}" preserveAspectRatio="none" result="map"/>
+      ${channel(s + fringe, "1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0", "r")}
+      ${channel(s, "0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0", "g")}
+      ${channel(s - fringe, "0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0", "b")}
+      <feBlend in="r" in2="g" mode="screen" result="rg"/>
+      <feBlend in="rg" in2="b" mode="screen"/>`;
+    document.getElementById("filters").appendChild(f);
+    return f.id;
+  }
+  const ua = navigator.userAgent;
+  const refracts = !((/Safari/.test(ua) && !/Chrome|Chromium|Edg/.test(ua)) || /Firefox/.test(ua));
+  const filterIds = {};
+  function fitLenses() {
+    document.querySelectorAll(".lens").forEach((lens) => {
+      const size = Math.round(lens.getBoundingClientRect().width);
+      if (!refracts || !size) return;
+      filterIds[size] ||= lensFilter(size);
+      const bf = `url(#${filterIds[size]}) blur(1.5px) saturate(1)`;
+      lens.style.backdropFilter = bf;
+      lens.style.webkitBackdropFilter = bf;
+    });
+  }
+
+  // A bright backdrop of concentric bands, which shows the lens bending clearly; each preview sees a different part.
+  const PALETTES = [
+    ["#ff3d7f", "#ff9a00", "#ffe600", "#00d27a", "#00a3ff", "#7a3cff"],
+    ["#f72585", "#b5179e", "#7209b7", "#3a0ca3", "#4361ee", "#4cc9f0"],
+    ["#ff006e", "#fb5607", "#ffbe0b", "#8338ec", "#3a86ff"],
+    ["#00f5d4", "#00bbf9", "#fee440", "#f15bb5", "#9b5de5"],
+    ["#ef476f", "#ffd166", "#06d6a0", "#118ab2", "#3d2bd1"],
+  ];
+  let palette = 0;
+  function makeBackdrop() {
+    const c = document.createElement("canvas");
+    c.width = 960;
+    c.height = 320;
+    const g = c.getContext("2d");
+    const pal = PALETTES[palette];
+    const ring = (cx, cy, max, offset) => {
+      let r = max, i = offset;
+      while (r > 0) {
+        g.beginPath();
+        g.arc(cx, cy, r, 0, Math.PI * 2);
+        g.fillStyle = pal[i % pal.length];
+        g.fill();
+        r -= 16 + ((i * 7) % 14);
+        i++;
+      }
+    };
+    ring(140, 360, 1100, 0);
+    ring(760, -20, 300, 2);
+    const url = c.toDataURL("image/jpeg", 0.9);
+    document.querySelectorAll(".view.glass").forEach((v, i) => {
+      v.style.backgroundImage = `url(${url})`;
+      v.style.backgroundPosition = `${(i * 37) % 100}% 50%`;
+    });
+  }
+  document.getElementById("backdrop").addEventListener("click", () => {
+    palette = (palette + 1) % PALETTES.length;
+    makeBackdrop();
+  });
+
+  // ---------- controls and motion ----------
+  let playing = !reducedMotion;
+  let started = performance.now();
+  let pausedAt = 2.2;
+  const now = () => (playing ? (performance.now() - started) / 1000 : pausedAt);
+  const playButton = document.getElementById("play");
+  const syncPlay = () => (playButton.textContent = playing ? "Pause" : "Play");
+  playButton.addEventListener("click", () => {
+    if (playing) pausedAt = now();
+    else started = performance.now() - pausedAt * 1000;
+    playing = !playing;
+    syncPlay();
+    paintAll();
+    wake();
+  });
+  document.querySelectorAll("[data-ink]").forEach((b) =>
+    b.addEventListener("click", () => {
+      ink = b.dataset.ink;
+      document.querySelectorAll("[data-ink]").forEach((o) => o.setAttribute("aria-pressed", String(o === b)));
+      document.querySelectorAll(".view.plain").forEach((v) => v.classList.toggle("reverse", ink === "reverse"));
+      readColours();
+      paintAll();
+    }));
+
+  function paintAll() {
+    const time = now();
+    for (const target of targets) paint(target, time);
+  }
+  // One loop drives everything. While playing, the large views and the lenses move every frame and the small sizes
+  // follow a few times a second; a card that is changing state redraws all its sizes every frame. When paused and no
+  // card is changing, the loop stops until something wakes it.
+  let frame = 0, tick = 0, last = 0;
+  const SPRING = 5.5;
+  function step(at) {
+    frame = 0;
+    const dt = Math.min(0.05, last ? (at - last) / 1000 : 0.016);
+    last = at;
+    tick++;
+    let moving = false;
+    for (const st of states) {
+      if (st.mode === "auto" && playing && at >= st.flipAt) {
+        st.target = 1 - st.target;
+        if (st.target === 0) st.restedAt = performance.now();
+        st.flipAt = at + (st.target ? 5600 : 3400);
+      }
+      const a = SPRING * SPRING * (st.target - st.w) - 2 * SPRING * st.v;
+      st.v += a * dt;
+      st.w += st.v * dt;
+      const settling = Math.abs(st.target - st.w) > 0.0005 || Math.abs(st.v) > 0.0005;
+      if (!settling) { st.w = st.target; st.v = 0; }
+      st.moving = settling || (st.restedAt != null && at - st.restedAt < 4000);
+      moving ||= st.moving;
+    }
+    const time = now();
+    for (const target of targets) {
+      const changing = target.state && target.state.moving;
+      if (playing ? target.kind === "big" || target.kind === "lens" || changing || tick % 8 === 0 : changing) paint(target, time);
+    }
+    if (playing || moving) wake();
+    else last = 0;
+  }
+  function wake() {
+    if (!frame) frame = requestAnimationFrame(step);
+  }
+
+  readColours();
+  syncPlay();
+  makeBackdrop();
+  fitLenses();
+  paintAll();
+  wake();
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readColours(); paintAll(); });
+  new MutationObserver(() => { readColours(); paintAll(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  let resizeTimer = 0;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { fitLenses(); paintAll(); }, 150);
+  });
+})();
+</script>

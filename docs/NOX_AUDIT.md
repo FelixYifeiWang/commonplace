@@ -5,7 +5,7 @@ Newron is the website and product. Nox is its macOS companion.
 ## Fixed
 
 - Native app/menu/About/window labels and the menu-bar tooltip now say Nox.
-- App and menu-bar icons use the neuron design. The former face icon is removed.
+- App and menu-bar icons use Newron's mark, the resting N that Nox shows (`lib/newron-mark.mjs`, rebuilt by `desktop/build-icons.swift`). The former face and neuron icons are removed.
 - Setup creates `~/Applications/Nox.app`. It removes an old `Newron.app` shortcut only when both shortcuts point to this installation. Unrelated apps are preserved.
 - Native assets resolve in both the downloaded release and the source checkout.
 - Buddy pages have the Nox page title and are excluded from search indexing.
