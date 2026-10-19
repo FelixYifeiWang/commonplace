@@ -20,6 +20,8 @@ for (const file of [
   "target.mjs",
   "activity.mjs",
   "claude.mjs",
+  "install.mjs",
+  "update.mjs",
   "media-tools.mjs",
   "connect.mjs",
   "drag.mjs",

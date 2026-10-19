@@ -15,6 +15,7 @@ import {
 } from "electron";
 import path from "node:path";
 import { createMediaTools } from "./media-tools.mjs";
+import { updateNox } from "./update.mjs";
 import { createVisibilityPolicy } from "./visibility.mjs";
 import { pointerDirection } from "../lib/nox-motion.mjs";
 import { execFile } from "node:child_process";
@@ -47,6 +48,14 @@ const assetsDir = existsSync(path.join(__dirname, "commonplace.png"))
   : path.join(__dirname, "release");
 const appIcon = path.join(assetsDir, "commonplace.png");
 const ORIGIN = process.env.COMMONPLACE_ORIGIN || "http://127.0.0.1:3100";
+// An installed Nox runs from <space>/current, which an update moves to a newer verified release.
+// A development run (npm run desktop) never updates itself.
+const launchedFrom = path.resolve(process.argv[1] || ".");
+const installRoot =
+  process.env.COMMONPLACE_LAUNCHER === "1" &&
+  path.basename(launchedFrom) === "current"
+    ? path.dirname(launchedFrom)
+    : null;
 if (process.env.COMMONPLACE_DATA_DIR) {
   if (!path.isAbsolute(process.env.COMMONPLACE_DATA_DIR))
     throw new Error("Invalid companion storage path.");
@@ -443,6 +452,35 @@ async function copyReference(id) {
     throw new Error("Reference unavailable.");
   clipboard.writeText(data.prompt);
   return { copied: true };
+}
+// Nox checks for a newer release shortly after launch and every few hours. After switching, it waits until
+// it is not syncing or being dragged, saves its state and exits with an error code, so launchd starts
+// the new release through <space>/current (the LaunchAgent restarts Nox on any unsuccessful exit).
+let restarting = false;
+function restartWhenIdle() {
+  if (busy || dragController?.isDragging()) {
+    setTimeout(restartWhenIdle, 5000);
+    return;
+  }
+  void persist().finally(() => app.exit(75));
+}
+async function checkForUpdate() {
+  if (!installRoot || restarting) return;
+  try {
+    const result = await updateNox({
+      origin: ORIGIN,
+      root: installRoot,
+      runtime: path.dirname(__dirname),
+    });
+    if (result.status === "updated") {
+      restarting = true;
+      console.log(`Nox updated to ${result.release}; restarting.`);
+      restartWhenIdle();
+    } else if (result.status === "needs-setup")
+      console.log("A new Nox release needs setup to update its runtime.");
+  } catch (error) {
+    console.error("Nox could not update:", error.message);
+  }
 }
 // Pasted images and artifact captures for the transcripts Nox follows; made once Electron is ready.
 let media;
@@ -1010,6 +1048,8 @@ if (!lock) {
       await processSetup();
       setInterval(() => void processSetup(), 2000);
       setInterval(() => void tick(), 15000);
+      setTimeout(() => void checkForUpdate(), 60000);
+      setInterval(() => void checkForUpdate(), 6 * 60 * 60 * 1000);
       setInterval(() => {
         if (
           expanded &&

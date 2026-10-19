@@ -102,7 +102,7 @@ export async function verifyRuntime(runtime) {
     ),
   );
 }
-async function download(url) {
+export async function download(url) {
   const r = await fetch(url, {
     redirect: "error",
     cache: "no-store",
@@ -111,6 +111,71 @@ async function download(url) {
   if (!r.ok)
     throw new Error("Could not download companion (" + r.status + ").");
   return Buffer.from(await r.arrayBuffer());
+}
+// Downloads a release into root/releases/<release>, checking every file against the manifest.
+// A file that changed while downloading means a newer release was published: start over once.
+export async function fetchRelease({
+  origin,
+  root,
+  get = download,
+  onProgress = () => {},
+}) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const manifest = validateManifest(
+        JSON.parse((await get(origin + "/companion/manifest.json")).toString()),
+      );
+      const runtime = join(root, "releases", manifest.release);
+      onProgress("Preparing Nox…");
+      for (const file of manifest.files) {
+        const target = join(runtime, file.path);
+        let valid = false;
+        try {
+          valid = digest(await readFile(target)) === file.sha256;
+        } catch (e) {
+          if (e.code !== "ENOENT") throw e;
+        }
+        if (!valid) {
+          const contents = await get(origin + "/companion/files/" + file.path);
+          if (contents.length !== file.size || digest(contents) !== file.sha256)
+            throw Object.assign(
+              new Error(
+                "The Nox release changed during setup. Try setup again.",
+              ),
+              { code: "RELEASE_CHANGED" },
+            );
+          await mkdir(dirname(target), { recursive: true, mode: 0o700 });
+          await writeFile(target + ".tmp", contents, { mode: 0o600 });
+          await rename(target + ".tmp", target);
+        }
+      }
+      return { manifest, runtime };
+    } catch (error) {
+      if (attempt || error.code !== "RELEASE_CHANGED") throw error;
+      onProgress("Getting the latest Nox…");
+    }
+  }
+}
+// The LaunchAgent starts Nox through root/current, so an update only has to move this link.
+export async function pointCurrent(root, runtime) {
+  const link = join(root, "current"),
+    temp = link + "." + randomUUID();
+  await symlink(runtime, temp);
+  await rename(temp, link);
+}
+export function launchAgentXml({ label, root, environment }) {
+  const current = join(root, "current"),
+    electron = join(
+      current,
+      "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron",
+    );
+  return `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>Label</key><string>${label}</string><key>ProgramArguments</key><array><string>${escapeXml(electron)}</string><string>${escapeXml(current)}</string></array><key>EnvironmentVariables</key><dict>${Object.entries(
+    environment,
+  )
+    .map(([k, v]) => `<key>${k}</key><string>${escapeXml(v)}</string>`)
+    .join(
+      "",
+    )}</dict><key>RunAtLoad</key><true/><key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict><key>ThrottleInterval</key><integer>30</integer><key>ProcessType</key><string>Interactive</string></dict></plist>`;
 }
 export async function bootstrapBuddy(
   plist,
@@ -289,49 +354,7 @@ export async function install(
     throw e;
   }
   try {
-    let runtime;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const manifest = validateManifest(
-          JSON.parse(
-            (await download(origin + "/companion/manifest.json")).toString(),
-          ),
-        );
-        runtime = join(root, "releases", manifest.release);
-        onProgress("Preparing Nox…");
-        for (const file of manifest.files) {
-          const target = join(runtime, file.path);
-          let valid = false;
-          try {
-            valid = digest(await readFile(target)) === file.sha256;
-          } catch (e) {
-            if (e.code !== "ENOENT") throw e;
-          }
-          if (!valid) {
-            const contents = await download(
-              origin + "/companion/files/" + file.path,
-            );
-            if (
-              contents.length !== file.size ||
-              digest(contents) !== file.sha256
-            )
-              throw Object.assign(
-                new Error(
-                  "The Nox release changed during setup. Try setup again.",
-                ),
-                { code: "RELEASE_CHANGED" },
-              );
-            await mkdir(dirname(target), { recursive: true, mode: 0o700 });
-            await writeFile(target + ".tmp", contents, { mode: 0o600 });
-            await rename(target + ".tmp", target);
-          }
-        }
-        break;
-      } catch (error) {
-        if (attempt || error.code !== "RELEASE_CHANGED") throw error;
-        onProgress("Getting the latest Nox…");
-      }
-    }
+    const { runtime } = await fetchRelease({ origin, root, onProgress });
     await chmod(join(runtime, "desktop/native/bin/commonplace-target"), 0o755);
     let source;
     if (action === "connect") {
@@ -345,10 +368,6 @@ export async function install(
       });
       if (input.title) source.title = String(input.title).slice(0, 120);
     }
-    const electron = join(
-      runtime,
-      "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron",
-    );
     try {
       await readFile(join(runtime, ".installed"));
       await verifyRuntime(runtime);
@@ -391,6 +410,7 @@ export async function install(
       await verifyRuntime(runtime);
       await writeFile(join(runtime, ".installed"), "1");
     }
+    await pointCurrent(root, runtime);
     const id = randomUUID();
     await mkdir(data, { recursive: true, mode: 0o700 });
     // Only the expiring code touches disk; Electron exchanges it and encrypts the device key.
@@ -419,13 +439,7 @@ export async function install(
       COMMONPLACE_LAUNCHER: "1",
       ...(process.env.CODEX_HOME ? { CODEX_HOME: process.env.CODEX_HOME } : {}),
     };
-    const xml = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>Label</key><string>${label}</string><key>ProgramArguments</key><array><string>${escapeXml(electron)}</string><string>${escapeXml(runtime)}</string></array><key>EnvironmentVariables</key><dict>${Object.entries(
-      environment,
-    )
-      .map(([k, v]) => `<key>${k}</key><string>${escapeXml(v)}</string>`)
-      .join(
-        "",
-      )}</dict><key>RunAtLoad</key><true/><key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict><key>ThrottleInterval</key><integer>30</integer><key>ProcessType</key><string>Interactive</string></dict></plist>`;
+    const xml = launchAgentXml({ label, root, environment });
     let same = false;
     try {
       same = (await readFile(plist, "utf8")) === xml;

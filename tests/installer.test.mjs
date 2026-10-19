@@ -119,6 +119,11 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
       assert.ok(
         !plist.includes("/Contents/MacOS/Electron</string><string>/desktop"),
       );
+      // Nox starts through root/current, so a self-update only moves that link.
+      assert.match(
+        plist,
+        /\/current\/node_modules\/electron\/dist\/Electron\.app\/Contents\/MacOS\/Electron<\/string><string>[^<]+\/current<\/string>/,
+      );
       data = plist.match(
         /<key>COMMONPLACE_DATA_DIR<\/key><string>([^<]+)<\/string>/,
       )[1];
