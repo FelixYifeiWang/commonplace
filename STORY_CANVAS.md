@@ -9,9 +9,9 @@ The first mockup was curated by hand: I extracted the transcripts, picked the de
 | Step | What happens | Where | Status |
 | --- | --- | --- | --- |
 | 1. Read the conversation | Collect user and assistant turns. Drop tool and system chatter: notifications, reminders, interruptions, context summaries, command output, environment preambles. Strip app wrappers (Codex in-app browser state, open pages, attached-file headers) and keep the request inside; the human's answers to the assistant's questions become "question → answer" | `desktop/collector.mjs`; `isSessionNoise` and `prepareSessionBatch` in `lib/story.mjs` | Built |
-| 2. Keep what the human pasted | Images in user turns become items marked `fromHuman`, so a sketch outranks a capture | `lib/protocol.mjs` (parse image parts), `desktop/collector.mjs` (upload) | After the merge (both files changed upstream) |
+| 2. Keep what the human pasted | Images in user turns (Claude Code, its queued messages, Codex) become the human's own image items, so a sketch outranks a capture | `lib/session-media.mjs` (read), `desktop/collector.mjs` (upload), `/api/capture/media` | Built |
 | 3. Capture references | Every URL mentioned becomes an item with a page screenshot | `app/api/capture`, `desktop/screenshot-worker.mjs` | Existed |
-| 4. Capture what was built | The shipped URL (desktop and phone) and local prototypes become items | Screenshot worker (phone viewport, local files) | After the merge |
+| 4. Capture what was built | Artifacts Claude publishes are rendered from their local HTML by Nox and become the picture of their link; public pages get server screenshots | `desktop/media-tools.mjs`; hosted screenshots | Built for artifacts; shipped URLs on phone size still open |
 | 5. Fit every picture | Classify as page, object or ink; store the edge colour and trim box; make the cut-out for objects. Website captures are always pages | `lib/image-fit.mjs` (`classifyImage`, `cutOut`), run once in the screenshot worker | Library built; wiring after the merge |
 | 6. Write the story and gallery | One call (about 20 s) returns the whole story and gallery, revising the current version. IDs, URLs, fonts and quotes are checked against the session. A rejected answer is retried once, and the retry names the rule it broke | `prepareSessionBatch`, `generateSession`, `validateSession` | Built |
 | 7. Store them | Save the whole story and gallery on each run; earlier versions are replaced, not appended. The local and hosted workers both call it | `completeSession` in `lib/story-store.mjs`, migration 0007 (`stories.session_json`) | Built |
@@ -119,11 +119,11 @@ A sketch, drawing or photo the human made says more about their intent than any 
 - **Priority order:** an image the human made → an image the human pasted as a reference → a capture of the built result → a website screenshot.
 - **Detecting it:** the image arrives in a user turn. The words around it say what it is ("this sketch I just did", "strictly follow this wireframe"). The model sees those words and marks the item `madeByYou`. The renderer captions it "Your sketch".
 - **Best pairing:** a sketch and the thing built from it is a Before-after (sketch → result). It shows the idea and how faithfully it was built.
-- **Pipeline gap:** `parseTranscript` in `lib/protocol.mjs` keeps only text parts, so pasted images never reach Commonplace today. Capturing them needs:
-  - user-role images only
-  - a size limit
+- **Collection:** Nox uploads them after the turns:
+  - user-role images only, each once, checked by its bytes
+  - at most 1600 px on the longest side and 3 MB
   - the same private file storage as uploads
-  - a clear note in Connect that pasted images are collected
+  - the Connect dialog says pasted images and artifact captures are saved
 
 ## Layouts and variants
 

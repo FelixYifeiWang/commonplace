@@ -20,7 +20,7 @@ Every live collection is viewable by anyone with its existing `?collection=…` 
 - **Claude Code (macOS preview):** Nox connects the session focused in the Claude desktop app's Code tab, with one Claude window open. To follow a whole project folder instead, including sessions started there later, run `npm run desktop -- --follow-claude-project=/full/path/to/folder`. The folder becomes one collection. Every transcript Claude Code stores for that folder is uploaded, so name only folders you want collected. Claude Code in a terminal cannot be targeted by Nox.
 - **Agent setup:** choose Set up Nox and paste the prompt into any local coding agent. Setup pairs and launches Nox without reading the setup conversation or creating a collection. Create a collection manually, or open a meaningful conversation and use Nox’s Connect control. A separate connection prompt remains available under Connections. Codex and Claude Code in the Claude desktop app can also connect through Nox's Connect control over an open conversation. macOS 13+, Node.js 22.13+ and npm are required. A prebuilt helper avoids Xcode; cloud agents cannot install a laptop Nox.
 
-Both routes use the same device/subscription APIs. A device token is scoped to writes for its owner; pause stops ingestion and revocation disables the device. Server tokens are hashed; desktop credentials are encrypted using Electron safeStorage. Only explicitly selected transcripts are uploaded.
+Both routes use the same device/subscription APIs. A device token is scoped to writes for its owner; pause stops ingestion and revocation disables the device. Server tokens are hashed; desktop credentials are encrypted using Electron safeStorage. Only explicitly selected transcripts are uploaded, together with the images pasted into them and captures of the artifacts they publish.
 
 ## What this draft does
 
@@ -28,7 +28,7 @@ Collections, manual blocks, source passages, account sign-in, revocable connecti
 
 ## Unfinished
 
-Images pasted into coding sessions and screenshots of generated local websites are not automatically imported into the new canvases yet. Add those images manually. The model currently reads text and media metadata, not image pixels.
+Images pasted into a Claude Code or Codex session become your own image items. When Claude publishes an artifact from a local HTML file, Nox renders that file in an isolated window and saves the capture as the picture of the artifact's link; a claude.ai link never shows Claude's generic cover or a sign-in page. Update Nox by running the setup or connect prompt again. Other screenshots of local websites are not imported yet. The model reads text and media metadata, not image pixels.
 
 The example collection is sample content, not a live extraction. Clicking Nox to identify an open window currently supports Codex and Claude Code in the Claude desktop app. Inactive sidebar rows must be opened first. The setup-prompt route supports local Codex, Claude Code and Cursor JSONL transcripts; see `COMPATIBILITY.md`. Map nodes can be moved, but their text and relationships are generated. There is no signed desktop installer yet.
 
