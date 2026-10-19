@@ -7690,13 +7690,15 @@ a[href].gm-detail b::after {
   pointer-events: none;
 }
 /* The glass frame, after React Bits' frame and the reference lens: a crisp hairline edge, a soft light crescent
-   on the upper left where light catches the glass, and a barely-there frost. No outline, no dark ring. */
+   on the upper left where light catches the glass, and a milky frost. No outline, no dark ring. Nox can't see the
+   desktop behind it, so the frost is what keeps the black N readable on dark wallpapers
+   (docs/design/labs/nox-contrast-lab.html). */
 .nox-frame {
   position: absolute;
   inset: 0;
   border-radius: 50%;
   pointer-events: none;
-  background: hsl(0 0% 100% / 0.05);
+  background: hsl(0 0% 100% / 0.72);
   box-shadow:
     0 0 1px 0.5px color-mix(in oklch, black, transparent 82%) inset,
     5px 5px 9px -5px hsl(0 0% 100% / 0.75) inset,

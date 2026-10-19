@@ -185,7 +185,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   <section class="notes">
     <h2>Reading it</h2>
     <div>
-      <p>Soft glow is the pick. With the N now black, the glass has to do all the work on dark desktops, where today's nearly clear bubble gives 1.1:1. Soft glow and Light rim are the only options that hold in every state on every wallpaper, because they put light right against the mark instead of a grey pool under it. Soft glow does it without drawing a line: on light desktops it disappears and the N looks exactly like the logo, and on dark ones the N looks backlit. The glass stays clear and the N's shape and motion are untouched.</p>
+      <p>Milky glass ships for now. It reads at rest and while working on every wallpaper; Paused and Error are its weak spots on dark desktops.</p>
+      <p>Soft glow was the recommendation. With the N now black, the glass has to do all the work on dark desktops, where today's nearly clear bubble gives 1.1:1. Soft glow and Light rim are the only options that hold in every state on every wallpaper, because they put light right against the mark instead of a grey pool under it. Soft glow does it without drawing a line: on light desktops it disappears and the N looks exactly like the logo, and on dark ones the N looks backlit. The glass stays clear and the N's shape and motion are untouched.</p>
       <p>Light rim is the crisper version of the same idea, a die-cut outline around the N. Lit core is one CSS background and reads well at rest, but its pool of light is a mid grey over dark desktops, so the grey Paused N and the orange Error N lose contrast there. Milky glass has the same problem and turns Nox into a white button. Switch the state to Paused or Error to compare.</p>
     </div>
   </section>
@@ -236,7 +237,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   const OPTIONS = [
     { id: "now", name: "Now", text: "Nearly clear glass, 5% white. The N relies on the desktop behind it being light.",
       ships: "As it is", glass: () => 0.05 },
-    { id: "glow", name: "Soft glow", pick: true, text: "A soft white aura that follows the N's outline and fades out over 7px. The glass stays clear around it.",
+    { id: "glow", name: "Soft glow", text: "A soft white aura that follows the N's outline and fades out over 7px. The glass stays clear around it.",
       ships: "Shader: lib/nox-mark.ts", glass: () => 0.05, glow: GLOW },
     { id: "rim", name: "Light rim",
       text: "A 1.25px light outline traced around the N in the shader, like a die-cut label. The glass stays clear.",
@@ -245,7 +246,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       text: "A soft white light pooled behind the mark, fading out before the rim. The edge of the glass stays clear.",
       ships: "CSS: .nox-frame background", glass: (r) => gradientAt(CORE, r),
       css: `radial-gradient(circle closest-side, ${CORE.map(([at, a]) => `hsl(0 0% 100% / ${a}) ${at * 100}%`).join(", ")})` },
-    { id: "milky", name: "Milky glass", text: "The whole disc frosted at 72% white. Reads anywhere, but Nox becomes a white button.",
+    { id: "milky", name: "Milky glass", shipped: true, text: "The whole disc frosted at 72% white. Reads anywhere, but Nox becomes a white button.",
       ships: "CSS: .nox-frame background", glass: () => 0.72, css: "hsl(0 0% 100% / 0.72)" },
   ];
   function gradientAt(stops, r) {
@@ -285,7 +286,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   for (const option of OPTIONS) {
     const row = document.createElement("article");
     row.className = "row";
-    row.innerHTML = `<div class="about"><h2>${option.name}${option.pick ? '<span class="pick">Pick</span>' : ""}</h2>
+    row.innerHTML = `<div class="about"><h2>${option.name}${option.shipped ? '<span class="pick">Shipped</span>' : ""}</h2>
       <p>${option.text}</p><p class="worst"></p><p><code>${option.ships}</code></p></div><div class="tiles"></div>`;
     const strip = row.querySelector(".tiles");
     for (const wall of WALLS) {
