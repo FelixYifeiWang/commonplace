@@ -303,6 +303,47 @@ test("session names follow new project names and expired workers cannot rename",
   }
 });
 
+test("a name the owner gives a session collection is kept by later Story updates", async () => {
+  const { sqlite, store, add, advance } = fixture();
+  const name = () =>
+    sqlite.prepare("SELECT name FROM collections WHERE id='c'").get().name;
+  try {
+    sqlite
+      .prepare(
+        "INSERT INTO sessions(id,owner_id,collection_id,title,provider,token_hash,created_at) VALUES('s','u','c','Original session','Codex','hash','2026-10-18')",
+      )
+      .run();
+    add();
+    const batch = { checkpoint: {}, hasMore: false };
+    const first = await store.claim();
+    await store.completeSession(
+      first,
+      batch,
+      { collectionName: "Newron", steps: [], map: {} },
+      "test",
+    );
+    assert.equal(name(), "Newron");
+    // The owner renames it (PATCH /api/collections, action "rename").
+    sqlite
+      .prepare("UPDATE collections SET name='Newron (main)' WHERE id='c'")
+      .run();
+    add("second");
+    advance(2000);
+    const next = await store.claim();
+    assert.equal(
+      await store.completeSession(
+        next,
+        batch,
+        { collectionName: "Newron", steps: [], map: {} },
+        "test",
+      ),
+      true,
+    );
+    assert.equal(name(), "Newron (main)");
+  } finally {
+    sqlite.close();
+  }
+});
 test("manual collection names are kept when generating a story", async () => {
   const { sqlite, store, add } = fixture();
   try {
