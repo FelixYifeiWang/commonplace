@@ -164,3 +164,8 @@ export const collectionReferenceLinks = sqliteTable(
   },
   (table) => [index("collection_reference_links_expiry").on(table.expiresAt)],
 );
+
+export const captureChecks = sqliteTable("capture_checks", {
+  sessionId: text("session_id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+});

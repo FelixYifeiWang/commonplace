@@ -1,8 +1,8 @@
 import { storyResponse } from "@/lib/story-response";
 import { isReferenceItem } from "@/lib/source-policy.mjs";
 import { getDb } from "@/db";
-import { sessions, items } from "@/db/schema";
-import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
+import { captureChecks, sessions, items } from "@/db/schema";
+import { and, eq, isNull, notInArray } from "drizzle-orm";
 import { agentSession, jsonBody, fail, HttpError, hash } from "@/lib/server";
 import { validateIngest, itemIdentity } from "@/lib/protocol.mjs";
 export async function POST(request: Request) {
@@ -96,11 +96,11 @@ export async function POST(request: Request) {
         ),
     );
     const transaction = [
-      db.run(
-        sql`INSERT INTO capture_checks(session_id,owner_id) VALUES(${session.id},${session.ownerId})`,
-      ),
+      db
+        .insert(captureChecks)
+        .values({ sessionId: session.id, ownerId: session.ownerId }),
       ...statements,
-      db.run(sql`DELETE FROM capture_checks WHERE session_id=${session.id}`),
+      db.delete(captureChecks).where(eq(captureChecks.sessionId, session.id)),
     ];
     await db.batch(
       transaction as [

@@ -2,7 +2,14 @@ import { captureBoundarySQL } from "@/lib/capture-boundary.mjs";
 import { sql } from "drizzle-orm";
 import { storyResponse } from "@/lib/story-response";
 import { getDb } from "@/db";
-import { sessions, items, turns, devices } from "@/db/schema";
+import {
+  sessions,
+  items,
+  turns,
+  devices,
+  captureChecks,
+  stories,
+} from "@/db/schema";
 import { and, eq, notInArray } from "drizzle-orm";
 import { agentSession, jsonBody, fail, HttpError, hash } from "@/lib/server";
 import { isReferenceUrl, referenceText } from "@/lib/source-policy.mjs";
@@ -148,21 +155,32 @@ export async function POST(request: Request) {
     // Keep individual transactions small enough for D1's statement limits.
     for (let i = 0; i < statements.length; i += 80) {
       const batch = [
-        db.run(
-          sql`INSERT INTO capture_checks(session_id,owner_id) VALUES(${session.id},${session.ownerId})`,
-        ),
+        db
+          .insert(captureChecks)
+          .values({ sessionId: session.id, ownerId: session.ownerId }),
         ...statements.slice(i, i + 80),
         ...(boundary
           ? [
-              db.run(
-                sql`UPDATE stories SET publish_after=${boundary.holdUntil},lease_token= CASE WHEN ${boundary.invalidate ? 1 : 0} THEN NULL ELSE lease_token END,lease_until= CASE WHEN ${boundary.invalidate ? 1 : 0} THEN 0 ELSE lease_until END,status= CASE WHEN ${boundary.invalidate ? 1 : 0} AND status='generating' THEN 'pending' ELSE status END WHERE collection_id=${session.collectionId}`,
-              ),
-              db.run(
-                sql`UPDATE sessions SET activity_key=${boundary.activityId} WHERE id=${session.id}`,
-              ),
+              db
+                .update(stories)
+                .set({
+                  publishAfter: boundary.holdUntil,
+                  ...(boundary.invalidate
+                    ? {
+                        leaseToken: null,
+                        leaseUntil: 0,
+                        status: sql`CASE WHEN status='generating' THEN 'pending' ELSE status END`,
+                      }
+                    : {}),
+                })
+                .where(eq(stories.collectionId, session.collectionId)),
+              db
+                .update(sessions)
+                .set({ activityKey: boundary.activityId })
+                .where(eq(sessions.id, session.id)),
             ]
           : []),
-        db.run(sql`DELETE FROM capture_checks WHERE session_id=${session.id}`),
+        db.delete(captureChecks).where(eq(captureChecks.sessionId, session.id)),
       ];
       await db.batch(
         batch as [(typeof batch)[number], ...(typeof batch)[number][]],

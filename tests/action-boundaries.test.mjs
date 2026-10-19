@@ -215,23 +215,51 @@ test("paused views expose a stable state and quiet fallback exposes its due time
   assert.ok(delay > 29000 && delay <= 30000);
 });
 
-test("Drizzle capture batch rolls back a rejected write and never acknowledges it", async (t) => {
-  const { db, sql: sqlite } = fixture(t);
-  const { drizzle } = await import("drizzle-orm/d1");
-  const { sql } = await import("drizzle-orm");
-  const client = drizzle(db);
-  sqlite.exec("UPDATE sessions SET state='paused' WHERE id='s'");
-  await assert.rejects(
-    client.batch([
-      client.run(
-        sql`INSERT INTO capture_checks(session_id,owner_id) VALUES('s','u')`,
-      ),
-      client.run(
-        sql`INSERT INTO turns(id,session_id,owner_id,external_id,role,body,created_at) VALUES('x','s','u','x','assistant','Test','now')`,
-      ),
-      client.run(sql`DELETE FROM capture_checks WHERE session_id='s'`),
-    ]),
-    /CAPTURE_UNAVAILABLE/,
-  );
-  assert.equal(sqlite.prepare("SELECT count(*) n FROM turns").get().n, 0);
-});
+for (const paused of [false, true])
+  test(`Drizzle parameterized capture is atomic when paused=${paused}`, async (t) => {
+    const { db, sql: sqlite } = fixture(t);
+    const { drizzle } = await import("drizzle-orm/d1");
+    const { eq } = await import("drizzle-orm");
+    const { sqliteTable, text } = await import("drizzle-orm/sqlite-core");
+    const checks = sqliteTable("capture_checks", {
+      sessionId: text("session_id").primaryKey(),
+      ownerId: text("owner_id").notNull(),
+    });
+    const turns = sqliteTable("turns", {
+      id: text("id").primaryKey(),
+      sessionId: text("session_id"),
+      ownerId: text("owner_id"),
+      externalId: text("external_id"),
+      role: text("role"),
+      body: text("body"),
+      createdAt: text("created_at"),
+    });
+    const client = drizzle(db);
+    if (paused) sqlite.exec("UPDATE sessions SET state='paused' WHERE id='s'");
+    const run = () =>
+      client.batch([
+        client.insert(checks).values({ sessionId: "s", ownerId: "u" }),
+        client
+          .insert(turns)
+          .values({
+            id: "x",
+            sessionId: "s",
+            ownerId: "u",
+            externalId: "x",
+            role: "assistant",
+            body: "Test",
+            createdAt: "now",
+          }),
+        client.delete(checks).where(eq(checks.sessionId, "s")),
+      ]);
+    if (paused) await assert.rejects(run(), /CAPTURE_UNAVAILABLE/);
+    else await run();
+    assert.equal(
+      sqlite.prepare("SELECT count(*) n FROM turns").get().n,
+      paused ? 0 : 1,
+    );
+    assert.equal(
+      sqlite.prepare("SELECT count(*) n FROM capture_checks").get().n,
+      0,
+    );
+  });
