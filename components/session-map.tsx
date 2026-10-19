@@ -15,7 +15,7 @@ import { SheetMedia } from "./sheet-media";
 import { ArrowLeft, ArrowRight, Move, Scan } from "lucide-react";
 import { guidedBounds, guidedCamera } from "@/lib/guided-map.mjs";
 // The Gallery tab: do's session map, curated by the model (STORY_CANVAS.md, "Gallery").
-const screenshots = process.env.NEXT_PUBLIC_HOSTED !== "1";
+const screenshots = true;
 const LEVELS = ["Overview", "Details", "Messages"];
 const squash = (s: string) =>
   s
@@ -739,7 +739,6 @@ export function SessionMap({
                           label={d.label}
                           item={item!}
                           fit={picture.fit}
-                          src={picture.src}
                         />
                         <span className="gm-cap">
                           <b>{soft(d.label)}</b>
@@ -941,16 +940,15 @@ function pictureOf(item: Item) {
 function Picture({
   item,
   fit,
-  src,
   label,
 }: {
   item: Item;
   fit: string;
-  src: string;
   label: string;
 }) {
-  const [failedSource, setFailedSource] = useState<string | null>(null);
-  if (failedSource === src)
+  const [failedSources, setFailedSources] = useState<string[]>([]);
+  const picture = pictureFor(item, { screenshots, failedSources });
+  if (fit !== "fit" && !picture)
     return (
       <span className="gm-say">
         <Sheet />
@@ -970,9 +968,11 @@ function Picture({
           unoptimized
           width={600}
           height={400}
-          src={src}
+          src={picture!.src}
           alt={label || item.title}
-          onError={() => setFailedSource(src)}
+          onError={() =>
+            setFailedSources((failed) => [...failed, picture!.src])
+          }
           draggable={false}
           referrerPolicy="no-referrer"
         />
@@ -1009,14 +1009,7 @@ function Face({
     );
   const picture = item && pictureOf(item);
   if (picture)
-    return (
-      <Picture
-        label={node.label}
-        item={item!}
-        fit={picture.fit}
-        src={picture.src}
-      />
-    );
+    return <Picture label={node.label} item={item!} fit={picture.fit} />;
   const quote = node.evidence?.quote;
   const say = quote && !shown.has(squash(quote)) ? `“${quote}”` : node.label;
   return (

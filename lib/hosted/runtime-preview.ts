@@ -2,9 +2,9 @@ import { head, get } from "@vercel/blob";
 import { previewUrl } from "../../desktop/preview.mjs";
 const bridge = {
   preview: previewUrl,
-  // Hosted pages use metadata covers; native screenshot capture stays local.
-  async screenshot() {
-    return new Response(null, { status: 503 });
+  async screenshot(url: string) {
+    const { hostedScreenshot } = await import("./screenshot.mjs");
+    return hostedScreenshot(url);
   },
   async ticket(ownerId: string) {
     return {

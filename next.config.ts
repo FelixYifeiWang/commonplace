@@ -13,7 +13,15 @@ const nextConfig: NextConfig = {
         ? "1"
         : "0",
   },
-  serverExternalPackages: ["@tursodatabase/serverless"],
+  serverExternalPackages: [
+    "@tursodatabase/serverless",
+    "@sparticuz/chromium",
+    "puppeteer-core",
+    "sharp",
+  ],
+  outputFileTracingIncludes: {
+    "/api/screenshots/*": ["./node_modules/@sparticuz/chromium/bin/**"],
+  },
   webpack(config, { webpack }) {
     const runtimes: Record<string, string> = {
       "cloudflare:workers": "lib/hosted/runtime-env.ts",

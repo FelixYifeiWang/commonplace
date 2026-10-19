@@ -12,7 +12,7 @@ import type {
 import { canvasVariant, orderItems, pictureFor } from "@/lib/story-canvas.mjs";
 import { SheetMedia } from "./sheet-media";
 // The Story: up to five steps in the human's voice, each beside one canvas (STORY_CANVAS.md).
-const screenshots = process.env.NEXT_PUBLIC_HOSTED !== "1";
+const screenshots = true;
 export function SessionStory({
   document,
   items,
@@ -155,12 +155,13 @@ function Cell({
   lead: boolean;
   onOpen: (item: Item) => void;
 }) {
-  const [failed, setFailed] = useState<string | null>(null);
+  const [failedSources, setFailedSources] = useState<string[]>([]);
   const { item } = entry;
   // Pictures are fitted in the browser (page, object cut out, or ink); links show their page.
   const still = item.kind === "image" && !!(item.fileKey || item.imageUrl);
-  const candidate = pictureFor(item, { screenshots });
-  const picture = still || failed === candidate?.src ? null : candidate;
+  const picture = still
+    ? null
+    : pictureFor(item, { screenshots, failedSources });
   const tag = TAGS[entry.role];
   const state =
     entry.role === "option"
@@ -187,7 +188,9 @@ function Cell({
             alt=""
             loading="lazy"
             referrerPolicy="no-referrer"
-            onError={() => setFailed(picture.src)}
+            onError={() =>
+              setFailedSources((failed) => [...failed, picture.src])
+            }
           />
         ) : (
           <span className="sv-tile">

@@ -66,7 +66,7 @@ export function MediaCard({
   const [pageFailed, setPageFailed] = useState(false);
   const page =
     screenshots &&
-    process.env.NEXT_PUBLIC_HOSTED !== "1" &&
+    (process.env.NEXT_PUBLIC_HOSTED !== "1" || !hasImage) &&
     near &&
     item.kind === "link" &&
     !!item.url &&
