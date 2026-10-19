@@ -8727,7 +8727,8 @@ a[href].gm-detail.gm-commit b::after {
 
 /* ---------- Curated documents look exactly like their mockup (STORY_CANVAS.md, "Curated documents") ---------- */
 /* Values measured from the Story mockup at 1440 × 900: Geist for the content, DM Sans for the bars, a 1160px
-   Story column, a 1400px Map that fills the window under the header, and the guided Map's toolbar. */
+   Story column, a 1400px Map that fills the window under the header, and the guided Map's toolbar. The Map keeps
+   the app's faded edges, which the curated Map itself names ("Edges fade out"). */
 .workspace:has(.session-curated) .minimal-header {
   padding-top: 34px;
   padding-bottom: 30px;
@@ -8775,9 +8776,6 @@ a[href].gm-detail.gm-commit b::after {
 .gm.gm-curated .gm-stage {
   height: calc(100svh - 98px);
   min-height: 380px;
-}
-.gm-curated .gm-stage::after {
-  content: none;
 }
 /* The mockup's map buttons keep the browser's own letter-spacing; Tailwind's reset would inherit the page's. */
 .gm-curated button {
