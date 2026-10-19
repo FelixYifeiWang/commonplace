@@ -628,3 +628,19 @@ test("deleting a duplicate does not ban a source that is still saved", () => {
   );
   assert.doesNotThrow(() => validateSession(value, source));
 });
+
+test("unavailable private previews keep their evidence but never become picture slots", () => {
+  const source = structuredClone(input);
+  source.media.find((m) => m.id === "m-sketch").visual = "unavailable";
+  const proposed = valid();
+  proposed.map.nodes[0].itemId = "m-sketch";
+  const evidence = structuredClone(proposed.map.nodes[0].evidence);
+  const repaired = normalizeSession(proposed, source);
+  assert.deepEqual(
+    repaired.steps[0].canvas.items.map((i) => i.itemId),
+    ["m-ticket"],
+  );
+  assert.equal(repaired.steps[0].canvas.layout, "reference");
+  assert.equal(repaired.map.nodes[0].itemId, null);
+  assert.deepEqual(repaired.map.nodes[0].evidence, evidence);
+});

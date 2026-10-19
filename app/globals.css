@@ -8035,9 +8035,22 @@ a[href].gm-detail b::after {
   outline-offset: 3px;
 }
 
-/* Focus is a small lift; connected branches already provide context. */
+/* A gentle lift marks the exact selection without adding a frame. */
 .gm-guided .gm-focused {
-  filter: drop-shadow(0 2px 5px rgb(0 0 0 / 0.08));
+  transform: translateX(-50%) scale(1.05);
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.16));
+  z-index: 5;
+}
+.gm-guided .gm-world :is(.gm-core, .gm-tile, .gm-bubble, .gm-detail) {
+  transition:
+    opacity 350ms,
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 320ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gm-guided .gm-world :is(.gm-core, .gm-tile, .gm-bubble, .gm-detail) {
+    transition: none;
+  }
 }
 .gm-guided .gm-world[data-focus] .gm-core.gm-focused {
   opacity: 1;

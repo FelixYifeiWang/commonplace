@@ -239,3 +239,38 @@ test("visual refresh preserves existing Story prose and order while accepting ne
   assert.equal(output.steps[0].text, old.text);
   assert.deepEqual(output.steps[0].canvas, canvas);
 });
+
+test("generation knows captured artifacts from inaccessible Claude pages", async () => {
+  const artifact = {
+    ...item,
+    kind: "link",
+    url: "https://claude.ai/artifact/abcdef123",
+  };
+  const batch = await prepareStoryBatch({
+    ...job,
+    items: [
+      {
+        ...artifact,
+        id: "private",
+        imageUrl: "https://claude.ai/images/claude_ogimage.png",
+      },
+      { ...artifact, id: "captured", fileKey: "users/owner/capture.jpg" },
+      {
+        ...item,
+        id: "pasted",
+        kind: "image",
+        fileKey: "users/owner/sketch.png",
+      },
+      { ...item, id: "website", kind: "link", url: "https://example.com" },
+    ],
+  });
+  assert.deepEqual(
+    batch.input.media.map((m) => [m.id, m.visual]),
+    [
+      ["private", "unavailable"],
+      ["captured", "stored"],
+      ["pasted", "stored"],
+      ["website", "capture"],
+    ],
+  );
+});

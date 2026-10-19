@@ -1,4 +1,5 @@
 import { head, get, put } from "@vercel/blob";
+import { blobRequestPath } from "./blob-path.mjs";
 import { previewUrl } from "../../desktop/preview.mjs";
 const bridge = {
   preview: previewUrl,
@@ -44,7 +45,7 @@ const bridge = {
     };
   },
   async file(key: string, range?: string) {
-    const response = await get(key, {
+    const response = await get(blobRequestPath(key), {
       access: "private",
       ...(range ? { headers: { Range: range } } : {}),
     });
