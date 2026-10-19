@@ -333,11 +333,11 @@ test("a claude.ai link never shows Claude's generic card or a sign-in page", () 
   assert.equal(pictureFor(link({}), { screenshots: true }), null);
 });
 
-test("an artifact link shows its capture, as a page cropped from the top", () => {
+test("an artifact link shows its capture whole: Nox already framed the part that shows the work", () => {
   const captured = link({ fileKey: "users/me/abc/capture.jpg" });
   assert.deepEqual(pictureFor(captured, { screenshots: true }), {
     src: `/api/files/${captured.id}?v=${encodeURIComponent(captured.updatedAt)}`,
-    fit: "page",
+    fit: "work",
   });
   assert.equal(imageSource(captured), pictureFor(captured).src);
 });

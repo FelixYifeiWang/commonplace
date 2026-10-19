@@ -6896,6 +6896,18 @@ body.desktop-feedback-page {
 .sv-object img {
   filter: drop-shadow(0 1.4cqw 1.6cqw rgb(0 0 0 / 0.14));
 }
+/* The part of an artifact Nox framed is the work itself: shown whole, sitting on its caption, with a page's white,
+   corners and shadow on the picture alone. */
+.sv-work .preview-frame > img {
+  inset: auto 0 0;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  margin-inline: auto;
+  border-radius: 1.2cqw;
+  box-shadow: 0 1.4cqw 3cqw -1.6cqw rgb(0 0 0 / 0.25);
+}
 .sv-ink img {
   mix-blend-mode: multiply;
 }
@@ -7367,7 +7379,9 @@ body.desktop-feedback-page {
   pointer-events: none;
   object-fit: contain;
 }
-.gm-page img {
+/* A tile is close to a framed artifact's shape, so its work fills the tile like a page. */
+.gm-page img,
+.gm-work img {
   object-fit: cover;
   object-position: 50% 0;
   border-radius: 8cqw;

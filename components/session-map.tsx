@@ -961,7 +961,9 @@ function Picture({
   return (
     <span
       className={`gm-pic gm-${fit}`}
-      style={{ "--ar": fit === "page" ? 1.5 : 1 } as CSSProperties}
+      style={
+        { "--ar": fit === "page" || fit === "work" ? 1.5 : 1 } as CSSProperties
+      }
     >
       <Sheet />
       {fit === "fit" ? (

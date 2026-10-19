@@ -87,13 +87,14 @@ Every image on a canvas must carry the step's point: the options that were weigh
 
 ### Pages may be cropped; objects never are
 
-Every image is one of three kinds, and each kind is fitted differently.
+Every image is one of these kinds, and each kind is fitted differently.
 
 | Kind | What it is | How it is fitted |
 | --- | --- | --- |
 | **Page** | A website screenshot, a document page, an app screen | Fills the slot (`cover`), anchored to the top. Only the bottom and the sides may be cut. It keeps its own white and gets small rounded corners and a soft shadow. |
 | **Object** | Anything with its own outline: a window panel, a ticket, a product shot, a UI component | Shown whole (`contain`), sitting on its caption. Its background is cut out when the preview is made (a flood fill from the edges, then trimmed), so it sits on the canvas with a soft shadow and no white edge. |
 | **Ink on white** | A sketch, wireframe, type specimen or diagram: dark marks on a white ground | Shown whole. The paper blends into the canvas (`multiply`). In dark mode it is inverted to light lines (`invert` + `hue-rotate(180deg)`, `screen`), so the ink stays legible and keeps its hue. |
+| **Work** | The part of an artifact Nox framed (see Artifact pictures) | Shown whole, sitting on its caption, with a page's white, corners and shadow. It was already cropped to the work, so it is never cropped again. In the Map its tile is close to its shape and it fills the tile. |
 | **Scene** | A photo that runs to its edges | Cropped by at most 10% on each side. If it needs more, it is shown whole over a blurred, enlarged copy of itself. |
 
 The kind comes from the item. Website captures are pages. Uploads and images pasted into a transcript are objects unless the human calls them a photo. When unsure, the renderer treats the image as an object, which is the safe choice because it never cuts anything off.
