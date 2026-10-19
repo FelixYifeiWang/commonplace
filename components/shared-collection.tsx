@@ -119,27 +119,33 @@ export function SharedCollection({
             className="brand-nox"
           />
         </Link>
-        <span className="shared-collection-title" title={data.collection.name}>
-          {data.collection.name}
-        </span>
-        <div
-          className="channel-view-switch"
-          role="group"
-          aria-label="Collection view"
-        >
-          {(dev
-            ? (["gallery", "map", "story"] as const)
-            : (["map", "story"] as const)
-          ).map((option) => (
-            <button
-              key={option}
-              aria-pressed={view === option}
-              onClick={() => setView(option)}
-            >
-              {option[0].toUpperCase() + option.slice(1)}
-            </button>
-          ))}
-        </div>
+        {/* One black pill holds the collection and its views. */}
+        <nav className="pill-nav" aria-label="Collection">
+          <span
+            className="shared-collection-title"
+            title={data.collection.name}
+          >
+            {data.collection.name}
+          </span>
+          <div
+            className="channel-view-switch"
+            role="group"
+            aria-label="Collection view"
+          >
+            {(dev
+              ? (["gallery", "map", "story"] as const)
+              : (["map", "story"] as const)
+            ).map((option) => (
+              <button
+                key={option}
+                aria-pressed={view === option}
+                onClick={() => setView(option)}
+              >
+                {option[0].toUpperCase() + option.slice(1)}
+              </button>
+            ))}
+          </div>
+        </nav>
         <div className="workspace-actions">
           <span className="shared-collection-label">View only</span>
         </div>

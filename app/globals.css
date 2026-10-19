@@ -8247,3 +8247,169 @@ a[href].gm-detail b::after {
     transition: none;
   }
 }
+
+/* ---------- Top bar: one black pill holds the collection and its views (from the Story mockup) ----------
+   The pill is centred in the header on wide screens and moves to its own row on phones, where the view switch
+   used to sit. The collection menu opens black to match the bar. */
+.minimal-header .pill-nav {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 320px);
+  padding: 5px;
+  border-radius: 999px;
+  background: #111111;
+  color: #ffffff;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.minimal-header .pill-nav .channel-picker {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 260px;
+}
+.pill-nav .channel-picker-trigger,
+.pill-nav .shared-collection-title {
+  height: 28px;
+  padding: 0 10px 0 12px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 13px;
+}
+.pill-nav .channel-picker-trigger {
+  gap: 8px;
+}
+/* Two short lines before the name, as in the mockup. */
+.pill-nav .channel-picker-trigger::before,
+.pill-nav .shared-collection-title::before {
+  content: "";
+  flex: none;
+  display: inline-block;
+  width: 16px;
+  height: 9px;
+  border-top: 1.4px solid currentColor;
+  border-bottom: 1.4px solid currentColor;
+}
+.pill-nav .channel-picker-trigger > svg {
+  color: currentColor;
+  opacity: 0.7;
+  transition: transform 0.2s;
+}
+.pill-nav .channel-picker-trigger[aria-expanded="true"] > svg {
+  transform: rotate(180deg);
+}
+.pill-nav .channel-picker-trigger:hover,
+.pill-nav .channel-picker-trigger[aria-expanded="true"] {
+  background: rgb(255 255 255 / 0.16);
+}
+.minimal-header .pill-nav .shared-collection-title {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 260px;
+  line-height: 28px;
+}
+.pill-nav .shared-collection-title::before {
+  margin-right: 8px;
+  vertical-align: -1px;
+}
+.minimal-header .pill-nav .channel-view-switch {
+  position: static;
+  transform: none;
+  display: flex;
+  gap: 4px;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+.pill-nav .channel-view-switch button {
+  min-width: 0;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: none;
+  color: #ffffff;
+  font-size: 13px;
+  opacity: 0.55;
+}
+.pill-nav .channel-view-switch button:hover {
+  opacity: 0.85;
+}
+.pill-nav .channel-view-switch button[aria-pressed="true"] {
+  opacity: 1;
+  background: rgb(255 255 255 / 0.16);
+  color: #ffffff;
+}
+.pill-nav button:focus-visible {
+  outline-color: #ffffff;
+}
+/* The collection menu is black, like the bar it opens from. */
+.pill-nav .channel-menu {
+  top: calc(100% + 10px);
+  left: -5px;
+  padding: 6px;
+  border: 0;
+  border-radius: 18px;
+  background: #111111;
+  color: #ffffff;
+  box-shadow: 0 24px 48px -20px rgb(0 0 0 / 0.45);
+  white-space: normal;
+}
+.pill-nav .channel-search {
+  color: rgb(255 255 255 / 0.55);
+}
+.pill-nav .channel-search input {
+  color: #ffffff;
+}
+.pill-nav .channel-search input::placeholder {
+  color: rgb(255 255 255 / 0.45);
+}
+.pill-nav .collection-menu-overview .channel-menu-all {
+  color: rgb(255 255 255 / 0.6);
+}
+.pill-nav .channel-menu-row:hover,
+.pill-nav .collection-menu-overview .channel-menu-all:hover {
+  background: rgb(255 255 255 / 0.1);
+}
+.pill-nav .channel-menu-row[data-selected="true"],
+.pill-nav .channel-menu-all[aria-current="page"] {
+  background: rgb(255 255 255 / 0.16);
+}
+.pill-nav .channel-menu-row .channel-favorite {
+  color: rgb(255 255 255 / 0.55);
+}
+.pill-nav .channel-favorite[aria-pressed="true"] {
+  color: #ffffff;
+}
+.pill-nav .channel-menu-row .channel-delete {
+  color: #ff8a8a;
+}
+.pill-nav .channel-menu-row .channel-delete:hover,
+.pill-nav .channel-menu-row .channel-favorite:hover {
+  background: rgb(255 255 255 / 0.14);
+}
+.pill-nav .channel-menu-footer {
+  border-top-color: rgb(255 255 255 / 0.12);
+  color: rgb(255 255 255 / 0.55);
+}
+.pill-nav .channel-menu button:focus-visible {
+  outline-color: #ffffff;
+}
+@media (max-width: 680px) {
+  .minimal-header:has(.pill-nav) {
+    padding-bottom: 62px;
+  }
+  .minimal-header .pill-nav {
+    top: auto;
+    bottom: 10px;
+    transform: translateX(-50%);
+    max-width: calc(100% - 40px);
+  }
+}

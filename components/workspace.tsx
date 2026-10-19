@@ -611,35 +611,38 @@ export default function Workspace({
           >
             <Logo />
           </button>
-          <CollectionPicker
-            collections={collections}
-            selected={selected}
-            screen={screen}
-            onChoose={chooseCollection}
-            onManage={setScreen}
-            onFavorite={(c) => void favoriteCollection(c)}
-            onDelete={(id) => void deleteCollection(id)}
-          />
-          {screen === "collection" && selected !== "all" && (
-            <div
-              className="channel-view-switch"
-              role="group"
-              aria-label="Collection view"
-            >
-              {(devMode
-                ? (["gallery", "map", "story"] as const)
-                : (["map", "story"] as const)
-              ).map((option) => (
-                <button
-                  key={option}
-                  aria-pressed={view === option}
-                  onClick={() => setView(option)}
-                >
-                  {option[0].toUpperCase() + option.slice(1)}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* One black pill holds the collection and its views. */}
+          <nav className="pill-nav" aria-label="Collection">
+            <CollectionPicker
+              collections={collections}
+              selected={selected}
+              screen={screen}
+              onChoose={chooseCollection}
+              onManage={setScreen}
+              onFavorite={(c) => void favoriteCollection(c)}
+              onDelete={(id) => void deleteCollection(id)}
+            />
+            {screen === "collection" && selected !== "all" && (
+              <div
+                className="channel-view-switch"
+                role="group"
+                aria-label="Collection view"
+              >
+                {(devMode
+                  ? (["gallery", "map", "story"] as const)
+                  : (["map", "story"] as const)
+                ).map((option) => (
+                  <button
+                    key={option}
+                    aria-pressed={view === option}
+                    onClick={() => setView(option)}
+                  >
+                    {option[0].toUpperCase() + option.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </nav>
           {demo && (
             <Link className="minimal-demo" href="/">
               Example
