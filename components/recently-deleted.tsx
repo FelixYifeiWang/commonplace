@@ -117,13 +117,13 @@ export function RecentlyDeleted({
                 </span>
                 <div className="trash-item-title">
                   <strong title={c.name}>{c.name}</strong>
-                  <small>
-                    {c.resumeOnRestore
-                      ? "Resumes syncing when restored"
-                      : c.frozenAt
-                        ? "Disconnected"
-                        : "Saved collection"}
-                  </small>
+                  {(c.resumeOnRestore || c.frozenAt) && (
+                    <small>
+                      {c.resumeOnRestore
+                        ? "Resumes syncing when restored"
+                        : "Disconnected"}
+                    </small>
+                  )}
                 </div>
                 {retention(c.deletedAt!)}
                 {actions({ kind: "collection", value: c })}
@@ -154,7 +154,7 @@ export function RecentlyDeleted({
                 </span>
                 <button className="trash-item-title" onClick={() => onOpen(i)}>
                   <strong title={i.title}>{i.title}</strong>
-                  <small>{i.collectionName || "Saved item"}</small>
+                  {i.collectionName && <small>{i.collectionName}</small>}
                 </button>
                 {retention(i.deletedAt!)}
                 {actions({ kind: "item", value: i })}
