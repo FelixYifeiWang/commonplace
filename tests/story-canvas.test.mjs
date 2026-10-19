@@ -9,6 +9,7 @@ test("the variant follows the layout and how many pictures it holds", () => {
   assert.equal(canvasVariant("reference", 1), "full");
   assert.equal(canvasVariant("reference", 2), "duo");
   assert.equal(canvasVariant("reference", 3), "set");
+  assert.equal(canvasVariant("reference", 4), "grid");
   assert.equal(canvasVariant("before-after", 2), "pair");
   assert.equal(canvasVariant("detour", 3), "path");
   assert.equal(canvasVariant("none", 0), null);
