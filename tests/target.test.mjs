@@ -228,7 +228,11 @@ test("a followed Codex session follows its stable ID to a rotated transcript", a
       { ...sessions[1], title: sessions[0].title },
     ],
   });
-  assert.deepEqual(result, { file: await realpath(current), sessionId: id });
+  assert.deepEqual(result, {
+    file: await realpath(current),
+    sessionId: id,
+    files: [await realpath(current)],
+  });
   assert.equal(subscription.file, original);
 });
 test("a missing subscribed ID never follows a matching title", async () => {

@@ -529,3 +529,48 @@ test("legacy recovery never replaces an already active collection or revives exp
     "revoked",
   );
 });
+
+for (const frozen of [false, true])
+  test(`permanent collection deletion removes owned Trash (${frozen ? "frozen" : "connected"})`, async (t) => {
+    const { db, sql } = fixture(t);
+    const { createCollectionTrash } =
+      await import("../lib/collection-trash.mjs");
+    const trash = createCollectionTrash(db);
+    assert.equal(await trash.destroy("u", "c"), false);
+    if (frozen) sql.exec("UPDATE collections SET frozen_at='now' WHERE id='c'");
+    await trash.remove("u", "c");
+    assert.equal(await trash.destroy("other", "c"), false);
+    assert.equal(await trash.destroy("u", "c"), true);
+    assert.equal(sql.prepare("SELECT count(*) n FROM sessions").get().n, 0);
+    assert.equal(sql.prepare("SELECT count(*) n FROM collections").get().n, 0);
+    assert.equal(await trash.restore("u", "c"), false);
+  });
+test("permanent item deletion removes contents, queues files and suppresses reimport only in its original session", async (t) => {
+  const { db, sql } = fixture(t);
+  const { createItemTrash } = await import("../lib/item-trash.mjs");
+  const trash = createItemTrash(db);
+  const insert = (id) =>
+    sql
+      .prepare(
+        "INSERT INTO items(id,owner_id,session_id,collection_id,identity,kind,title,source_text,source_role,created_at,updated_at,file_key) VALUES(?,'u','s','c','identity','image','Secret','Secret','user','now','now','users/u/test.png')",
+      )
+      .run(id);
+  insert("i");
+  assert.equal(await trash.destroy("u", "i"), false);
+  sql.exec("UPDATE items SET deleted_at='now' WHERE id='i'");
+  assert.equal(await trash.destroy("other", "i"), false);
+  assert.equal(await trash.destroy("u", "i"), true);
+  insert("replacement");
+  assert.equal(sql.prepare("SELECT count(*) n FROM items").get().n, 0);
+  assert.equal(sql.prepare("SELECT count(*) n FROM blob_deletions").get().n, 1);
+  assert.deepEqual(await trash.restore("u", ["i"]), []);
+});
+test("a Restore that wins before permanent deletion cannot be erased", async (t) => {
+  const { db, sql } = fixture(t);
+  const { createCollectionTrash } = await import("../lib/collection-trash.mjs");
+  const trash = createCollectionTrash(db);
+  await trash.remove("u", "c");
+  await trash.restore("u", "c");
+  assert.equal(await trash.destroy("u", "c"), false);
+  assert.equal(sql.prepare("SELECT count(*) n FROM sessions").get().n, 1);
+});

@@ -4,7 +4,13 @@ import { homedir } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readOpenConversation } from "./activity.mjs";
-import { CLAUDE_BUNDLE_ID, resolveClaudeTarget } from "./claude.mjs";
+import {
+  CLAUDE_BUNDLE_ID,
+  resolveClaudeTarget,
+  claudeSessionMetadata,
+  claudeLocalSessionId,
+} from "./claude.mjs";
+import { codexTranscripts, claudeTranscripts } from "./transcripts.mjs";
 const exec = promisify(execFile);
 const normalized = (value) =>
   String(value || "")
@@ -134,10 +140,33 @@ export async function resolveFollowedTranscript(
   {
     codexHome = process.env.CODEX_HOME || join(homedir(), ".codex"),
     metadata = codexSessionMetadata,
+    projectsRoot = join(homedir(), ".claude", "projects"),
+    sessionsRoot,
   } = {},
 ) {
-  if (subscription.provider !== "Codex" || subscription.folder)
-    return { file: subscription.file };
+  if (subscription.folder) return { file: subscription.file };
+  if (subscription.provider === "Claude Code" && subscription.sessionId) {
+    const ids = new Set(
+      subscription.transcriptSessionIds || [subscription.sessionId],
+    );
+    const localSessionId =
+      subscription.localSessionId ||
+      (await claudeLocalSessionId(subscription.sessionId, sessionsRoot));
+    if (localSessionId) {
+      const meta = await claudeSessionMetadata(localSessionId, sessionsRoot);
+      ids.add(meta.cliSessionId);
+    }
+    const files = await claudeTranscripts([...ids], projectsRoot);
+    if (!files.length)
+      throw new Error("This Claude session has no readable transcript yet.");
+    return {
+      file: files.at(-1),
+      files,
+      transcriptSessionIds: [...ids],
+      localSessionId,
+    };
+  }
+  if (subscription.provider !== "Codex") return { file: subscription.file };
   const sessionId =
     subscription.sessionId ||
     basename(subscription.file).match(
@@ -150,5 +179,10 @@ export async function resolveFollowedTranscript(
     throw new Error(
       "Subscribed Codex session is unavailable. Open it in Codex and reconnect.",
     );
-  return { file: await confineTranscript(selected.file, codexHome), sessionId };
+  const file = await confineTranscript(selected.file, codexHome);
+  return {
+    file,
+    sessionId,
+    files: await codexTranscripts(sessionId, codexHome, file),
+  };
 }

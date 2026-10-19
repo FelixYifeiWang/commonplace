@@ -153,6 +153,16 @@ export async function DELETE(request: Request) {
       ids = validateIds(body.ids),
       db = getDb();
     await assertWritableItems(user.userId, ids);
+    if (body.permanent === true) {
+      if (ids.length !== 1)
+        throw new HttpError(400, "Choose one item to delete permanently.");
+      if (!(await createItemTrash(env.DB).destroy(user.userId, ids[0])))
+        throw new HttpError(
+          409,
+          "Item is no longer in Trash. Refresh and try again.",
+        );
+      return storyResponse({ ok: true });
+    }
     for (let i = 0; i < ids.length; i += 80)
       await db
         .update(items)

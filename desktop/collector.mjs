@@ -188,7 +188,8 @@ async function uploadMedia({
   const cursor = `media:${subscription.id}`;
   const sent = new Set(cursors[cursor] || []);
   const prepare = media.prepareImage || ((image) => image);
-  let uploaded = 0;
+  let uploaded = 0,
+    attempts = 0;
   async function post(key, body) {
     let response;
     try {
@@ -210,7 +211,8 @@ async function uploadMedia({
   }
   async function send(key, image, body) {
     const prepared = image && (await prepare(image));
-    if (!prepared || prepared.data.length > MAX_MEDIA_BYTES) {
+    if (!prepared) return;
+    if (prepared.data.length > MAX_MEDIA_BYTES) {
       sent.add(key);
       cursors[cursor] = [...sent];
       return;
@@ -222,8 +224,9 @@ async function uploadMedia({
     });
   }
   for (const [key, event] of found.pasted) {
-    if (uploaded >= MEDIA_PER_SYNC) break;
+    if (attempts >= MEDIA_PER_SYNC) break;
     if (sent.has(key)) continue;
+    attempts++;
     await send(
       key,
       { data: Buffer.from(event.data, "base64"), mimeType: event.mimeType },
@@ -234,9 +237,13 @@ async function uploadMedia({
       },
     );
   }
-  if (!media.captureArtifact) return uploaded;
+  if (!media.captureArtifact)
+    return {
+      uploaded,
+      pendingPasted: [...found.pasted.keys()].some((key) => !sent.has(key)),
+    };
   for (const event of found.artifacts.values()) {
-    if (uploaded >= MEDIA_PER_SYNC) break;
+    if (attempts >= MEDIA_PER_SYNC) break;
     let info;
     try {
       info = await stat(event.file);
@@ -245,6 +252,7 @@ async function uploadMedia({
     }
     const key = `artifact:${ARTIFACT_FRAMING}:${event.url}:${info.size}:${info.mtimeMs}`;
     if (sent.has(key)) continue;
+    attempts++;
     let capture = null;
     try {
       capture = await media.captureArtifact(event.file);
@@ -259,7 +267,10 @@ async function uploadMedia({
       context: event.context,
     });
   }
-  return uploaded;
+  return {
+    uploaded,
+    pendingPasted: [...found.pasted.keys()].some((key) => !sent.has(key)),
+  };
 }
 export async function syncTranscript({
   connection,
@@ -270,7 +281,12 @@ export async function syncTranscript({
   media,
 }) {
   // The latest publish of each artifact wins; pasted images are known by their bytes.
-  const found = { pasted: new Map(), artifacts: new Map() };
+  const found = {
+    pasted: new Map(),
+    artifacts: new Map(
+      (subscription.artifacts || []).map((event) => [event.url, event]),
+    ),
+  };
   const onMedia = media
     ? (event) => {
         if (event.kind === "artifact") found.artifacts.set(event.url, event);
@@ -281,7 +297,7 @@ export async function syncTranscript({
           );
       }
     : undefined;
-  const boundary = createResponseBoundary();
+  const boundary = createResponseBoundary(subscription.responseBoundary);
   const onRecord = (line) => boundary.read(line);
   const seen = new Set(cursors[subscription.id] || []);
   const queued = new Set();
@@ -302,7 +318,7 @@ export async function syncTranscript({
         ...boundary.snapshot(),
         syncComplete: complete,
         turns: batch.map((e) => e.turn),
-        complete: subscription.mode === "once" && complete,
+        complete: subscription.mode === "once" && complete && !historyRemaining,
       }),
     });
     if (!response.headers.get("content-type")?.includes("application/json"))
@@ -325,16 +341,41 @@ export async function syncTranscript({
   const source = subscription.folder
     ? { file: subscription.file }
     : await resolveTranscript(subscription);
+  const historyVersions = { ...subscription.historyVersions };
+  let historyRemaining = false;
+  let historicalFilesRead = 0;
   async function* selectedTranscripts() {
-    // Drain the old file first so a rotation between polls cannot lose its tail.
-    if (source.file !== subscription.file) {
+    const files = [
+      ...new Set(source.files || [subscription.file, source.file]),
+    ];
+    for (const file of files) {
+      let info;
       try {
-        yield* readSelectedTranscript(subscription.file, { onMedia, onRecord });
+        info = await stat(file);
       } catch (error) {
-        if (error.code !== "ENOENT") throw error;
+        if (error.code === "ENOENT" && file !== source.file) continue;
+        throw error;
       }
+      const version = `${info.size}:${info.mtimeMs}`;
+      const previous = subscription.historyVersions?.[file];
+      if (previous?.version === version) {
+        historyVersions[file] = previous;
+        continue;
+      }
+      if (file !== source.file && historicalFilesRead++ >= 6) {
+        historyRemaining = true;
+        continue;
+      }
+      let turns = 0;
+      for await (const turn of readSelectedTranscript(file, {
+        onMedia,
+        onRecord: file === source.file ? onRecord : undefined,
+      })) {
+        turns++;
+        yield turn;
+      }
+      historyVersions[file] = { version, turns };
     }
-    yield* readSelectedTranscript(source.file, { onMedia, onRecord });
   }
   const transcript = subscription.folder
     ? readProjectTranscripts(
@@ -347,9 +388,20 @@ export async function syncTranscript({
   for await (const raw of transcript) {
     total++;
     const turn = { ...raw, text: redactSetupLinks(raw.text).slice(0, 64000) };
+    const legacyKey = createHash("sha256")
+      .update(`${turn.id}:${turn.text}`)
+      .digest("hex");
+    // Rotated Codex files copy messages at different line offsets. Timestamps
+    // identify those copies; explicit Claude UUIDs remain unchanged.
+    if (source.files && /^line-\d+$/.test(turn.id) && turn.timestamp)
+      turn.id = `message-${createHash("sha256").update(`${turn.role}:${turn.timestamp}:${turn.text}`).digest("hex")}`;
     const key = createHash("sha256")
       .update(`${turn.id}:${turn.text}`)
       .digest("hex");
+    if (seen.has(legacyKey)) {
+      seen.add(key);
+      continue;
+    }
     if (seen.has(key) || queued.has(key)) continue;
     const length = Buffer.byteLength(JSON.stringify(turn), "utf8");
     if (batch.length && (batch.length >= 10 || size + length > 700000))
@@ -367,7 +419,7 @@ export async function syncTranscript({
     subscription.versions = versions;
     total = Object.values(versions).reduce((n, v) => n + v.turns, 0);
   }
-  const pictures = media
+  const mediaResult = media
     ? await uploadMedia({
         connection,
         subscription,
@@ -376,6 +428,14 @@ export async function syncTranscript({
         media,
         found,
       })
-    : 0;
+    : { uploaded: 0, pendingPasted: false };
+  if (!subscription.folder && !mediaResult.pendingPasted)
+    subscription.historyVersions = historyVersions;
+  subscription.responseBoundary = boundary.snapshot();
+  subscription.artifacts = [...found.artifacts.values()];
+  subscription.historyRemaining = historyRemaining || mediaResult.pendingPasted;
+  if (!subscription.folder)
+    total = Object.values(historyVersions).reduce((n, v) => n + v.turns, 0);
+  const pictures = mediaResult.uploaded;
   return { captured, total, pendingAI: captured > 0 || pictures > 0, pictures };
 }

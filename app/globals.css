@@ -8957,3 +8957,38 @@ a[href].gm-detail.gm-commit b::after {
 .channel-menu-row > button:first-child {
   padding-right: 36px;
 }
+
+.collection-cover-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.collection-frozen-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #888;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+.trash-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+.trash-delete {
+  color: #b44242;
+}
+.trash-delete:hover {
+  color: #a02c2c;
+  background: #faf0f0;
+}
+.button.primary.permanent-delete-confirm {
+  background: #b23737;
+  border-color: #b23737;
+}
+.button.primary.permanent-delete-confirm:hover {
+  background: #982e2e;
+}

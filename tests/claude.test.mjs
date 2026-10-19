@@ -166,3 +166,29 @@ test("a symlinked project folder cannot point outside the Claude Code folder", a
     /outside/,
   );
 });
+
+test("a resumed Claude desktop conversation keeps its original identity and both verified CLI histories", async (t) => {
+  const paths = await fixture(t);
+  const { resolveFollowedTranscript } = await import("../desktop/target.mjs");
+  const file = join(paths.projectsRoot, "-Users-me-app", `${b}.jsonl`);
+  await writeFile(file, "{}");
+  const original = { provider: "Claude Code", sessionId: b, file };
+  const first = await resolveFollowedTranscript(original, paths);
+  assert.equal(first.localSessionId, `local_${a}`);
+  const nextId = "33333333-3333-4333-8333-333333333333";
+  await writeFile(
+    join(paths.projectsRoot, "-Users-me-app", `${nextId}.jsonl`),
+    "{}",
+  );
+  await writeFile(
+    join(paths.sessionsRoot, "account", "org", `local_${a}.json`),
+    JSON.stringify({ sessionId: `local_${a}`, cliSessionId: nextId }),
+  );
+  const next = await resolveFollowedTranscript(
+    { ...original, ...first },
+    paths,
+  );
+  assert.deepEqual(next.transcriptSessionIds, [b, nextId]);
+  assert.equal(next.files.length, 2);
+  assert.equal(next.sessionId, undefined);
+});

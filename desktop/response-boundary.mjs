@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 // Completion markers differ by agent. Unknown formats settle after quiet time
 // on the server; they are never guessed complete from an assistant text chunk.
-export function createResponseBoundary() {
-  let state = "unknown",
-    activityId = "";
+export function createResponseBoundary(previous = {}) {
+  let state = previous.responseState || "unknown",
+    activityId = previous.activityId || "";
   return {
     read(line) {
       let r;

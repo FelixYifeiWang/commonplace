@@ -50,6 +50,14 @@ export async function DELETE(request: Request) {
       body = await jsonBody(request);
     if (typeof body.id !== "string")
       throw new HttpError(400, "Choose a collection.");
+    if (body.permanent === true) {
+      if (!(await createCollectionTrash(env.DB).destroy(user.userId, body.id)))
+        throw new HttpError(
+          409,
+          "Collection is no longer in Trash. Refresh and try again.",
+        );
+      return storyResponse({ ok: true });
+    }
     if (!(await createCollectionTrash(env.DB).remove(user.userId, body.id)))
       throw new HttpError(404, "Collection not found.");
     return storyResponse({ ok: true });

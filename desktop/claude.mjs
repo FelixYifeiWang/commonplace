@@ -118,6 +118,37 @@ export async function claudeSessionMetadata(
   return matches[0];
 }
 
+// Recover desktop identity for subscriptions made before Nox saved it.
+export async function claudeLocalSessionId(
+  cliSessionId,
+  sessionsRoot = join(
+    homedir(),
+    "Library/Application Support/Claude/claude-code-sessions",
+  ),
+) {
+  const matches = [];
+  for (const account of await subfolders(sessionsRoot))
+    for (const org of await subfolders(account)) {
+      for (const file of await readdir(org)) {
+        if (!file.endsWith(".json") || !localId.test(file.slice(0, -5)))
+          continue;
+        let record;
+        try {
+          record = JSON.parse(await readFile(join(org, file), "utf8"));
+        } catch (error) {
+          if (error.code === "ENOENT" || error instanceof SyntaxError) continue;
+          throw error;
+        }
+        if (
+          record.cliSessionId === cliSessionId &&
+          localId.test(record.sessionId)
+        )
+          matches.push(record.sessionId);
+      }
+    }
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
 export async function findClaudeTranscript(
   cliSessionId,
   projectsRoot = join(homedir(), ".claude", "projects"),
@@ -141,13 +172,15 @@ export async function findClaudeTranscript(
     if (local && !local.startsWith("..") && !isAbsolute(local))
       found.push(canonical);
   }
-  if (found.length !== 1)
+  if (!found.length)
     throw new Error(
-      found.length
-        ? "More than one transcript matches this session. Nothing was connected."
-        : "This session has no transcript yet. Send a message, then connect again.",
+      "This session has no transcript yet. Send a message, then connect again.",
     );
-  return found[0];
+  const ranked = await Promise.all(
+    found.map(async (file) => ({ file, mtime: (await stat(file)).mtimeMs })),
+  );
+  ranked.sort((a, b) => a.mtime - b.mtime);
+  return ranked.at(-1).file;
 }
 
 // Following a project folder captures every Claude Code session started in it, including later ones.
@@ -200,6 +233,7 @@ export async function resolveClaudeTarget(target, paths = {}) {
   const meta = await claudeSessionMetadata(id, paths.sessionsRoot);
   return {
     sessionId: meta.cliSessionId,
+    localSessionId: id,
     title: meta.title || meta.cwd.split("/").pop() || "Claude Code session",
     file: await findClaudeTranscript(meta.cliSessionId, paths.projectsRoot),
     provider: "Claude Code",

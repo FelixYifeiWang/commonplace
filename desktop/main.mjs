@@ -185,7 +185,8 @@ async function tick() {
         subscription.turns = result.total;
         subscription.lastSynced = new Date().toISOString();
         subscription.error = "";
-        if (subscription.mode === "once") subscription.done = true;
+        if (subscription.mode === "once" && !subscription.historyRemaining)
+          subscription.done = true;
         if (!dragController?.isDragging()) {
           lastError = "";
           status = afterBackgroundSync(status, "following");
@@ -381,6 +382,10 @@ async function findCandidate() {
       return;
     }
     const found = await resolveLocalTarget(target);
+    const previous =
+      found.localSessionId &&
+      subscriptions.find((s) => s.localSessionId === found.localSessionId);
+    if (previous) found.sessionId = previous.sessionId;
     let connected = false;
     if (connection) {
       const r = await request(
@@ -545,6 +550,11 @@ function showDropFeedback(value) {
     );
 }
 async function subscribeSource(source) {
+  // Claude's desktop conversation can move to a new CLI transcript on resume.
+  const previous =
+    source.localSessionId &&
+    subscriptions.find((s) => s.localSessionId === source.localSessionId);
+  if (previous) source = { ...source, sessionId: previous.sessionId };
   if (!connection) {
     const response = await request(`${ORIGIN}/api/devices`, {
       method: "POST",
@@ -585,6 +595,7 @@ async function subscribeSource(source) {
       mode: "follow",
       file: source.file,
       sessionId: source.sessionId,
+      localSessionId: source.localSessionId,
       folder: !!source.folder,
     });
   else
@@ -594,6 +605,7 @@ async function subscribeSource(source) {
       provider: source.provider,
       file: source.file,
       sessionId: source.sessionId,
+      localSessionId: source.localSessionId,
       folder: !!source.folder,
       mode: "follow",
       paused: false,

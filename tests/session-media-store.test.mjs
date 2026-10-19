@@ -223,3 +223,51 @@ for (const [action, sqlAction] of [
     }
   });
 }
+
+test("an erased item never uploads again, including artifact screenshots", async () => {
+  const { store, sqlite, session, stored } = fixture();
+  const identity = await store.linkIdentity(ARTIFACT);
+  sqlite
+    .prepare("INSERT INTO item_suppressions VALUES(?,?,?)")
+    .run("u", "s", identity);
+  const result = await store.save(
+    session,
+    parseMediaUpload({
+      kind: "artifact",
+      url: ARTIFACT,
+      mimeType: "image/png",
+      data: png64,
+      turnId: "t",
+    }),
+  );
+  assert.equal(result.suppressed, true);
+  assert.equal(stored.length, 0);
+});
+test("an erasure during upload queues the unused file for physical cleanup", async () => {
+  let identity;
+  const { store, sqlite, session } = fixture({
+    onPut(db) {
+      db.prepare("INSERT INTO item_suppressions VALUES(?,?,?)").run(
+        "u",
+        "s",
+        identity,
+      );
+    },
+  });
+  identity = await store.linkIdentity(ARTIFACT);
+  await store.save(
+    session,
+    parseMediaUpload({
+      kind: "artifact",
+      url: ARTIFACT,
+      mimeType: "image/png",
+      data: png64,
+      turnId: "t",
+    }),
+  );
+  assert.equal(sqlite.prepare("SELECT count(*) n FROM items").get().n, 0);
+  assert.equal(
+    sqlite.prepare("SELECT count(*) n FROM blob_deletions").get().n,
+    1,
+  );
+});

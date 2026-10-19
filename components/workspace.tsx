@@ -596,6 +596,35 @@ export default function Workspace({
     setUndo(null);
     setToast("Collection restored.");
   }
+  async function permanentlyDelete(
+    target: Collection | Item,
+    kind: "collection" | "item",
+  ) {
+    if (!demo) {
+      await api(
+        kind === "collection" ? "/api/collections" : "/api/items",
+        "DELETE",
+        kind === "collection"
+          ? { id: target.id, permanent: true }
+          : { ids: [target.id], permanent: true },
+      );
+      await refresh();
+    } else
+      setData((d) => ({
+        ...d,
+        deletedCollections: (d.deletedCollections || []).filter(
+          (c) => kind !== "collection" || c.id !== target.id,
+        ),
+        recentlyDeleted: (d.recentlyDeleted || []).filter((i) =>
+          kind === "collection"
+            ? i.collectionId !== target.id
+            : i.id !== target.id,
+        ),
+      }));
+    setUndo(null);
+    setDetail(null);
+    setToast("Permanently deleted.");
+  }
   async function undoDelete() {
     if (!undo) return;
     try {
@@ -948,7 +977,18 @@ export default function Workspace({
                                 </span>
                               )}
                             </span>
-                            <span>{collection.name}</span>
+                            <span className="collection-cover-caption">
+                              {collection.name}
+                              {collection.frozenAt && (
+                                <small
+                                  className="collection-frozen-label"
+                                  title="Disconnected. Saved content stays unchanged."
+                                >
+                                  <Unplug size={12} aria-hidden="true" />
+                                  Disconnected
+                                </small>
+                              )}
+                            </span>
                           </button>
                           <button
                             className="collection-favorite"
@@ -987,6 +1027,10 @@ export default function Workspace({
                     items={data.recentlyDeleted || []}
                     onOpen={setDetail}
                     onRestore={restoreItem}
+                    onDeleteCollection={(c) =>
+                      permanentlyDelete(c, "collection")
+                    }
+                    onDeleteItem={(i) => permanentlyDelete(i, "item")}
                   />
                 </>
               )}

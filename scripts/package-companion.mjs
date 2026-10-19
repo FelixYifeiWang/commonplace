@@ -19,6 +19,7 @@ for (const file of [
   "collector.mjs",
   "response-boundary.mjs",
   "target.mjs",
+  "transcripts.mjs",
   "activity.mjs",
   "claude.mjs",
   "install.mjs",
