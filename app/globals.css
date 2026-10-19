@@ -7797,6 +7797,11 @@ a[href].gm-detail b::after {
   font-size: 12px;
   white-space: nowrap;
 }
+/* The free map's zoom pill on its own: no box of its own, so .gm-zoom keeps its standalone look. */
+.gm-controls {
+  display: contents;
+}
+/* Inside the toolbar the groups are see-through, so their corners never cover the toolbar's rounded edge. */
 .gm-toolbar :is(.gm-navigation, .gm-zoom) {
   position: static;
   transform: none;
@@ -7806,6 +7811,7 @@ a[href].gm-detail b::after {
   padding: 0;
   border: 0;
   border-radius: 0;
+  background: none;
   box-shadow: none;
   font-size: inherit;
 }

@@ -371,7 +371,8 @@ export function SessionMap({
       zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)), p.x, p.y);
     };
     const onDown = (e: PointerEvent) => {
-      if (guidedMode || (e.target as Element).closest(".gm-toolbar")) return;
+      if (guidedMode || (e.target as Element).closest(".gm-toolbar, .gm-zoom"))
+        return;
       clearTimeout(glideTimer);
       world!.classList.remove("glide");
       pts.set(e.pointerId, e);
@@ -760,7 +761,12 @@ export function SessionMap({
             </Fragment>
           ))}
         </div>
-        <div className="gm-toolbar" aria-label="Map controls">
+        {/* The free map keeps its own zoom pill; the toolbar holds it only beside guided navigation or the
+            mode switch. */}
+        <div
+          className={guided || onToggleMode ? "gm-toolbar" : "gm-controls"}
+          aria-label="Map controls"
+        >
           {guided ? (
             <nav className="gm-navigation" aria-label="Map navigation">
               <button
