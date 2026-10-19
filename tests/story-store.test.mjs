@@ -9,7 +9,11 @@ import {
   itemAvailable,
   daysToRestore,
 } from "../lib/item-retention.mjs";
-import { prepareStoryBatch, prepareSessionBatch } from "../lib/story.mjs";
+import {
+  prepareStoryBatch,
+  prepareSessionBatch,
+  normalizeCuratedSession,
+} from "../lib/story.mjs";
 function fixture() {
   const sqlite = new DatabaseSync(":memory:");
   for (const file of readdirSync("drizzle")
@@ -596,6 +600,76 @@ test("legacy verified beats remain the Story view while the map gets a source pr
     assert.equal(state.session, null);
     assert.equal(state.beats[0].text, beat.text);
     assert.ok(state.previewSession.map.nodes.length);
+  } finally {
+    sqlite.close();
+  }
+});
+
+test("a curated save is never revised by new turns, and restore puts back exactly what it replaced", async () => {
+  const { sqlite, store, add, advance } = fixture();
+  try {
+    add();
+    const first = await store.claim();
+    const generated = {
+      collectionName: "Quiet",
+      steps: [],
+      map: { center: { label: "Quiet", itemId: null, url: null }, nodes: [] },
+    };
+    await store.completeSession(
+      first,
+      await prepareStoryBatch(first),
+      generated,
+      "gpt-6-luna",
+    );
+    advance(20000);
+    add("running");
+    const running = await store.claim();
+    assert.ok(running);
+    const curated = normalizeCuratedSession(
+      JSON.parse(readFileSync("examples/newron-story.json", "utf8")),
+    );
+    assert.equal(await store.save("c", "u", curated), true);
+    // A job that was already running cannot publish over the curated version.
+    assert.equal(
+      await store.completeSession(
+        running,
+        await prepareStoryBatch(running),
+        generated,
+        "gpt-6-luna",
+      ),
+      false,
+    );
+    let story = await store.get("c", "u");
+    assert.deepEqual(story.session, curated);
+    assert.equal(story.pending, false);
+    assert.equal(
+      sqlite.prepare("SELECT name FROM collections WHERE id='c'").get().name,
+      "Newron",
+    );
+    // Synced turns and a reconnect queue the collection, but the curated version stays and never shows as updating.
+    advance(20000);
+    add("synced");
+    sqlite.prepare("UPDATE collections SET deleted_at=NULL WHERE id='c'").run();
+    advance(20000);
+    assert.equal(await store.claim(), null);
+    story = await store.get("c", "u");
+    assert.deepEqual(story.session, curated);
+    assert.equal(story.pending, false);
+    assert.equal(story.status, "ready");
+    // Saving again keeps the original version for restore.
+    assert.equal(await store.save("c", "u", curated), true);
+    assert.equal(await store.save("c", "other", curated), false);
+    assert.equal(await store.restore("c", "u"), true);
+    story = await store.get("c", "u");
+    assert.deepEqual(story.session, generated);
+    assert.equal(
+      sqlite.prepare("SELECT name FROM collections WHERE id='c'").get().name,
+      "Quiet",
+    );
+    // The turns synced while it was curated are caught up now.
+    assert.equal(story.pending, true);
+    assert.ok(await store.claim());
+    assert.equal(await store.restore("c", "u"), false);
   } finally {
     sqlite.close();
   }

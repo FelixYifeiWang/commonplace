@@ -10,7 +10,12 @@ import {
   zoomLevel,
   visibleSessionMap,
 } from "@/lib/session-map.mjs";
-import type { MapNode, SessionDocument } from "@/lib/session-types";
+import type {
+  CuratedPicture,
+  MapNode,
+  SessionDocument,
+} from "@/lib/session-types";
+import Image from "next/image";
 import { SheetMedia } from "./sheet-media";
 import { ArrowLeft, ArrowRight, Move, Scan } from "lucide-react";
 import { guidedBounds, guidedCamera } from "@/lib/guided-map.mjs";
@@ -76,10 +81,13 @@ export function SessionMap({
   // A tile showing a link's picture opens that page even when the Map gave no address (an artifact opens itself).
   const urlOf = (url: string | null, itemId: string | null) =>
     url || pageUrl(itemId ? media.get(itemId) : undefined);
+  const pictures = useMemo(() => doc.pictures || {}, [doc.pictures]);
   const map = useMemo(
-    () => visibleSessionMap(doc.map, items),
-    [doc.map, items],
+    () => visibleSessionMap(doc.map, items, Object.keys(pictures)),
+    [doc.map, items, pictures],
   );
+  // A curated map shows up to five details a tile, as written; the model's maps keep three.
+  const detailLimit = doc.curated ? 5 : 3;
   const nodes: MapNode[] = map.nodes.slice(0, 6);
   // Lines a story canvas already shows are not shown again on a tile; the tile shows its name instead.
   const shown = useMemo(
@@ -99,7 +107,10 @@ export function SessionMap({
   // The story and items are polled every few seconds; lay out again only when their content changes,
   // so a refresh never undoes the viewer's zoom or drags.
   const docKey = JSON.stringify(map);
-  const mediaKey = items.map((i) => `${i.id}:${i.imageUrl || ""}`).join("|");
+  // A curated map's pictures ship with the site, so items synced while it is open never lay it out again.
+  const mediaKey = doc.curated
+    ? "curated"
+    : items.map((i) => `${i.id}:${i.imageUrl || ""}`).join("|");
   useEffect(() => {
     const stage = stageRef.current,
       world = worldRef.current,
@@ -158,9 +169,11 @@ export function SessionMap({
       t: w.y - w.cy,
       b: w.y - w.cy + w.h,
     });
-    // Every box is measured at the size it renders at the closest zoom, where quotes are visible.
+    // Every box is measured at the size it renders at the closest zoom, where quotes are visible. Transitions are
+    // off meanwhile, so details never flash in and fade out over the overview.
     function measure() {
       const level = world!.dataset.lvl || "0";
+      world!.classList.add("gm-measure");
       world!.dataset.lvl = "2";
       for (const w of Object.values(W)) {
         w.w = w.el.offsetWidth;
@@ -171,6 +184,8 @@ export function SessionMap({
         w.cy = p ? p.offsetTop + p.offsetHeight / 2 : w.h / 2;
       }
       world!.dataset.lvl = level;
+      void world!.offsetWidth;
+      world!.classList.remove("gm-measure");
     }
     function layout() {
       measure();
@@ -471,7 +486,8 @@ export function SessionMap({
     const onLoad = (e: Event) => {
       const img = e.target as HTMLImageElement;
       const pic = img.closest<HTMLElement>(".gm-pic");
-      if (!pic || !img.naturalWidth) return;
+      // A curated picture keeps the shape its document gives it, so loading it changes nothing.
+      if (!pic || !img.naturalWidth || pic.dataset.shaped !== undefined) return;
       if (!pic.classList.contains("gm-page"))
         pic.style.setProperty(
           "--ar",
@@ -709,6 +725,7 @@ export function SessionMap({
                 <Face
                   node={n}
                   item={n.itemId ? media.get(n.itemId) : undefined}
+                  picture={n.itemId ? pictures[n.itemId] : undefined}
                   shown={shown}
                 />
               </Target>
@@ -724,26 +741,31 @@ export function SessionMap({
                 <span className="gm-t">{soft(n.summary)}</span>
                 <small>{soft(n.label)}</small>
               </Target>
-              {n.details.slice(0, 3).map((d, j) => {
+              {n.details.slice(0, detailLimit).map((d, j) => {
                 const item = d.itemId ? media.get(d.itemId) : undefined;
                 const picture = item && pictureOf(item);
+                const still = d.itemId ? pictures[d.itemId] : undefined;
                 return (
                   <Target
                     key={j}
                     url={urlOf(d.url, d.itemId)}
                     focusFirst={guided && focusedKey !== `d${i}.${j}`}
-                    className={`gm-detail ${picture ? "has-pic" : ""}`}
+                    className={`gm-detail${picture || still ? " has-pic" : ""}${d.commit ? " gm-commit" : ""}`}
                     dataKey={`d${i}.${j}`}
                     node={i}
                     onActivate={() => engine.current?.focusOn(`d${i}.${j}`)}
                   >
-                    {picture ? (
+                    {picture || still ? (
                       <>
-                        <Picture
-                          label={d.label}
-                          item={item!}
-                          fit={picture.fit}
-                        />
+                        {still ? (
+                          <Still picture={still} />
+                        ) : (
+                          <Picture
+                            label={d.label}
+                            item={item!}
+                            fit={picture!.fit}
+                          />
+                        )}
                         <span className="gm-cap">
                           <b>{soft(d.label)}</b>
                         </span>
@@ -752,9 +774,10 @@ export function SessionMap({
                       <>
                         <Sheet />
                         <b>{soft(d.label)}</b>
+                        {d.commit && <em>Commit {d.commit} ↗</em>}
                       </>
                     )}
-                    <q>{soft(d.evidence.quote)}</q>
+                    {d.evidence.quote && <q>{soft(d.evidence.quote)}</q>}
                   </Target>
                 );
               })}
@@ -986,16 +1009,67 @@ function Picture({
     </span>
   );
 }
+// A picture a curated document ships with the site, fitted and shaped as the document says.
+function Still({ picture }: { picture: CuratedPicture }) {
+  return (
+    <span
+      className={`gm-pic gm-${picture.fit}`}
+      data-shaped=""
+      style={
+        {
+          "--ar": picture.ar ?? 1,
+          "--focus": picture.focus ?? "50% 0",
+        } as CSSProperties
+      }
+    >
+      <Sheet />
+      <Image
+        unoptimized
+        width={1200}
+        height={750}
+        src={picture.src}
+        alt={picture.alt}
+        loading="eager"
+        draggable={false}
+      />
+    </span>
+  );
+}
 // A tile shows its picture, a live specimen for a typeface, or the node's quote (its name if the Story shows it).
+// A curated tile may instead show problems and their fixes, or a short principle in large type.
 function Face({
   node,
   item,
+  picture: still,
   shown,
 }: {
   node: MapNode;
   item?: Item;
+  picture?: CuratedPicture;
   shown: Set<string>;
 }) {
+  if (still) return <Still picture={still} />;
+  if (node.fixes)
+    return (
+      <span className="gm-say gm-fixes">
+        <Sheet />
+        <span className="gm-txt">
+          {node.fixes.map(([problem, fix], i) => (
+            <span key={i}>
+              <small>{soft(problem)}</small>
+              {soft(fix)}
+            </span>
+          ))}
+        </span>
+      </span>
+    );
+  if (node.say)
+    return (
+      <span className={`gm-say${node.say.length <= 26 ? " gm-short" : ""}`}>
+        <Sheet />
+        <span className="gm-txt">{soft(node.say)}</span>
+      </span>
+    );
   if (node.font)
     return (
       <span className="gm-spec">

@@ -1,10 +1,12 @@
 "use client";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import Image from "next/image";
 import { PreviewImage } from "./preview-image";
 import type { Item } from "@/lib/types";
 import type {
   CanvasItem,
+  CuratedPicture,
   SessionDocument,
   SessionStep,
   WordsCanvas,
@@ -57,6 +59,43 @@ export function SessionStory({
     steps.forEach((step) => observer.observe(step));
     return () => observer.disconnect();
   }, [stepKeys]);
+  // A wipe runs left to right while its whole frame is on screen: from the moment its bottom edge comes into view
+  // until its top nears the top of the screen, eased at both ends. The page scrolls normally and never pins.
+  useEffect(() => {
+    const frames = root.current?.querySelectorAll<HTMLElement>(".sv-frame");
+    if (!frames?.length) return;
+    const still = matchMedia("(prefers-reduced-motion: reduce)");
+    const ease = (t: number) => t * t * (3 - 2 * t);
+    let queued = 0;
+    const scrub = () => {
+      queued = 0;
+      for (const frame of frames) {
+        const r = frame.getBoundingClientRect(),
+          start = innerHeight - r.height,
+          end = innerHeight * 0.12;
+        const t = Math.max(
+          0,
+          Math.min(1, (start - r.top) / Math.max(160, start - end)),
+        );
+        frame.style.setProperty(
+          "--p",
+          `${(still.matches ? 50 : ease(t) * 100).toFixed(2)}%`,
+        );
+      }
+    };
+    const queue = () => {
+      if (!queued) queued = requestAnimationFrame(scrub);
+    };
+    // Captured, so a scroll inside any container moves the wipe too.
+    window.addEventListener("scroll", queue, { passive: true, capture: true });
+    window.addEventListener("resize", queue);
+    scrub();
+    return () => {
+      cancelAnimationFrame(queued);
+      window.removeEventListener("scroll", queue, true);
+      window.removeEventListener("resize", queue);
+    };
+  }, [stepKeys]);
   return (
     <div className="sv sv-rise" ref={root}>
       <div className="sv-dots" aria-hidden="true" />
@@ -65,11 +104,16 @@ export function SessionStory({
           <div className="sv-say">
             <div className="sv-label">
               <b>Step {String(i + 1).padStart(2, "0")}</b>
+              {step.date && <span>{step.date}</span>}
             </div>
             <h2>{step.title}</h2>
             <p>{step.text}</p>
           </div>
-          <Canvas step={step} media={media} onOpen={onOpen} />
+          {document.curated ? (
+            <CuratedCanvas step={step} pictures={document.pictures || {}} />
+          ) : (
+            <Canvas step={step} media={media} onOpen={onOpen} />
+          )}
         </article>
       ))}
     </div>
@@ -143,6 +187,131 @@ function Sheet({
         <div className="sv-cb">{children}</div>
       </div>
     </figure>
+  );
+}
+// A curated step draws its canvas as the Story mockup does: pictures fill it, a short caption sits under each, and
+// the human's words sit in one line at the foot, in the same place on every canvas.
+function CuratedCanvas({
+  step,
+  pictures,
+}: {
+  step: SessionStep;
+  pictures: Record<string, CuratedPicture>;
+}) {
+  const { items, said, wipe, rules } = step.canvas;
+  return (
+    <Sheet className={`sv-q${said ? "" : " sv-nq"}`}>
+      {wipe ? (
+        <div className={`sv-pics sv-wipe${wipe.beside ? " sv-vs" : ""}`}>
+          {wipe.beside && (
+            <Still className="sv-st" picture={pictures[wipe.beside.itemId]} />
+          )}
+          <div
+            className="sv-frame"
+            style={{ "--p": "0%" } as CSSProperties}
+            role="img"
+            aria-label={wipe.alt || `${wipe.from.label}, then ${wipe.to.label}`}
+          >
+            <Still
+              className="sv-d"
+              picture={pictures[wipe.from.itemId]}
+              alt=""
+            />
+            <Still className="sv-k" picture={pictures[wipe.to.itemId]} alt="" />
+            <i className="sv-handle" aria-hidden="true" />
+          </div>
+          {wipe.beside && (
+            <span className="sv-st-cap">
+              <b>{wipe.beside.label}</b>
+            </span>
+          )}
+          <div className="sv-lbls">
+            <span>
+              <b>{wipe.from.label}</b>
+              <i className="sv-tag off">Dropped</i>
+            </span>
+            <span aria-hidden="true">→</span>
+            <span>
+              <b>{wipe.to.label}</b>
+              <i className="sv-tag">Kept</i>
+            </span>
+          </div>
+        </div>
+      ) : rules ? (
+        // Each note beside the prompt line it became.
+        <div
+          className="sv-nr"
+          style={{ "--n": rules.rows.length } as CSSProperties}
+        >
+          <div className="sv-nr-h">
+            <span>{rules.heads[0]}</span>
+            <span />
+            <span>{rules.heads[1]}</span>
+          </div>
+          {rules.rows.map((row, i) => (
+            <div className="sv-nr-row" key={i}>
+              {row.note.itemId ? (
+                <Still
+                  className="sv-nr-note"
+                  picture={pictures[row.note.itemId]}
+                />
+              ) : (
+                <p className="sv-nr-say">“{row.note.text}”</p>
+              )}
+              <i className="sv-arrow" aria-hidden="true" />
+              <code>{row.rule}</code>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className={`sv-pics ${items.length > 1 ? "sv-two" : "sv-one"}`}>
+          {items.map((entry) => {
+            const picture = pictures[entry.itemId];
+            const tag = TAGS[entry.role];
+            return (
+              <figure key={entry.itemId} className={`sv-pc sv-${picture.fit}`}>
+                <Still picture={picture} />
+                {(entry.label || tag) && (
+                  <figcaption>
+                    {entry.label && <b>{entry.label}</b>}
+                    {tag && <i className={`sv-tag ${tag[1]}`}>{tag[0]}</i>}
+                  </figcaption>
+                )}
+              </figure>
+            );
+          })}
+        </div>
+      )}
+      {said && (
+        <blockquote className="sv-said">
+          <p>“{said.text}”</p>
+          {said.by && <footer>{said.by}</footer>}
+        </blockquote>
+      )}
+    </Sheet>
+  );
+}
+// A picture a curated document ships with the site. Loaded at once, so nothing pops in while the page scrolls.
+function Still({
+  picture,
+  className,
+  alt,
+}: {
+  picture: CuratedPicture;
+  className?: string;
+  alt?: string;
+}) {
+  return (
+    <Image
+      unoptimized
+      width={1600}
+      height={1000}
+      className={className}
+      src={picture.src}
+      alt={alt ?? picture.alt}
+      loading="eager"
+      draggable={false}
+    />
   );
 }
 // Pills carry meaning only: what was picked, dropped or kept. Shape marks the state too, never colour alone.

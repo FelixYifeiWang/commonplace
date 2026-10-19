@@ -283,6 +283,28 @@ The Map is not the Story. It keeps what is worth reusing from the session: the l
   - Details fan out beyond their tile.
   - A collision pass then separates any boxes that touch: siblings slide sideways, everything else moves outward along its own node's direction, and hidden items take no space.
   - Nothing may overlap at any zoom level, on desktop or phone.
+  - Details on a left-hand tile read top to bottom in their listed order, as on the right.
+  - Measuring for the layout briefly shows every detail; transitions are off meanwhile, so nothing flashes in and fades out over the overview.
+
+## Curated documents
+
+A Story and Map can be written by hand for one collection, for example to show a session exactly as it was told. The owner saves it with `POST /api/stories` and `{ action: "save", collectionId, session }`; `examples/newron-story.json` is the one saved to the Newron collection.
+
+- **Never revised:** a curated document carries `curated: true` inside `stories.session_json` (no migration). The story job never claims it and cannot publish over it, even a job already running when it was saved. New turns and reconnects queue the collection as usual, but the Story never shows as updating.
+- **Undo:** the first save keeps the version it replaced and the collection's name on the server. `{ action: "restore" }` puts both back exactly, and the story job then catches up with turns synced in between. `{ action: "rewrite" }` also clears it and writes the Story again from the first turn.
+- **Checked strictly:** `normalizeCuratedSession` in `lib/story.mjs` accepts known fields only, bounds every text, and returns the stored shape with every optional field filled. The model's schema is unchanged, so generated sessions never use these forms.
+- **Pictures:** static files under `public/story/<name>/`, listed in the document's `pictures` with their fit (page, ink or object) and, for Map tiles, their shape and focus. Every picture reference in the document must name one of them.
+
+A curated step's canvas follows the same rules as any other, in one pattern: pictures fill it, a short caption sits under each, and the human's own words sit in one line at the foot ("I said"), in the same place on every canvas.
+
+| Layout | What it draws |
+| --- | --- |
+| reference | One or two pictures side by side, captions optional |
+| before-after | Two pictures, captioned, with Dropped and Kept pills |
+| wipe | One frame that wipes left to right from the dropped picture to the kept one as the step scrolls by, from the moment the frame's bottom edge comes into view until its top nears the top of the screen. The page never pins. An optional fixed picture sits beside it (35% wide), so what changed reads against what stayed |
+| rules | Each note (a picture of it, or its words in a bubble), an arrow, then the prompt line it became in monospace |
+
+On the Map a curated tile may show problems and their fixes (each problem in grey, the fix under it), or a short principle in large type (26 characters or fewer). A detail may name the commit a fix shipped in and link to it. A curated tile shows up to five details.
 
 ## Limits for the model
 

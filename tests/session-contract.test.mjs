@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
 import {
   sessionSchema,
   normalizeSession,
+  normalizeCuratedSession,
   sessionInstructions,
   validateSession,
   sessionURLs,
@@ -643,4 +645,107 @@ test("unavailable private previews keep their evidence but never become picture 
   assert.equal(repaired.steps[0].canvas.layout, "reference");
   assert.equal(repaired.map.nodes[0].itemId, null);
   assert.deepEqual(repaired.map.nodes[0].evidence, evidence);
+});
+
+// The hand-written Story and Map saved to the Newron collection (POST /api/stories, action "save").
+const curated = () =>
+  JSON.parse(readFileSync("examples/newron-story.json", "utf8"));
+
+test("the curated Newron document is valid, stable and ships every picture it names", () => {
+  const doc = normalizeCuratedSession(curated());
+  assert.equal(doc.curated, true);
+  assert.equal(doc.steps.length, 5);
+  assert.equal(doc.map.nodes.length, 6);
+  assert.deepEqual(normalizeCuratedSession(doc), doc);
+  for (const { src } of Object.values(doc.pictures))
+    assert.ok(existsSync("public" + src), `${src} is in public/`);
+});
+
+test("a curated document fills every optional field, so the renderer reads one form", () => {
+  const doc = normalizeCuratedSession(curated());
+  const [first, second] = doc.steps;
+  assert.deepEqual(first.canvas.said, null);
+  assert.deepEqual(first.canvas.wipe, null);
+  assert.deepEqual(first.evidence, []);
+  assert.equal(second.canvas.wipe.beside, null);
+  assert.deepEqual(second.canvas.items, []);
+  const backend = doc.map.nodes.find((n) => n.fixes);
+  assert.equal(backend.itemId, null);
+  assert.equal(backend.details[2].commit, "f333025");
+  assert.deepEqual(backend.details[2].evidence, { sourceId: "", quote: "" });
+});
+
+test("a curated document must say it is curated", () => {
+  const doc = curated();
+  delete doc.curated;
+  assert.throws(() => normalizeCuratedSession(doc), /needs curated/);
+  assert.throws(
+    () => normalizeCuratedSession({ ...curated(), curated: "yes" }),
+    /curated to true/,
+  );
+});
+
+test("a curated document rejects fields it does not know, including the server's own copy", () => {
+  assert.throws(
+    () =>
+      normalizeCuratedSession({ ...curated(), replaced: { session: null } }),
+    /unknown field: replaced/,
+  );
+  const doc = curated();
+  doc.map.nodes[0].html = "<script>";
+  assert.throws(() => normalizeCuratedSession(doc), /unknown field: html/);
+});
+
+test("curated pictures are only files this site serves under /story/", () => {
+  for (const src of [
+    "https://example.com/a.jpg",
+    "javascript:alert(1)",
+    "/story/../secret.jpg",
+    "/api/items/1.jpg",
+  ]) {
+    const doc = curated();
+    doc.pictures["s1-sketch"].src = src;
+    assert.throws(() => normalizeCuratedSession(doc), /under \/story\//, src);
+  }
+});
+
+test("every curated picture reference names a picture in the document", () => {
+  const doc = curated();
+  doc.steps[1].canvas.wipe.to.itemId = "missing";
+  assert.throws(() => normalizeCuratedSession(doc), /document's pictures/);
+});
+
+test("a curated canvas holds exactly what its layout draws", () => {
+  const wipeless = curated();
+  delete wipeless.steps[1].canvas.wipe;
+  assert.throws(() => normalizeCuratedSession(wipeless), /layout is wipe/);
+  const extra = curated();
+  extra.steps[4].canvas.items = [
+    { itemId: "s5-note", role: "reference", label: "" },
+  ];
+  assert.throws(() => normalizeCuratedSession(extra), /items must hold 0 to 0/);
+  const both = curated();
+  both.steps[4].canvas.rules.rows[0].note.text = "and a line";
+  assert.throws(() => normalizeCuratedSession(both), /not both/);
+  const words = curated();
+  words.steps[0].canvas.words = { form: "line", rows: [] };
+  assert.throws(() => normalizeCuratedSession(words), /cannot hold words/);
+});
+
+test("curated links are https, and a commit detail links its commit by hash", () => {
+  const plain = curated();
+  plain.map.center.url = "http://newron.app/";
+  assert.throws(() => normalizeCuratedSession(plain), /https address/);
+  const unlinked = curated();
+  delete unlinked.map.nodes[4].details[0].url;
+  assert.throws(() => normalizeCuratedSession(unlinked), /links its commit/);
+  const named = curated();
+  named.map.nodes[4].details[0].commit = "main";
+  assert.throws(() => normalizeCuratedSession(named), /by its hash/);
+});
+
+test("a curated tile shows one face", () => {
+  const doc = curated();
+  doc.map.nodes[5].itemId = "g-why";
+  assert.throws(() => normalizeCuratedSession(doc), /one face/);
 });

@@ -90,6 +90,34 @@ test("each detail fans out beyond its own tile", () => {
     }
 });
 
+test("details read top to bottom in their listed order on both sides", () => {
+  const W = placeMap(widgets(6, { details: 3 }), 6);
+  // Tile 1 sits on the right of the center, tile 4 on the left.
+  for (const i of [1, 4]) {
+    const ys = [0, 1, 2].map((j) => W[`d${i}.${j}`].y);
+    assert.deepEqual(
+      ys,
+      [...ys].sort((a, b) => a - b),
+      `tile ${i}: ${ys.join(", ")}`,
+    );
+  }
+});
+
+test("a curated document's pictures count as available", () => {
+  const map = {
+    center: { itemId: null, label: "Newron", url: null },
+    nodes: [
+      {
+        label: "UI details",
+        itemId: "g-sheet-ref",
+        details: [{ label: "Edges fade out", itemId: "g-edge" }],
+      },
+    ],
+  };
+  assert.deepEqual(visibleSessionMap(map, [], ["g-sheet-ref", "g-edge"]), map);
+  assert.deepEqual(visibleSessionMap(map, []).nodes, []);
+});
+
 test("lines bend the same way into their target", () => {
   assert.match(
     radialPath({ x: 0, y: 0 }, { x: 100, y: 0 }),

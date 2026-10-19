@@ -2,6 +2,7 @@ import { storyResponse } from "@/lib/story-response";
 import { env } from "@/lib/runtime-env";
 import { enabled, scheduleStoryWork } from "@/lib/runtime-story";
 import { createStoryStore } from "@/lib/story-store.mjs";
+import { normalizeCuratedSession } from "@/lib/story.mjs";
 import {
   userRequired,
   checkOrigin,
@@ -35,8 +36,26 @@ export async function POST(request: Request) {
       throw new HttpError(400, "Choose a collection.");
     if (!(await store.get(body.collectionId, user.userId)))
       throw new HttpError(404, "Collection not found.");
-    // "rewrite" writes the Story again from the first turn; otherwise retry after a failure.
-    if (body.action === "rewrite") {
+    // "save" replaces the Story and Map with a curated document the story job never revises; "restore" puts
+    // back the version it replaced; "rewrite" writes the Story again from the first turn; otherwise retry.
+    if (body.action === "save") {
+      let session;
+      try {
+        session = normalizeCuratedSession(body.session);
+      } catch (error) {
+        throw new HttpError(
+          400,
+          error instanceof Error ? error.message : "Invalid document.",
+        );
+      }
+      if (!(await store.save(body.collectionId, user.userId, session)))
+        throw new HttpError(404, "Collection not found.");
+      return Response.json({ ok: true });
+    }
+    if (body.action === "restore") {
+      if (!(await store.restore(body.collectionId, user.userId)))
+        throw new HttpError(409, "This Story has no curated version to undo.");
+    } else if (body.action === "rewrite") {
       if (!(await store.rewrite(body.collectionId, user.userId)))
         throw new HttpError(
           409,

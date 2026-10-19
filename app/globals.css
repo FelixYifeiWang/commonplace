@@ -7125,6 +7125,268 @@ body.desktop-feedback-page {
   letter-spacing: -0.06em;
   font-variant-numeric: tabular-nums;
 }
+
+/* A curated step (STORY_CANVAS.md, "Curated documents"): pictures fill the canvas, a short caption sits under each,
+   and the human's words sit in one line at the foot, in the same place on every canvas. */
+.sv-q .sv-cb {
+  grid-template-rows: minmax(0, 1fr) auto;
+  row-gap: 2.6cqw;
+}
+.sv-q.sv-nq .sv-cb {
+  grid-template-rows: minmax(0, 1fr);
+}
+.sv-pics {
+  min-height: 0;
+  display: grid;
+  column-gap: 3cqw;
+}
+.sv-pics.sv-two {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.sv-pics.sv-one {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sv-pc {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 1.2cqw;
+  min-height: 0;
+  min-width: 0;
+  margin: 0;
+}
+.sv-pc img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+  object-position: 50% 100%;
+}
+.sv-pc.sv-page img {
+  object-fit: cover;
+  object-position: 0 0;
+  border-radius: 1.2cqw;
+  box-shadow: 0 1.4cqw 3cqw -1.6cqw rgb(0 0 0 / 0.32);
+}
+.sv-pc.sv-ink img {
+  mix-blend-mode: multiply;
+}
+.sv-pc.sv-object img {
+  filter: drop-shadow(0 1.4cqw 1.6cqw rgb(0 0 0 / 0.14));
+}
+.sv-q figcaption {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.9cqw;
+  font-size: max(11px, 1.45cqw);
+  line-height: 1.3;
+  color: var(--sv-grey);
+}
+.sv-q figcaption b {
+  font-weight: 450;
+  color: var(--sv-ink);
+}
+.sv-said {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.4cqw 1.2cqw;
+  margin: 0;
+}
+.sv-said p {
+  margin: 0;
+  font-size: max(12px, 1.85cqw);
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: var(--sv-ink);
+}
+.sv-said footer {
+  font-size: max(10.5px, 1.35cqw);
+  color: var(--sv-grey);
+}
+/* A whole-screen change: one large frame that wipes from the dropped version to the kept one as the step scrolls by. */
+.sv-pics.sv-wipe {
+  grid-template-rows: minmax(0, 1fr) auto;
+  justify-items: center;
+  row-gap: 1.2cqw;
+}
+.sv-frame {
+  position: relative;
+  height: 100%;
+  aspect-ratio: 1.6;
+  max-width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 1.2cqw;
+  background: #ffffff;
+  box-shadow: 0 1.4cqw 3cqw -1.6cqw rgb(0 0 0 / 0.32);
+}
+.sv-frame > img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+  background: #ffffff;
+}
+.sv-frame > .sv-k {
+  clip-path: inset(0 calc(100% - var(--p)) 0 0);
+}
+.sv-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--p);
+  width: 2px;
+  margin-left: -1px;
+  background: var(--sv-ink);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.28);
+}
+/* The fixed picture beside a wipe, so what changed reads against what stayed. */
+.sv-pics.sv-wipe.sv-vs {
+  grid-template-columns: 35% minmax(0, 1fr);
+  column-gap: 2.6cqw;
+}
+.sv-vs .sv-st {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: cover;
+  object-position: 0 0;
+  border-radius: 1.2cqw;
+  background: #ffffff;
+  box-shadow: 0 1.4cqw 3cqw -1.6cqw rgb(0 0 0 / 0.32);
+}
+.sv-vs .sv-frame {
+  grid-area: 1 / 2;
+  width: 100%;
+  aspect-ratio: auto;
+}
+.sv-vs .sv-st-cap {
+  grid-area: 2 / 1;
+  font-size: max(11px, 1.45cqw);
+  color: var(--sv-grey);
+}
+.sv-vs .sv-st-cap b {
+  font-weight: 450;
+  color: var(--sv-ink);
+}
+.sv-vs .sv-lbls {
+  grid-area: 2 / 2;
+}
+.sv-lbls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.6cqw;
+  font-size: max(11px, 1.45cqw);
+  color: var(--sv-grey);
+}
+.sv-lbls span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9cqw;
+  white-space: nowrap;
+}
+.sv-lbls b {
+  font-weight: 450;
+  color: var(--sv-ink);
+}
+/* Notes next to the rules they became: a note's picture or its words, an arrow, then the prompt line. */
+.sv-nr {
+  display: grid;
+  grid-template-rows: auto repeat(var(--n, 3), minmax(0, 1fr));
+  row-gap: 1.8cqw;
+  min-height: 0;
+  height: 100%;
+}
+.sv-nr-h,
+.sv-nr-row {
+  display: grid;
+  grid-template-columns: 40fr 7fr 53fr;
+  align-items: center;
+  column-gap: 1.4cqw;
+  min-height: 0;
+}
+.sv-nr-h {
+  font-size: max(10.5px, 1.35cqw);
+  color: var(--sv-grey);
+}
+.sv-nr-note {
+  justify-self: start;
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  min-height: 0;
+  object-fit: contain;
+  object-position: 0 50%;
+  padding: 0.8cqw 1.4cqw;
+  border-radius: 1.6cqw;
+  background: #ffffff;
+  box-shadow: 0 0.8cqw 2cqw -1.2cqw rgb(0 0 0 / 0.3);
+  box-sizing: border-box;
+}
+.sv-nr-say {
+  justify-self: start;
+  margin: 0;
+  padding: 1.3cqw 1.8cqw;
+  border-radius: 1.8cqw;
+  background: #ffffff;
+  box-shadow: 0 0.8cqw 2cqw -1.2cqw rgb(0 0 0 / 0.3);
+  font-size: max(12px, 1.85cqw);
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: var(--sv-ink);
+}
+.sv-nr .sv-arrow {
+  width: 100%;
+  margin: 0;
+}
+.sv-nr code {
+  padding: 1.3cqw 1.6cqw;
+  border-radius: 1.2cqw;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px var(--sv-edge);
+  font:
+    max(10px, 1.55cqw) / 1.45 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  color: var(--sv-body);
+}
+@media (max-width: 560px) {
+  .sv-said p {
+    font-size: 11px;
+  }
+  .sv-said footer {
+    font-size: 10px;
+  }
+  .sv-pics.sv-two {
+    column-gap: 3.4cqw;
+  }
+  .sv-lbls {
+    flex-wrap: wrap;
+    row-gap: 0.3em;
+    gap: 1cqw;
+    font-size: 10px;
+  }
+  .sv-nr {
+    row-gap: 1.2cqw;
+  }
+  .sv-nr-say {
+    font-size: 10.5px;
+  }
+  .sv-nr code {
+    font-size: 9px;
+  }
+  .sv-nr-h {
+    font-size: 9.5px;
+  }
+}
 @media (max-width: 900px) {
   .sv-step {
     grid-template-columns: minmax(0, 1fr);
@@ -7383,7 +7645,7 @@ body.desktop-feedback-page {
 .gm-page img,
 .gm-work img {
   object-fit: cover;
-  object-position: 50% 0;
+  object-position: var(--focus, 50% 0);
   border-radius: 8cqw;
   box-shadow: 0 6px 14px -8px rgb(0 0 0 / 0.35);
 }
@@ -7415,6 +7677,29 @@ body.desktop-feedback-page {
   -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+/* A short principle reads large, like a quote. */
+.gm-say.gm-short {
+  font-size: max(15px, calc(var(--h) * 0.15));
+  line-height: 1.08;
+}
+/* Problems and their fixes: each problem in grey, the fix under it. */
+.gm-say.gm-fixes {
+  width: calc(var(--h) * 1.5);
+}
+.gm-fixes .gm-txt {
+  display: grid;
+  gap: 0.6em;
+}
+.gm-fixes small {
+  display: block;
+  margin-bottom: 0.1em;
+  font-size: 0.8em;
+  letter-spacing: 0.01em;
+  color: var(--gm-grey);
+}
+.gm-fixes small::after {
+  content: " →";
 }
 .gm-spec {
   display: grid;
@@ -7502,6 +7787,10 @@ a[href].gm-bubble small::after {
   opacity: 1;
   pointer-events: auto;
 }
+.gm-world.gm-measure .gm-detail,
+.gm-world.gm-measure .gm-lines path.det {
+  transition: none;
+}
 .gm-detail b {
   font-weight: 450;
 }
@@ -7512,6 +7801,18 @@ a[href].gm-bubble small::after {
 a[href].gm-detail b::after {
   content: " ↗";
   color: var(--gm-grey);
+}
+/* A fix's detail names the commit it shipped in, and that line carries the link. */
+a[href].gm-detail.gm-commit b::after {
+  content: none;
+}
+.gm-detail em {
+  position: relative;
+  margin-top: 2px;
+  font-style: normal;
+  font-size: 10px;
+  color: var(--gm-grey);
+  font-variant-numeric: tabular-nums;
 }
 .gm-detail q {
   display: none;
