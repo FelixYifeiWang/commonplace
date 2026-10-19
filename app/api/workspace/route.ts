@@ -1,3 +1,4 @@
+import { createCollectionTrash } from "@/lib/collection-trash.mjs";
 import { isReferenceItem } from "@/lib/source-policy.mjs";
 import { getDb } from "@/db";
 import { collections, sessions, items, devices } from "@/db/schema";
@@ -9,37 +10,40 @@ export async function GET() {
   try {
     const user = await userRequired(),
       db = getDb();
-    const [cs, ss, ii, recentlyDeleted] = await Promise.all([
-      db
-        .select()
-        .from(collections)
-        .where(
-          and(
-            eq(collections.ownerId, user.userId),
-            isNull(collections.deletedAt),
+    const [cs, ss, ii, recentlyDeleted, deletedCollections] = await Promise.all(
+      [
+        db
+          .select()
+          .from(collections)
+          .where(
+            and(
+              eq(collections.ownerId, user.userId),
+              isNull(collections.deletedAt),
+            ),
           ),
-        ),
-      db
-        .select({
-          id: sessions.id,
-          title: sessions.title,
-          provider: sessions.provider,
-          collectionId: sessions.collectionId,
-          mode: sessions.mode,
-          state: sessions.state,
-          lastSeen: sessions.lastSeen,
-          createdAt: sessions.createdAt,
-          externalId: sessions.externalId,
-        })
-        .from(sessions)
-        .where(eq(sessions.ownerId, user.userId)),
-      db
-        .select()
-        .from(items)
-        .where(and(eq(items.ownerId, user.userId), isNull(items.deletedAt)))
-        .orderBy(desc(items.createdAt)),
-      createItemTrash(env.DB).list(user.userId),
-    ]);
+        db
+          .select({
+            id: sessions.id,
+            title: sessions.title,
+            provider: sessions.provider,
+            collectionId: sessions.collectionId,
+            mode: sessions.mode,
+            state: sessions.state,
+            lastSeen: sessions.lastSeen,
+            createdAt: sessions.createdAt,
+            externalId: sessions.externalId,
+          })
+          .from(sessions)
+          .where(eq(sessions.ownerId, user.userId)),
+        db
+          .select()
+          .from(items)
+          .where(and(eq(items.ownerId, user.userId), isNull(items.deletedAt)))
+          .orderBy(desc(items.createdAt)),
+        createItemTrash(env.DB).list(user.userId),
+        createCollectionTrash(env.DB).list(user.userId),
+      ],
+    );
     const ds = await db
       .select({
         id: devices.id,
@@ -55,6 +59,7 @@ export async function GET() {
       {
         collections: cs,
         recentlyDeleted,
+        deletedCollections,
         sessions: ss.filter((s) => visibleCollections.has(s.collectionId)),
         items: ii.filter(
           (i) => visibleCollections.has(i.collectionId) && isReferenceItem(i),

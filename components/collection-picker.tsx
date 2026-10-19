@@ -126,7 +126,7 @@ export function CollectionPicker({
                   </button>
                   <button
                     className="channel-delete"
-                    title="Delete and disconnect collection"
+                    title="Pause and move to Trash"
                     aria-label={`Delete ${c.name}`}
                     onClick={() => {
                       setOpen(false);

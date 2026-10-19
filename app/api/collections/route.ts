@@ -1,9 +1,10 @@
+import { createCollectionTrash } from "@/lib/collection-trash.mjs";
 import { env } from "@/lib/runtime-env";
 import { favoriteUpdateSQL } from "@/lib/favorites.mjs";
 import { storyResponse } from "@/lib/story-response";
 import { getDb } from "@/db";
 import { and, eq, isNull } from "drizzle-orm";
-import { collections, sessions } from "@/db/schema";
+import { collections } from "@/db/schema";
 import {
   userRequired,
   jsonBody,
@@ -46,30 +47,11 @@ export async function DELETE(request: Request) {
   try {
     checkOrigin(request);
     const user = await userRequired(),
-      body = await jsonBody(request),
-      db = getDb();
-    const [collection] = await db
-      .select()
-      .from(collections)
-      .where(
-        and(eq(collections.id, body.id), eq(collections.ownerId, user.userId)),
-      );
-    if (!collection) throw new HttpError(404, "Collection not found.");
-    await db.batch([
-      db
-        .update(collections)
-        .set({ deletedAt: new Date().toISOString() })
-        .where(eq(collections.id, collection.id)),
-      db
-        .update(sessions)
-        .set({ state: "revoked" })
-        .where(
-          and(
-            eq(sessions.collectionId, collection.id),
-            eq(sessions.ownerId, user.userId),
-          ),
-        ),
-    ]);
+      body = await jsonBody(request);
+    if (typeof body.id !== "string")
+      throw new HttpError(400, "Choose a collection.");
+    if (!(await createCollectionTrash(env.DB).remove(user.userId, body.id)))
+      throw new HttpError(404, "Collection not found.");
     return storyResponse({ ok: true });
   } catch (e) {
     return fail(e);
@@ -138,12 +120,10 @@ export async function PATCH(request: Request) {
       return Response.json({ ok: true });
     }
     if (body.action !== "restore") throw new HttpError(400, "Unknown action.");
-    await getDb()
-      .update(collections)
-      .set({ deletedAt: null, favorite: false })
-      .where(
-        and(eq(collections.id, body.id), eq(collections.ownerId, user.userId)),
-      );
+    if (typeof body.id !== "string")
+      throw new HttpError(400, "Choose a collection.");
+    if (!(await createCollectionTrash(env.DB).restore(user.userId, body.id)))
+      throw new HttpError(410, "This collection can no longer be restored.");
     return storyResponse({ ok: true });
   } catch (e) {
     return fail(e);

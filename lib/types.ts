@@ -20,6 +20,7 @@ export type SessionState =
   | "revoked";
 export type Collection = {
   frozenAt?: string | null;
+  deletedAt?: string | null;
   favorite?: boolean;
   id: string;
   name: string;
@@ -73,6 +74,7 @@ export type Device = {
 };
 export type WorkspaceData = {
   recentlyDeleted?: Item[];
+  deletedCollections?: Collection[];
   collections: Collection[];
   sessions: Session[];
   items: Item[];

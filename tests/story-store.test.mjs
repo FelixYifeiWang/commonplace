@@ -912,3 +912,148 @@ test("a demo session's new collection is curated before the story job can write 
     sqlite.close();
   }
 });
+
+test("collection Trash pauses updates, preserves views and restores the previous connection", async () => {
+  const { createCollectionTrash } = await import("../lib/collection-trash.mjs");
+  const { sqlite, db, store, add } = fixture();
+  try {
+    sqlite.exec(
+      "INSERT INTO sessions(id,owner_id,collection_id,title,provider,token_hash,created_at,state) VALUES('s','u','c','Session','Codex','token','2026-10-17','following')",
+    );
+    add();
+    const document = JSON.stringify({ steps: [], map: { nodes: [] } });
+    sqlite
+      .prepare("UPDATE stories SET session_json=? WHERE collection_id='c'")
+      .run(document);
+    const job = await store.claim();
+    const trash = createCollectionTrash(db);
+    assert.equal(await trash.remove("someone-else", "c"), false);
+    assert.equal(await trash.remove("u", "c"), true);
+    assert.equal(await store.get("c", "u"), null);
+    assert.equal((await trash.list("u")).length, 1);
+    assert.equal((await trash.list("someone-else")).length, 0);
+    assert.equal(
+      sqlite.prepare("SELECT state FROM sessions WHERE id='s'").get().state,
+      "paused",
+    );
+    assert.equal(
+      sqlite.prepare("SELECT frozen_at FROM collections WHERE id='c'").get()
+        .frozen_at,
+      null,
+    );
+    add("late");
+    assert.equal(sqlite.prepare("SELECT count(*) n FROM items").get().n, 1);
+    sqlite.exec("UPDATE sessions SET state='following' WHERE id='s'");
+    assert.equal(
+      sqlite.prepare("SELECT state FROM sessions WHERE id='s'").get().state,
+      "paused",
+    );
+    assert.equal(
+      await store.completeSession(
+        job,
+        await prepareSessionBatch(job),
+        { steps: [], map: {} },
+        "test",
+      ),
+      false,
+    );
+    assert.equal(await trash.restore("someone-else", "c"), false);
+    assert.equal(await trash.restore("u", "c"), true);
+    assert.equal(
+      sqlite.prepare("SELECT state FROM sessions WHERE id='s'").get().state,
+      "following",
+    );
+    assert.equal(
+      sqlite
+        .prepare("SELECT session_json FROM stories WHERE collection_id='c'")
+        .get().session_json,
+      document,
+    );
+    sqlite.exec("UPDATE sessions SET state='paused' WHERE id='s'");
+    await trash.remove("u", "c");
+    await trash.restore("u", "c");
+    assert.equal(
+      sqlite.prepare("SELECT state FROM sessions WHERE id='s'").get().state,
+      "paused",
+    );
+    sqlite.exec("UPDATE collections SET frozen_at='2026-10-19' WHERE id='c'");
+    await trash.remove("u", "c");
+    await trash.restore("u", "c");
+    assert.equal(
+      sqlite.prepare("SELECT state FROM sessions WHERE id='s'").get().state,
+      "revoked",
+    );
+    assert.equal(
+      sqlite.prepare("SELECT frozen_at FROM collections WHERE id='c'").get()
+        .frozen_at,
+      "2026-10-19",
+    );
+  } finally {
+    sqlite.close();
+  }
+});
+
+test("collection Trash respects the 30-day restore window and manual collections stay editable", async () => {
+  const { createCollectionTrash } = await import("../lib/collection-trash.mjs");
+  const { sqlite, db } = fixture();
+  try {
+    let now = Date.now();
+    const trash = createCollectionTrash(db, { now: () => now });
+    await trash.remove("u", "c");
+    await trash.restore("u", "c");
+    assert.equal(
+      sqlite.prepare("SELECT frozen_at FROM collections WHERE id='c'").get()
+        .frozen_at,
+      null,
+    );
+    await trash.remove("u", "c");
+    now += ITEM_RETENTION_MS + 1;
+    assert.equal((await trash.list("u")).length, 0);
+    assert.equal(await trash.restore("u", "c"), false);
+  } finally {
+    sqlite.close();
+  }
+});
+
+test("expired collection cleanup removes only expired owned data and invalidates its session", async () => {
+  const { createCollectionTrash } = await import("../lib/collection-trash.mjs");
+  const { sqlite, db, add } = fixture();
+  try {
+    let now = Date.now();
+    const trash = createCollectionTrash(db, { now: () => now });
+    sqlite.exec(
+      "INSERT INTO sessions(id,owner_id,collection_id,title,provider,token_hash,created_at,state) VALUES('s','u','c','Session','Codex','token','2026-10-17','following')",
+    );
+    add();
+    sqlite.exec(
+      "PRAGMA foreign_keys=ON; INSERT INTO collections(id,owner_id,name,created_at) VALUES('keep','u','Keep','2026-10-19')",
+    );
+    await trash.remove("u", "c");
+    assert.equal(await trash.purge("u"), 0);
+    now += ITEM_RETENTION_MS + 1;
+    assert.equal(await trash.purge("other"), 0);
+    assert.equal(await trash.purge("u"), 1);
+    assert.equal(
+      sqlite.prepare("SELECT count(*) n FROM sessions WHERE id='s'").get().n,
+      0,
+    );
+    assert.equal(
+      sqlite
+        .prepare("SELECT count(*) n FROM items WHERE collection_id='c'")
+        .get().n,
+      0,
+    );
+    assert.equal(
+      sqlite
+        .prepare("SELECT count(*) n FROM stories WHERE collection_id='c'")
+        .get().n,
+      0,
+    );
+    assert.equal(await trash.restore("u", "c"), false);
+    assert.ok(
+      sqlite.prepare("SELECT id FROM collections WHERE id='keep'").get(),
+    );
+  } finally {
+    sqlite.close();
+  }
+});

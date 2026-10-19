@@ -8877,3 +8877,42 @@ a[href].gm-detail.gm-commit b::after {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+.disconnect-copy strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.session-actions .session-delete {
+  color: #c73838;
+  opacity: 0;
+  transition:
+    opacity 140ms,
+    background 140ms;
+}
+.session-row:hover .session-delete,
+.session-row:focus-within .session-delete {
+  opacity: 1;
+}
+.session-actions .session-delete:hover {
+  color: #c73838;
+  background: #f4f4f4;
+}
+.session-action-tooltip {
+  z-index: 100;
+  max-width: 240px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: #222;
+  color: white;
+  font: 12px/1.4 var(--sans);
+  box-shadow: 0 3px 12px #0001;
+}
+.session-action-tooltip svg {
+  background: #222;
+  fill: #222;
+}
+@media (hover: none) {
+  .session-actions .session-delete {
+    opacity: 1;
+  }
+}

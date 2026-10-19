@@ -1,7 +1,6 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { deviceDisplayName } from "@/lib/brand.mjs";
 import { imageSource } from "@/lib/media-source.mjs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -14,7 +13,6 @@ import {
   Play,
   Plus,
   Unplug,
-  Monitor,
   Trash2,
   Radio,
   Star,
@@ -39,6 +37,12 @@ import { MediaCard } from "./media-card";
 import { AddBlock } from "./add-block";
 import { AccountControls, AccountTransition } from "./account-controls";
 import { Modal } from "./modal";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./ui/tooltip";
 import { OpenBuddy } from "./open-buddy";
 import { SetupDialog } from "./setup-dialog";
 import { RecentlyDeleted } from "./recently-deleted";
@@ -47,6 +51,27 @@ import {
   readWorkspaceNavigation,
   workspaceNavigationUrl,
 } from "@/lib/workspace-navigation.mjs";
+
+function ActionHint({
+  text,
+  children,
+}: {
+  text: string;
+  children: React.ReactElement;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent
+        className="session-action-tooltip"
+        side="top"
+        sideOffset={8}
+      >
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 const EMPTY: WorkspaceData = {
   collections: [],
@@ -499,20 +524,74 @@ export default function Workspace({
       if (!demo) await api("/api/collections", "DELETE", { id });
       setData((d) => ({
         ...d,
+        deletedCollections: [
+          ...d.collections
+            .filter((c) => c.id === id)
+            .map((c) => ({
+              ...c,
+              deletedAt: new Date().toISOString(),
+              frozenAt: c.frozenAt,
+            })),
+          ...(d.deletedCollections || []).filter((c) => c.id !== id),
+        ],
         collections: d.collections.filter((c) => c.id !== id),
         items: d.items.filter((i) => i.collectionId !== id),
         sessions: d.sessions.filter((s) => s.collectionId !== id),
       }));
       if (selected === id) chooseCollection("all");
       setUndo({ kind: "collection", ids: [id], previous });
-      setToast("Collection deleted · disconnected");
+      setToast("Collection moved to Trash");
     } catch (e) {
       setToast(e instanceof Error ? e.message : "Could not delete collection.");
     }
   }
+  async function restoreCollection(collection: Collection) {
+    if (!demo) {
+      await api("/api/collections", "PATCH", {
+        action: "restore",
+        id: collection.id,
+      });
+      await refresh();
+    } else {
+      const previous = undo?.previous;
+      setData((d) => ({
+        ...d,
+        collections: [
+          ...d.collections,
+          { ...collection, deletedAt: null, favorite: false },
+        ],
+        deletedCollections: (d.deletedCollections || []).filter(
+          (c) => c.id !== collection.id,
+        ),
+        items: [
+          ...d.items,
+          ...(previous?.items || []).filter(
+            (i) => i.collectionId === collection.id,
+          ),
+        ],
+        sessions: [
+          ...d.sessions,
+          ...(previous?.sessions || []).filter(
+            (s) => s.collectionId === collection.id,
+          ),
+        ],
+      }));
+    }
+    setUndo(null);
+    setToast("Collection restored.");
+  }
   async function undoDelete() {
     if (!undo) return;
     try {
+      if (undo.kind === "collection") {
+        const collection = data.deletedCollections?.find(
+          (c) => c.id === undo.ids[0],
+        );
+        if (collection) {
+          await restoreCollection(collection);
+          return;
+        }
+      }
       if (demo && undo.previous) setData(undo.previous);
       else {
         await api(
@@ -528,9 +607,7 @@ export default function Workspace({
         await refresh();
       }
       setToast(
-        undo.kind === "collection"
-          ? "Collection restored · disconnected"
-          : "Blocks restored",
+        undo.kind === "collection" ? "Collection restored" : "Blocks restored",
       );
       setUndo(null);
     } catch (e) {
@@ -577,36 +654,59 @@ export default function Workspace({
             demo ? new Date().toISOString() : session.lastSeen,
           )}
         </span>
-        {session.state !== "revoked" && (
+        <TooltipProvider delayDuration={650} skipDelayDuration={0}>
           <div className="session-actions">
-            <button
-              className="icon-button"
-              aria-label={`${session.state === "paused" ? "Resume" : "Pause"} ${session.title}`}
-              onClick={() =>
-                void sessionAction(
-                  session,
-                  session.state === "paused" ? "resume" : "pause",
-                )
-              }
-            >
-              {session.state === "paused" ? (
-                <Play size={14} />
-              ) : (
-                <Pause size={14} />
-              )}
-            </button>
-            <button
-              className="icon-button"
-              aria-label={`Disconnect ${session.title}`}
-              onClick={() => {
-                setDisconnectError("");
-                setDisconnectSession(session);
-              }}
-            >
-              <Unplug size={14} />
-            </button>
+            {session.state !== "revoked" && (
+              <>
+                <ActionHint
+                  text={
+                    session.state === "paused"
+                      ? "Resume collecting updates."
+                      : "Pause updates. Resume anytime."
+                  }
+                >
+                  <button
+                    className="icon-button"
+                    aria-label={`${session.state === "paused" ? "Resume" : "Pause"} ${session.title}`}
+                    onClick={() =>
+                      void sessionAction(
+                        session,
+                        session.state === "paused" ? "resume" : "pause",
+                      )
+                    }
+                  >
+                    {session.state === "paused" ? (
+                      <Play size={14} />
+                    ) : (
+                      <Pause size={14} />
+                    )}
+                  </button>
+                </ActionHint>
+                <ActionHint text="Stop updates. Keep a frozen copy.">
+                  <button
+                    className="icon-button"
+                    aria-label={`Disconnect ${session.title}`}
+                    onClick={() => {
+                      setDisconnectError("");
+                      setDisconnectSession(session);
+                    }}
+                  >
+                    <Unplug size={14} />
+                  </button>
+                </ActionHint>
+              </>
+            )}
+            <ActionHint text="Pause and move to Trash for 30 days.">
+              <button
+                className="icon-button session-delete"
+                aria-label={`Delete ${collections.find((c) => c.id === session.collectionId)?.name || session.title}`}
+                onClick={() => void deleteCollection(session.collectionId)}
+              >
+                <Trash2 size={14} />
+              </button>
+            </ActionHint>
           </div>
-        )}
+        </TooltipProvider>
       </div>
     );
   }
@@ -849,7 +949,7 @@ export default function Workspace({
                           <button
                             className="collection-overview-delete"
                             aria-label={`Delete ${collection.name}`}
-                            title="Delete and disconnect collection"
+                            title="Pause and move to Trash"
                             onClick={() => void deleteCollection(collection.id)}
                           >
                             <Trash2 size={15} />
@@ -865,6 +965,8 @@ export default function Workspace({
                     <h1>Trash</h1>
                   </div>
                   <RecentlyDeleted
+                    collections={data.deletedCollections || []}
+                    onRestoreCollection={restoreCollection}
                     items={data.recentlyDeleted || []}
                     onOpen={setDetail}
                     onRestore={restoreItem}
@@ -950,65 +1052,6 @@ export default function Workspace({
                       )}
                     </div>
                   </section>
-                  <section className="settings-section">
-                    <div className="section-heading">
-                      <h2>Connected computers</h2>
-                      <button
-                        className="text-button"
-                        onClick={() => openModal("setup")}
-                      >
-                        <Plus size={13} />
-                        Connect a computer
-                      </button>
-                    </div>
-                    <OpenBuddy onSetup={() => openModal("setup")} />
-                    <p className="section-description">
-                      One connection per computer. Nox remembers it for next
-                      time.
-                    </p>
-                    {data.devices.filter((d) => !d.revoked).length ? (
-                      data.devices
-                        .filter((d) => !d.revoked)
-                        .map((device) => (
-                          <div className="setting-row" key={device.id}>
-                            <Monitor size={19} />
-                            <div>
-                              <strong>{deviceDisplayName(device.name)}</strong>
-                              <p>
-                                {device.lastSeen
-                                  ? "Connected to your space"
-                                  : "Waiting for your companion to connect"}
-                              </p>
-                            </div>
-                            <button
-                              className="text-button danger"
-                              onClick={async () => {
-                                try {
-                                  await api("/api/devices", "DELETE", {
-                                    id: device.id,
-                                  });
-                                  await refresh();
-                                  setToast("Computer disconnected.");
-                                } catch (e) {
-                                  setToast(
-                                    e instanceof Error
-                                      ? e.message
-                                      : "Could not disconnect.",
-                                  );
-                                }
-                              }}
-                            >
-                              Disconnect
-                            </button>
-                          </div>
-                        ))
-                    ) : (
-                      <div className="setting-row">
-                        <Monitor size={20} />
-                        <p>No computers connected yet.</p>
-                      </div>
-                    )}
-                  </section>
                 </>
               )}
             </>
@@ -1041,12 +1084,10 @@ export default function Workspace({
           }}
         >
           <p className="disconnect-copy">
-            Your collection stays here. Its content, Story, and Map will be
-            frozen.
+            Keep a frozen copy. Reconnecting starts a new collection.
           </p>
           <p className="disconnect-copy">
-            This can’t be undone. Connecting this session again creates a new
-            collection.
+            <strong>Cannot be undone.</strong>
           </p>
           {disconnectError && (
             <p className="form-error" role="alert">

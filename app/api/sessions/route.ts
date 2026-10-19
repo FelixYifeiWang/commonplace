@@ -67,6 +67,12 @@ export async function PATCH(request: Request) {
       .from(sessions)
       .where(and(eq(sessions.id, body.id), eq(sessions.ownerId, user.userId)));
     if (!session) throw new HttpError(404, "Session not found.");
+    const [collection] = await db
+      .select({ deletedAt: collections.deletedAt })
+      .from(collections)
+      .where(eq(collections.id, session.collectionId));
+    if (collection?.deletedAt)
+      throw new HttpError(409, "Restore this collection from Trash first.");
     if (session.state === "revoked")
       throw new HttpError(409, "Connect a new session to restore access.");
     if (body.action === "revoke") {

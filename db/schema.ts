@@ -25,6 +25,7 @@ export const collections = sqliteTable("collections", {
   createdAt: text("created_at").notNull(),
 });
 export const sessions = sqliteTable("sessions", {
+  stateBeforeTrash: text("state_before_trash"),
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
   collectionId: text("collection_id")

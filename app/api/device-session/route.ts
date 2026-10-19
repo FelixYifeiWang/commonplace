@@ -1,6 +1,6 @@
 import { getDb } from "@/db";
-import { sessions } from "@/db/schema";
-import { and, eq, ne } from "drizzle-orm";
+import { sessions, collections } from "@/db/schema";
+import { and, eq, ne, isNull } from "drizzle-orm";
 import { deviceRequired, jsonBody, fail, HttpError } from "@/lib/server";
 export async function PATCH(request: Request) {
   try {
@@ -22,6 +22,12 @@ export async function PATCH(request: Request) {
       );
     if (!session || session.state === "revoked")
       throw new HttpError(404, "This session is no longer connected.");
+    const [collection] = await db
+      .select({ deletedAt: collections.deletedAt })
+      .from(collections)
+      .where(eq(collections.id, session.collectionId));
+    if (collection?.deletedAt)
+      throw new HttpError(409, "Restore this collection from Trash first.");
     const state = body.action === "pause" ? "paused" : "following";
     const changed = await db
       .update(sessions)
@@ -43,9 +49,11 @@ export async function GET(request: Request) {
     const [session] = await getDb()
       .select({ id: sessions.id, state: sessions.state })
       .from(sessions)
+      .innerJoin(collections, eq(collections.id, sessions.collectionId))
       .where(
         and(
           eq(sessions.deviceId, device.id),
+          isNull(collections.deletedAt),
           eq(sessions.ownerId, device.ownerId),
           ne(sessions.state, "revoked"),
           eq(sessions.externalId, url.searchParams.get("externalId") || ""),

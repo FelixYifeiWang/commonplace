@@ -1,5 +1,6 @@
-import { storyResponse } from "@/lib/story-response";
 import { env } from "@/lib/runtime-env";
+import { createCollectionTrash } from "@/lib/collection-trash.mjs";
+import { storyResponse } from "@/lib/story-response";
 import { createStoryStore } from "@/lib/story-store.mjs";
 import { normalizeCuratedSession } from "@/lib/story.mjs";
 import { DEMO_SESSIONS } from "@/lib/demo-sessions";
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
       throw new HttpError(400, "Provide a stable sessionId.");
     if (!["Codex", "Claude Code", "Cursor", "Other"].includes(body.provider))
       throw new HttpError(400, "Unknown provider.");
+    await createCollectionTrash(env.DB).purge(device.ownerId);
     const [existing] = await db
       .select()
       .from(sessions)
@@ -58,8 +60,11 @@ export async function POST(request: Request) {
         .from(collections)
         .where(eq(collections.id, existing.collectionId));
       if (!collection) throw new HttpError(404, "Collection not found.");
-      if (collection.deletedAt && body.mode !== "follow")
-        throw new HttpError(409, "Reconnect this collection to restore it.");
+      if (collection.deletedAt)
+        throw new HttpError(
+          409,
+          "Restore this collection from Trash before reconnecting.",
+        );
       // Connect resumes a paused session. Disconnected sessions are never reused.
       if (body.mode === "follow") {
         const changed = await db
