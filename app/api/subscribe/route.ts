@@ -1,4 +1,8 @@
 import { storyResponse } from "@/lib/story-response";
+import { env } from "@/lib/runtime-env";
+import { createStoryStore } from "@/lib/story-store.mjs";
+import { normalizeCuratedSession } from "@/lib/story.mjs";
+import { DEMO_SESSIONS } from "@/lib/demo-sessions";
 import { getDb } from "@/db";
 import { sessions, collections, devices } from "@/db/schema";
 import { and, eq, ne } from "drizzle-orm";
@@ -10,6 +14,20 @@ import {
   newToken,
   hash,
 } from "@/lib/server";
+// Demo video only: a session listed in DEMO_SESSIONS shows its curated Story and Map on every connect.
+async function showDemo(
+  sessionId: string,
+  collectionId: string,
+  ownerId: string,
+) {
+  const document = DEMO_SESSIONS[sessionId];
+  if (document)
+    await createStoryStore(env.DB).save(
+      collectionId,
+      ownerId,
+      normalizeCuratedSession(document),
+    );
+}
 export async function POST(request: Request) {
   try {
     const device = await deviceRequired(request),
@@ -56,6 +74,7 @@ export async function POST(request: Request) {
             409,
             "This session was disconnected. Connect again to start a new collection.",
           );
+        await showDemo(body.sessionId, existing.collectionId, existing.ownerId);
       }
       return storyResponse({
         subscriptionId: existing.id,
@@ -96,6 +115,7 @@ export async function POST(request: Request) {
         .set({ lastSeen: now })
         .where(eq(devices.id, device.id)),
     ]);
+    await showDemo(body.sessionId, collectionId, device.ownerId);
     return storyResponse(
       { subscriptionId: id, collectionId, state: "reading" },
       { status: 201 },

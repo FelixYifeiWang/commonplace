@@ -856,3 +856,59 @@ test("pause remains reversible and a new subscription can collect independently 
     sqlite.close();
   }
 });
+
+test("a demo session's new collection is curated before the story job can write it, on every reconnect", async () => {
+  const { sqlite, store, advance } = fixture();
+  const curated = normalizeCuratedSession(
+    JSON.parse(readFileSync("examples/newron-story.json", "utf8")),
+  );
+  // What POST /api/subscribe does for a session listed in lib/demo-sessions.ts.
+  const connect = async (id) => {
+    sqlite
+      .prepare(
+        "INSERT INTO collections(id,owner_id,name,created_at) VALUES(?,'u','neuron','2026-10-19')",
+      )
+      .run(`session-${id}`);
+    sqlite
+      .prepare(
+        "INSERT INTO sessions(id,owner_id,collection_id,title,provider,external_id,state,token_hash,created_at) VALUES(?,'u',?,'neuron','Claude Code','763053fe','reading','hash','2026-10-19')",
+      )
+      .run(id, `session-${id}`);
+    assert.equal(await store.save(`session-${id}`, "u", curated), true);
+    // Nox then syncs the whole transcript into the new collection.
+    sqlite
+      .prepare(
+        "INSERT INTO items(id,owner_id,collection_id,identity,kind,title,body,source_text,source_role,created_at,updated_at) VALUES(?,'u',?,?,'note','Turn','Turn','Turn','user','2026-10-19','2026-10-19')",
+      )
+      .run(`item-${id}`, `session-${id}`, `item-${id}`);
+    advance(20000);
+    const claimed = [];
+    for (let job = await store.claim(); job; job = await store.claim())
+      claimed.push(job.collectionId);
+    assert.ok(!claimed.includes(`session-${id}`));
+    const story = await store.get(`session-${id}`, "u");
+    assert.deepEqual(story.session, curated);
+    assert.equal(story.pending, false);
+    assert.equal(
+      sqlite
+        .prepare("SELECT name FROM collections WHERE id=?")
+        .get(`session-${id}`).name,
+      "Newron",
+    );
+  };
+  try {
+    await connect("first");
+    // Deleting the collection disconnects the session, so the next Connect starts a new collection.
+    sqlite
+      .prepare(
+        "UPDATE collections SET deleted_at='2026-10-19' WHERE id='session-first'",
+      )
+      .run();
+    sqlite
+      .prepare("UPDATE sessions SET state='revoked' WHERE id='first'")
+      .run();
+    await connect("second");
+  } finally {
+    sqlite.close();
+  }
+});
