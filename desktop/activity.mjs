@@ -3,10 +3,21 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function activeConversation(raw, launchedAt = 0) {
+const navigationEvent = (line) =>
+  line.includes(" thread_stream_view_activity_changed ") ||
+  line.includes("IAB_LIFECYCLE received browser sidebar owner sync ") ||
+  line.includes("IAB_LIFECYCLE received browser use session route capture ");
+
+export function activeConversation(
+  raw,
+  launchedAt = 0,
+  knownSessionIds = null,
+) {
   const windows = new Map();
+  const routes = new Map();
+  const browserSessions = new Map();
   for (const line of raw.split("\n")) {
-    if (!line.includes(" thread_stream_view_activity_changed ")) continue;
+    if (!navigationEvent(line)) continue;
     const timestamp = Date.parse(line.slice(0, 24));
     if (!Number.isFinite(timestamp) || timestamp < launchedAt) continue;
     const fields = Object.fromEntries(
@@ -15,6 +26,30 @@ export function activeConversation(raw, launchedAt = 0) {
         m[2],
       ]),
     );
+    if (line.includes("IAB_LIFECYCLE received browser sidebar owner sync ")) {
+      const route = /^\/local\/([0-9a-f-]{36})(?:[?#]|$)/i.exec(
+        fields.ownerRoutePath || "",
+      );
+      if (/^\d+$/.test(fields.windowId || ""))
+        routes.set(
+          fields.windowId,
+          route && uuid.test(route[1]) ? route[1] : null,
+        );
+      continue;
+    }
+    if (
+      line.includes("IAB_LIFECYCLE received browser use session route capture ")
+    ) {
+      if (
+        uuid.test(fields.conversationId || "") &&
+        /^\d+$/.test(fields.windowId || "")
+      ) {
+        if (!browserSessions.has(fields.windowId))
+          browserSessions.set(fields.windowId, new Set());
+        browserSessions.get(fields.windowId).add(fields.conversationId);
+      }
+      continue;
+    }
     if (
       fields.rendererWindowAppearance !== "primary" ||
       !uuid.test(fields.conversationId || "") ||
@@ -23,9 +58,18 @@ export function activeConversation(raw, launchedAt = 0) {
       continue;
     const id = fields.conversationId,
       window = fields.rendererWindowId;
-    if (fields.active === "true" && fields.rendererWindowVisible === "true")
-      windows.set(window, id);
-    else if (
+    const current = windows.get(window);
+    // Codex emits helper-stream activity as if it were the primary view. Ignore it only
+    // when the indexed task is still active AND its visible route corroborates it.
+    // A closed task or genuine navigation never falls back to an older conversation.
+    const internalHelper =
+      knownSessionIds?.has(current) &&
+      !knownSessionIds.has(id) &&
+      routes.get(window) === current &&
+      browserSessions.get(window)?.has(id);
+    if (fields.active === "true" && fields.rendererWindowVisible === "true") {
+      if (!internalHelper) windows.set(window, id);
+    } else if (
       (fields.active === "false" || fields.rendererWindowVisible === "false") &&
       windows.get(window) === id
     )
@@ -65,6 +109,7 @@ async function logFiles(root, pid) {
 export async function readOpenConversation(
   target,
   root = join(homedir(), "Library/Logs/com.openai.codex"),
+  knownSessionIds = null,
 ) {
   if (target.bundleId !== "com.openai.codex")
     throw new Error(
@@ -108,14 +153,12 @@ export async function readOpenConversation(
   const events = [];
   for (const { file } of current) {
     const raw = await readFile(file, "utf8");
-    events.push(
-      ...raw
-        .split("\n")
-        .filter((line) =>
-          line.includes(" thread_stream_view_activity_changed "),
-        ),
-    );
+    events.push(...raw.split("\n").filter(navigationEvent));
   }
   events.sort((a, b) => a.slice(0, 24).localeCompare(b.slice(0, 24)));
-  return activeConversation(events.join("\n"), target.launchedAt);
+  return activeConversation(
+    events.join("\n"),
+    target.launchedAt,
+    knownSessionIds,
+  );
 }

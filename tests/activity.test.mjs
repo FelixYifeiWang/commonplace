@@ -95,3 +95,59 @@ test("a hidden conversation is not a drop target", () => {
     /Open the conversation/,
   );
 });
+
+const route = (id, time = at) =>
+  `${new Date(time).toISOString()} info [electron-message-handler] IAB_LIFECYCLE received browser sidebar owner sync ownerRoutePath=/local/${id} windowId=1`;
+const helper = (id, time = at) =>
+  `${new Date(time).toISOString()} info [electron-message-handler] IAB_LIFECYCLE received browser use session route capture conversationId=${id} windowId=1`;
+
+test("an unindexed browser helper cannot replace the still-visible indexed task", () => {
+  const raw = [route(a), event(a), helper(b), event(b)].join("\n");
+  assert.equal(activeConversation(raw, 0, new Set([a])), a);
+});
+
+test("real navigation to an unindexed task does not fall back to the previous task", () => {
+  const raw = [
+    route(a),
+    event(a),
+    event(a, "active=false"),
+    route(b),
+    helper(b),
+    event(b),
+  ].join("\n");
+  assert.equal(activeConversation(raw, 0, new Set([a])), b);
+});
+
+test("indexed tasks remain selectable even when browser routes lag behind", () => {
+  const raw = [route(a), event(a), helper(b), event(b)].join("\n");
+  assert.equal(activeConversation(raw, 0, new Set([a, b])), b);
+});
+
+test("helper detection requires a corroborating visible route", () => {
+  assert.equal(
+    activeConversation(
+      [event(a), helper(b), event(b)].join("\n"),
+      0,
+      new Set([a]),
+    ),
+    b,
+  );
+});
+
+test("closing the real task still clears it after helper activity", () => {
+  assert.throws(
+    () =>
+      activeConversation(
+        [
+          route(a),
+          event(a),
+          helper(b),
+          event(b),
+          event(a, "active=false"),
+        ].join("\n"),
+        0,
+        new Set([a]),
+      ),
+    /Open the conversation/,
+  );
+});

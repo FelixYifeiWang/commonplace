@@ -111,10 +111,15 @@ export async function resolveLocalTarget(
   codexHome = process.env.CODEX_HOME || join(homedir(), ".codex"),
 ) {
   if (target.bundleId === CLAUDE_BUNDLE_ID) return resolveClaudeTarget(target);
-  const sessionId = await readOpenConversation(target);
+  const sessions = await codexSessionMetadata(codexHome);
+  const sessionId = await readOpenConversation(
+    target,
+    undefined,
+    new Set(sessions.map((session) => session.sessionId)),
+  );
   const selected = resolveTarget(
     { bundleId: target.bundleId, urls: [sessionId] },
-    await codexSessionMetadata(codexHome),
+    sessions,
   );
   return {
     ...selected,
