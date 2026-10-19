@@ -1,0 +1,533 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nox Contrast Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* Layout: a white page, a short header with the controls, then one row per option: its name on the left and the
+   same four wallpapers on the right, each with Nox at its real size and the mark's contrast underneath. */
+:root {
+  --paper: #ffffff;
+  --ink: #1b1b1a;
+  --muted: #7c7c78;
+  --canvas: #f2f2f0;
+  --edge: #dcdcd8;
+  --indigo: #3b36d4;
+  --sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --mono: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121211; --ink: #ededea; --muted: #9a9a95; --canvas: #1c1c1b; --edge: #2e2e2c;
+    --indigo: #a19dff; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121211; --ink: #ededea; --muted: #9a9a95; --canvas: #1c1c1b; --edge: #2e2e2c;
+  --indigo: #a19dff; color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--sans); }
+.page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 20px 40px; }
+h1 { margin: 0; font: 400 48px/1 var(--serif); letter-spacing: -0.01em; text-wrap: balance; }
+h1 em { font-style: italic; }
+.lede { margin: 12px 0 0; max-width: 60ch; color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; gap: 4px; padding: 3px; border-radius: 999px; background: var(--canvas); }
+.seg button {
+  font: 500 13px/1 var(--sans);
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--paper); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
+button:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px; }
+
+.sheet { display: flex; flex-direction: column; gap: 28px; }
+.row { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 24px; align-items: start; }
+.row + .row { border-top: 1px solid var(--edge); padding-top: 28px; }
+.walls-head { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.walls-head span, .label {
+  font: 500 11px/1 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.about { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.about h2 { margin: 0; font: 400 28px/1.05 var(--serif); text-wrap: balance; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.about p { margin: 0; color: var(--muted); font-size: 14px; }
+.about code { font: 12px/1.4 var(--mono); color: var(--ink); }
+.about .worst { font: 12px/1.4 var(--mono); font-variant-numeric: tabular-nums; }
+.about .worst.ok { color: var(--ink); }
+.pick {
+  font: 500 11px/1 var(--sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--indigo);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.tile { margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.wall {
+  position: relative;
+  aspect-ratio: 5 / 4;
+  max-width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--canvas);
+}
+.wall > canvas.paper { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.tile figcaption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 12px/1 var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.tile figcaption::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+}
+.tile figcaption.ok { color: var(--ink); }
+.tile figcaption.ok::before { background: currentColor; }
+.tile figcaption small { font: inherit; color: var(--muted); }
+.wall-name { display: none; }
+
+/* Nox, as in app/globals.css (.nox, .nox-frame, .nox-mark and the desktop window's .native-buddy-grab shadow). */
+.nox {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: 50%;
+  box-shadow:
+    0 4px 10px -1px rgb(17 17 26 / 0.2),
+    0 1px 3px rgb(17 17 26 / 0.08);
+}
+.nox-mark { position: absolute; inset: 19%; width: 62%; height: 62%; pointer-events: none; }
+.nox-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: hsl(0 0% 100% / 0.05);
+  box-shadow:
+    0 0 1px 0.5px color-mix(in oklch, black, transparent 82%) inset,
+    5px 5px 9px -5px hsl(0 0% 100% / 0.75) inset,
+    -4px -4px 8px -6px hsl(0 0% 100% / 0.3) inset;
+}
+
+.notes { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 24px; border-top: 1px solid var(--edge); padding-top: 28px; }
+.notes h2 { margin: 0; font: 400 28px/1.05 var(--serif); }
+.notes div { display: flex; flex-direction: column; gap: 10px; max-width: 68ch; }
+.notes p { margin: 0; }
+.notice { margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--canvas); }
+
+@media (max-width: 960px) {
+  .row, .notes { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .row-head { display: none; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; }
+  .wall-name { display: inline; }
+  h1 { font-size: 40px; }
+}
+</style>
+
+<div class="page">
+  <header>
+    <div>
+      <h1>Nox on <em>dark</em> desktops</h1>
+      <p class="lede">Nox's window can't see the desktop behind it, so the bubble has to bring its own contrast. Four ways to keep the indigo N readable, each on the same four wallpapers. Under each tile is the mark's contrast with what is directly behind it; 3:1 is the usual floor for a graphic.</p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="State">
+        <button type="button" data-mood="rest" aria-pressed="true">Resting</button>
+        <button type="button" data-mood="working" aria-pressed="false">Working</button>
+        <button type="button" data-mood="alert" aria-pressed="false">Error</button>
+        <button type="button" data-mood="muted" aria-pressed="false">Paused</button>
+      </div>
+      <div class="seg" role="group" aria-label="Size">
+        <button type="button" data-size="72" aria-pressed="true">Actual size</button>
+        <button type="button" data-size="144" aria-pressed="false">Close-up</button>
+      </div>
+    </div>
+  </header>
+  <p class="notice" id="no-webgl" hidden>The N is drawn with WebGL, which this browser has turned off.</p>
+  <main class="sheet" id="sheet">
+    <div class="row row-head" aria-hidden="true">
+      <span></span>
+      <div class="walls-head"><span>Light</span><span>Colourful</span><span>Dark</span><span>Midnight</span></div>
+    </div>
+  </main>
+  <section class="notes">
+    <h2>Reading it</h2>
+    <div>
+      <p>Light rim is the pick. It is the only option that holds in every state on every wallpaper: on light desktops the indigo carries the N as it does now, and on dark or colourful ones the rim does. The glass stays clear and the N's shape and motion are untouched; the rim only adds an edge around them. Switch the state to Paused or Error to see why the others fall short.</p>
+      <p>Lit core is the close second. It is one CSS background and leaves the N exactly as the logo looks on a white page, but its pool of light is a mid grey over dark desktops, so the grey Paused N and the orange Error N lose contrast there. Milky glass has the same problem and also turns Nox into a white button. Lighter indigo can't win both ends: it loses contrast on light wallpapers and disappears into violet ones.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  // The four wallpapers, drawn deterministically so every option sits on exactly the same pixels.
+  const WALLS = [
+    { id: "light", name: "Light", draw(g, w, h) {
+      paint(g, w, h, ["#f5f3ef", "#e3e7ef"], [
+        [0.15, 0.25, 0.7, "#f6dccb"], [0.85, 0.75, 0.7, "#d8ddf4"], [0.6, 0.05, 0.5, "#fbeee2"],
+      ]);
+    } },
+    { id: "colour", name: "Colourful", draw(g, w, h) {
+      paint(g, w, h, ["#4a1fb0", "#2a3fd8"], [
+        [0.05, 0.95, 0.8, "#ff8a3d"], [0.9, 0.1, 0.7, "#ea347e"], [0.5, 0.5, 0.42, "#8a3fd0"], [1, 1, 0.6, "#2a6df0"],
+      ]);
+    } },
+    { id: "dark", name: "Dark", draw(g, w, h) {
+      paint(g, w, h, ["#17171b", "#0c0c0f"], [[0.85, 0.1, 0.6, "#2a2a30"], [0.1, 0.9, 0.5, "#101014"]]);
+    } },
+    { id: "midnight", name: "Midnight", draw(g, w, h) {
+      paint(g, w, h, ["#0b0b28", "#171346"], [[0.25, 0.15, 0.7, "#2b1e72"], [0.85, 0.85, 0.6, "#0e2a5e"], [0.55, 0.55, 0.35, "#1a1550"]]);
+    } },
+  ];
+  function paint(g, w, h, base, blobs) {
+    const lin = g.createLinearGradient(0, 0, w, h);
+    lin.addColorStop(0, base[0]);
+    lin.addColorStop(1, base[1]);
+    g.fillStyle = lin;
+    g.fillRect(0, 0, w, h);
+    for (const [x, y, r, c] of blobs) {
+      const rad = g.createRadialGradient(x * w, y * h, 0, x * w, y * h, r * Math.max(w, h));
+      rad.addColorStop(0, c);
+      rad.addColorStop(1, c + "00");
+      g.fillStyle = rad;
+      g.fillRect(0, 0, w, h);
+    }
+  }
+
+  const INDIGO = "#3b36d4";
+  const INK = { rest: INDIGO, working: INDIGO, muted: "#8f8da6", alert: "#c2410c" };
+  // A white light pooled behind the mark: strong across the N and the firing cell, gone by the rim of the glass.
+  const CORE = [[0, 0.84], [0.42, 0.8], [0.58, 0.62], [0.72, 0.3], [0.86, 0.1], [1, 0.05]];
+  const RIM = { px: 1.25, alpha: 0.9 };
+  const OPTIONS = [
+    { id: "now", name: "Now", text: "Nearly clear glass, 5% white. The N relies on the desktop behind it being light.",
+      ships: "As it is", glass: () => 0.05 },
+    { id: "rim", name: "Light rim", pick: true,
+      text: "A 1.25px light outline traced around the N in the shader, like a die-cut label. The glass stays clear.",
+      ships: "Shader: lib/nox-mark.ts", glass: () => 0.05, rim: RIM },
+    { id: "core", name: "Lit core",
+      text: "A soft white light pooled behind the mark, fading out before the rim. The edge of the glass stays clear.",
+      ships: "CSS: .nox-frame background", glass: (r) => gradientAt(CORE, r),
+      css: `radial-gradient(circle closest-side, ${CORE.map(([at, a]) => `hsl(0 0% 100% / ${a}) ${at * 100}%`).join(", ")})` },
+    { id: "milky", name: "Milky glass", text: "The whole disc frosted at 72% white. Reads anywhere, but Nox becomes a white button.",
+      ships: "CSS: .nox-frame background", glass: () => 0.72, css: "hsl(0 0% 100% / 0.72)" },
+    { id: "lighter", name: "Lighter indigo", text: "A brighter #6a65ff ink for Nox only. One change, but it can't win on every wallpaper.",
+      ships: "Colour: INK in lib/nox-mark.ts", glass: () => 0.05, ink: { rest: "#6a65ff", working: "#6a65ff" } },
+  ];
+  function gradientAt(stops, r) {
+    for (let i = 1; i < stops.length; i++) {
+      const [p0, a0] = stops[i - 1], [p1, a1] = stops[i];
+      if (r <= p1) return a0 + ((a1 - a0) * (r - p0)) / (p1 - p0);
+    }
+    return stops[stops.length - 1][1];
+  }
+
+  // ---------- contrast (WCAG relative luminance) ----------
+  const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const channel = (c) => ((c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const lum = ([r, g, b]) => 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+  const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const over = (bg, fg, a) => bg.map((c, i) => c * (1 - a) + fg[i] * a);
+  const WHITE = [255, 255, 255];
+  // How far out the mark reaches, as a share of the bubble's radius: the N's outer drops, or the firing cell's arms.
+  const REACH = { rest: 0.48, working: 0.56, muted: 0.48, alert: 0.48 };
+  const MOODS = ["rest", "working", "alert", "muted"];
+  const MOOD_NAMES = { rest: "resting", working: "working", alert: "error", muted: "paused" };
+  const inkOf = (option, mood) => (option.ink && option.ink[mood]) || INK[mood];
+  function measure(option, mood, bg) {
+    const behind = over(bg, WHITE, option.glass(REACH[mood]));
+    const ink = rgb(inkOf(option, mood));
+    const own = contrast(ink, behind);
+    if (!option.rim) return { value: own };
+    const rim = over(behind, WHITE, option.rim.alpha);
+    const outer = contrast(rim, behind), inner = contrast(ink, rim);
+    return outer > own ? { value: Math.max(outer, inner), via: "rim" } : { value: Math.max(own, inner) };
+  }
+
+  // ---------- page ----------
+  const sheet = document.getElementById("sheet");
+  const tiles = [];
+  for (const option of OPTIONS) {
+    const row = document.createElement("article");
+    row.className = "row";
+    row.innerHTML = `<div class="about"><h2>${option.name}${option.pick ? '<span class="pick">Pick</span>' : ""}</h2>
+      <p>${option.text}</p><p class="worst"></p><p><code>${option.ships}</code></p></div><div class="tiles"></div>`;
+    const strip = row.querySelector(".tiles");
+    for (const wall of WALLS) {
+      const fig = document.createElement("figure");
+      fig.className = "tile";
+      fig.innerHTML = `<div class="wall"><canvas class="paper"></canvas><span class="nox"><span class="nox-frame"></span><canvas class="nox-mark"></canvas></span></div><figcaption></figcaption>`;
+      if (option.css) fig.querySelector(".nox-frame").style.background = option.css;
+      strip.append(fig);
+      tiles.push({ option, wall, fig, paper: fig.querySelector(".paper"), nox: fig.querySelector(".nox"),
+        mark: fig.querySelector(".nox-mark"), caption: fig.querySelector("figcaption"), bg: {} });
+    }
+    sheet.append(row);
+    option.worst = row.querySelector(".worst");
+  }
+
+  let mood = "rest", size = 72;
+  const ratio = Math.min(2, window.devicePixelRatio || 1);
+  function layout() {
+    for (const t of tiles) {
+      const w = t.paper.clientWidth, h = t.paper.clientHeight;
+      if (!w || !h) continue;
+      t.paper.width = Math.round(w * ratio);
+      t.paper.height = Math.round(h * ratio);
+      const g = t.paper.getContext("2d", { willReadFrequently: true });
+      t.wall.draw(g, t.paper.width, t.paper.height);
+      // The desktop colour right behind the mark, for each state: the average over the mark's reach.
+      const cx = Math.round(t.paper.width / 2), cy = Math.round(t.paper.height / 2);
+      for (const m of MOODS) {
+        const reach = Math.max(2, Math.round(size * 0.5 * REACH[m] * ratio));
+        const data = g.getImageData(cx - reach, cy - reach, reach * 2, reach * 2).data;
+        const sum = [0, 0, 0];
+        for (let i = 0; i < data.length; i += 4) for (let k = 0; k < 3; k++) sum[k] += data[i + k];
+        t.bg[m] = sum.map((s) => s / (data.length / 4));
+      }
+      t.nox.style.width = t.nox.style.height = `${size}px`;
+      const px = Math.max(8, Math.round(size * 0.62 * ratio));
+      t.mark.width = t.mark.height = px;
+    }
+    label();
+  }
+  function label() {
+    for (const t of tiles) {
+      const { value, via } = measure(t.option, mood, t.bg[mood]);
+      t.caption.className = value >= 3 ? "ok" : "";
+      t.caption.innerHTML = `<span class="wall-name">${t.wall.name}&nbsp;</span>${value.toFixed(1)}:1${via ? " <small>rim</small>" : ""}`;
+    }
+    // The weakest tile across every state, so a fix for the indigo N doesn't quietly break Error or Paused.
+    for (const option of OPTIONS) {
+      let worst = null;
+      for (const t of tiles) {
+        if (t.option !== option) continue;
+        for (const m of MOODS) {
+          const { value } = measure(option, m, t.bg[m]);
+          if (!worst || value < worst.value) worst = { value, mood: m, wall: t.wall.name };
+        }
+      }
+      option.worst.className = `worst ${worst.value >= 3 ? "ok" : ""}`;
+      option.worst.textContent = `Weakest in any state: ${worst.value.toFixed(1)}:1 (${MOOD_NAMES[worst.mood]}, ${worst.wall})`;
+    }
+  }
+
+  // ---------- the mark: lib/nox-mark.ts's melt shader, plus an optional light rim ----------
+  const vertex = `attribute vec2 aPos; varying vec2 vP; void main() { vP = aPos; gl_Position = vec4(aPos, 0.0, 1.0); }`;
+  const fragment = `
+precision highp float;
+varying vec2 vP;
+uniform float uTime;
+uniform float uWork;
+uniform float uSplit;
+uniform float uPx;
+uniform vec3 uInk;
+uniform float uRim;
+uniform float uRimAlpha;
+
+float smin(float a, float b, float k) { float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0); return mix(b, a, h) - k * h * (1.0 - h); }
+float circle(vec2 p, vec2 c, float r) { return length(p - c) - r; }
+vec2 dir(float a) { return vec2(cos(a), sin(a)); }
+float taper(vec2 p, vec2 a, vec2 b, float ra, float rb) {
+  vec2 pa = p - a, ba = b - a;
+  float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-8), 0.0, 1.0);
+  return length(pa - ba * h) - mix(ra, rb, h);
+}
+float bond(vec2 p, vec2 a, vec2 b, float r) { return taper(p, a, b, r, r); }
+float stick(vec2 q, vec2 b, vec2 k, float rb, float rk, float rn) {
+  float d = smin(circle(q, b, rb), bond(q, b, k, rn), 0.08);
+  return smin(d, circle(q, k, rk), 0.05);
+}
+const vec2 NBL = vec2(-0.42, -0.42);
+const vec2 NTL = vec2(-0.42, 0.42);
+const vec2 NBR = vec2(0.42, -0.42);
+const vec2 NTR = vec2(0.42, 0.42);
+float idleN(vec2 p, float t) {
+  float s = 0.5 + 0.5 * sin(t * 1.1);
+  vec2 tr = NTR + vec2(0.03, 0.05) * (1.0 - s);
+  float r = 0.21, k = 0.12;
+  float d = circle(p, NBL, r);
+  d = smin(d, circle(p, NTL, r), 0.06);
+  d = smin(d, bond(p, NBL, NTL, 0.08), k);
+  d = smin(d, bond(p, NTL, NBR, 0.08), k);
+  d = smin(d, circle(p, NBR, r), 0.06);
+  d = smin(d, circle(p, tr, r), 0.06);
+  float g = smoothstep(0.25, 0.95, s) * (1.0 - uSplit);
+  vec2 m = mix(NBR, tr, 0.5);
+  d = smin(d, taper(p, NBR, mix(NBR, m, g), 0.08, 0.055), k * g + 0.001);
+  d = smin(d, taper(p, tr, mix(tr, m, g), 0.08, 0.055), k * g + 0.001);
+  return d;
+}
+const float ARM0 = 1.5708;
+void branch(int k, float t, out vec2 tip, out vec2 blob, out vec2 knob, out vec2 drop, out vec4 r, out float link) {
+  float ph = t * 2.6 - float(k) * 2.0944;
+  float c = 0.5 - 0.5 * cos(ph);
+  float e = 0.5 - 0.5 * cos(ph - 1.5);
+  vec2 u = dir(ARM0 - float(k) * 2.0944), v = dir(ARM0 + 1.0472 - float(k) * 2.0944);
+  tip = (0.34 + 0.04 * c) * u;
+  blob = (0.36 + 0.03 * c) * v;
+  knob = mix(0.42, 0.82, c) * v;
+  drop = mix(0.82, 0.66, e) * u;
+  r = vec4(mix(0.08, 0.125, c), mix(0.04, 0.09, c), mix(0.024, 0.047, c), mix(0.05, 0.09, e));
+  link = smoothstep(0.4, 0.92, e);
+}
+float linkLine(vec2 p, vec2 a, vec2 b, float g) {
+  vec2 m = mix(a, b, 0.5);
+  return min(taper(p, a, mix(a, m, g), 0.05, 0.032), taper(p, b, mix(b, m, g), 0.05, 0.032));
+}
+float firingCell(vec2 p, float t) {
+  float d = circle(p, vec2(0.0), 0.19);
+  for (int k = 0; k < 3; k++) {
+    vec2 tip, blob, knob, drop; vec4 r; float g;
+    branch(k, t, tip, blob, knob, drop, r, g);
+    d = smin(d, bond(p, vec2(0.0), tip, 0.115), 0.07);
+    d = min(d, stick(p, blob, knob, r.x, r.y, r.z));
+    d = min(d, circle(p, drop, r.w));
+    d = smin(d, linkLine(p, tip, drop, g), 0.06 * g + 0.001);
+  }
+  return d;
+}
+float melt(vec2 p, float t, float w) {
+  float drop = circle(p, vec2(0.0), 0.36);
+  float d = mix(idleN(p, t), drop, smoothstep(0.0, 0.5, w));
+  return mix(d, firingCell(p, t), smoothstep(0.5, 1.0, w));
+}
+void main() {
+  vec2 p = vP * 1.04;
+  float d = melt(p, uTime, uWork);
+  float a = clamp(0.5 - d / uPx, 0.0, 1.0);
+  float o = clamp(0.5 - (d - uRim) / uPx, 0.0, 1.0);
+  float rim = uRimAlpha * (o - a);
+  gl_FragColor = vec4(uInk * a + vec3(rim), a + rim);
+}`;
+
+  const glCanvas = document.createElement("canvas");
+  const gl = glCanvas.getContext("webgl", { premultipliedAlpha: true, preserveDrawingBuffer: true, antialias: false });
+  if (!gl) {
+    document.getElementById("no-webgl").hidden = false;
+    layout();
+    return;
+  }
+  const compile = (type, src) => {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  };
+  const program = gl.createProgram();
+  gl.attachShader(program, compile(gl.VERTEX_SHADER, vertex));
+  gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragment));
+  gl.bindAttribLocation(program, 0, "aPos");
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  const u = Object.fromEntries(["uTime", "uWork", "uSplit", "uPx", "uInk", "uRim", "uRimAlpha"].map((n) => [n, gl.getUniformLocation(program, n)]));
+
+  // Motion, as in lib/nox-motion.mjs: a critically damped spring into work, and a quick release just after.
+  function springStep(value, velocity, target, seconds, stiffness = 5.5) {
+    const steps = Math.max(1, Math.ceil(seconds / 0.01)), dt = seconds / steps;
+    for (let i = 0; i < steps; i++) {
+      velocity += (stiffness * stiffness * (target - value) - 2 * stiffness * velocity) * dt;
+      value += velocity * dt;
+    }
+    return [value, velocity];
+  }
+  const ease = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+  const releaseAfter = (s) => (s < 0 ? 0 : ease(0, 0.2, s) * (1 - ease(1.6, 3.8, s)));
+  const follow = (c, t, s) => c + (t - c) * (1 - Math.exp(-s / 0.14));
+
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const started = performance.now();
+  let work = 0, speed = 0, last = 0, restedAt = null;
+  const inks = OPTIONS.map((o) => rgb(inkOf(o, "rest")).map((c) => c / 255));
+
+  function frame(now) {
+    const dt = Math.min(0.05, last ? (now - last) / 1000 : 1 / 60);
+    last = now;
+    const target = mood === "working" ? 1 : 0;
+    if (reduced) { work = target; speed = 0; } else [work, speed] = springStep(work, speed, target, dt);
+    const px = tiles[0].mark.width;
+    if (glCanvas.width !== px) { glCanvas.width = glCanvas.height = px; gl.viewport(0, 0, px, px); }
+    gl.uniform1f(u.uTime, reduced ? (Math.PI * 1.5) / 1.1 : (now - started) / 1000);
+    gl.uniform1f(u.uWork, Math.min(1, Math.max(0, work)));
+    gl.uniform1f(u.uSplit, reduced || restedAt === null ? 0 : releaseAfter((now - restedAt) / 1000));
+    gl.uniform1f(u.uPx, 2.08 / px);
+    OPTIONS.forEach((option, i) => {
+      const goal = rgb(inkOf(option, mood)).map((c) => c / 255);
+      for (let k = 0; k < 3; k++) inks[i][k] = reduced ? goal[k] : follow(inks[i][k], goal[k], dt);
+      gl.uniform3fv(u.uInk, inks[i]);
+      gl.uniform1f(u.uRim, option.rim ? option.rim.px * ratio * (2.08 / px) : 0);
+      gl.uniform1f(u.uRimAlpha, option.rim ? option.rim.alpha : 0);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      for (const t of tiles) {
+        if (t.option !== option) continue;
+        const g = t.mark.getContext("2d");
+        g.clearRect(0, 0, px, px);
+        g.drawImage(glCanvas, 0, 0);
+      }
+    });
+    requestAnimationFrame(frame);
+  }
+
+  function choose(group, attr, apply) {
+    group.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      group.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      apply(b.dataset[attr]);
+    });
+  }
+  choose(document.querySelector('[aria-label="State"]'), "mood", (next) => {
+    if (mood === "working" && next !== "working") restedAt = performance.now();
+    mood = next;
+    layout();
+  });
+  choose(document.querySelector('[aria-label="Size"]'), "size", (next) => {
+    size = +next;
+    layout();
+  });
+  new ResizeObserver(layout).observe(sheet);
+  layout();
+  requestAnimationFrame(frame);
+})();
+</script>
