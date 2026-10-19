@@ -12,6 +12,7 @@ import type { SessionDocument } from "@/lib/session-types";
 type StoryState = {
   session: SessionDocument | null;
   frozen?: boolean;
+  paused?: boolean;
   preview?: boolean;
   previewSession?: SessionDocument | null;
   pending: boolean;
@@ -121,7 +122,9 @@ export function SessionView({
       aria-label={mode === "gallery" ? "Collection map" : "Collection story"}
     >
       <div className="session-feedback" aria-live="polite">
-        {problem && session ? (
+        {story?.paused ? (
+          <span className="session-notice">Paused</span>
+        ) : problem && session ? (
           // The last good view stays below; say so, so it isn't mistaken for new.
           <span className="session-notice">
             <i aria-hidden="true" />
@@ -187,13 +190,15 @@ export function SessionView({
               {(working || !story) && <i />}
               {!story
                 ? "Loading…"
-                : story.enabled === false
-                  ? "Not available yet."
-                  : working
-                    ? `Creating ${mode === "gallery" ? "map" : "story"}…`
-                    : shared || story.frozen
-                      ? "Nothing here yet."
-                      : "Add sources or connect a session to begin."}
+                : story.paused
+                  ? "Paused. Resume in Settings."
+                  : story.enabled === false
+                    ? "Not available yet."
+                    : working
+                      ? `Creating ${mode === "gallery" ? "map" : "story"}…`
+                      : shared || story.frozen
+                        ? "Nothing here yet."
+                        : "Add sources or connect a session to begin."}
             </p>
           )}
         </div>

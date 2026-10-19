@@ -1,3 +1,4 @@
+import { createResponseBoundary } from "./response-boundary.mjs";
 import { open, readdir, realpath, stat } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
@@ -84,9 +85,13 @@ export async function discoverSessions(base = homedir()) {
 // Snapshot the current end so an actively growing log cannot keep an import open.
 // Memory is bounded by one JSONL record, rather than the entire session file.
 // `onMedia` also receives the pictures in each line (pasted images, published artifacts).
-export async function* readSelectedTranscript(path, { onMedia } = {}) {
+export async function* readSelectedTranscript(
+  path,
+  { onMedia, onRecord } = {},
+) {
   const reader = onMedia && createMediaReader();
   const media = (line, index) => {
+    onRecord?.(line);
     if (reader) for (const event of reader.read(line, index)) onMedia(event);
   };
   const file = await open(path, "r");
@@ -276,6 +281,8 @@ export async function syncTranscript({
           );
       }
     : undefined;
+  const boundary = createResponseBoundary();
+  const onRecord = (line) => boundary.read(line);
   const seen = new Set(cursors[subscription.id] || []);
   const queued = new Set();
   let batch = [],
@@ -292,6 +299,8 @@ export async function syncTranscript({
       redirect: "error",
       body: JSON.stringify({
         subscriptionId: subscription.id,
+        ...boundary.snapshot(),
+        syncComplete: complete,
         turns: batch.map((e) => e.turn),
         complete: subscription.mode === "once" && complete,
       }),
@@ -319,19 +328,19 @@ export async function syncTranscript({
     // Drain the old file first so a rotation between polls cannot lose its tail.
     if (source.file !== subscription.file) {
       try {
-        yield* readSelectedTranscript(subscription.file, { onMedia });
+        yield* readSelectedTranscript(subscription.file, { onMedia, onRecord });
       } catch (error) {
         if (error.code !== "ENOENT") throw error;
       }
     }
-    yield* readSelectedTranscript(source.file, { onMedia });
+    yield* readSelectedTranscript(source.file, { onMedia, onRecord });
   }
   const transcript = subscription.folder
     ? readProjectTranscripts(
         subscription.file,
         subscription.versions,
         versions,
-        { onMedia },
+        { onMedia, onRecord },
       )
     : selectedTranscripts();
   for await (const raw of transcript) {

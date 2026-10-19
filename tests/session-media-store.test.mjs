@@ -9,7 +9,7 @@ const png64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 const ARTIFACT = "https://claude.ai/artifact/PkxxssFTMZtnyjsktQMNM4";
 
-function fixture() {
+function fixture({ onPut } = {}) {
   const sqlite = new DatabaseSync(":memory:");
   for (const file of readdirSync("drizzle")
     .filter((f) => f.endsWith(".sql"))
@@ -29,11 +29,27 @@ function fixture() {
   );
   const stored = [];
   const store = createSessionMediaStore(
-    { prepare: make },
+    {
+      prepare: make,
+      batch: async (statements) => {
+        sqlite.exec("BEGIN");
+        try {
+          const results = [];
+          for (const statement of statements)
+            results.push(await statement.run());
+          sqlite.exec("COMMIT");
+          return results;
+        } catch (error) {
+          sqlite.exec("ROLLBACK");
+          throw error;
+        }
+      },
+    },
     {
       now: () => "2026-10-19T00:00:00.000Z",
       put: async (file) => {
         stored.push(file);
+        onPut?.(sqlite);
         return `users/u/${stored.length}/${file.name}`;
       },
     },
@@ -178,3 +194,32 @@ test("a picture saved after the turns asks the Story to refresh its canvases", a
   assert.ok(after.revision > before.revision);
   assert.equal(after.status, "pending");
 });
+
+for (const [action, sqlAction] of [
+  ["pause", "UPDATE sessions SET state='paused' WHERE id='s'"],
+  ["trash", "UPDATE collections SET deleted_at='2026-10-19' WHERE id='c'"],
+  ["disconnect", "UPDATE collections SET frozen_at='2026-10-19' WHERE id='c'"],
+]) {
+  test(`media upload racing ${action} rejects before committing or acknowledging`, async () => {
+    const { sqlite, store, session, rows } = fixture({
+      onPut: (db) => db.exec(sqlAction),
+    });
+    try {
+      await assert.rejects(
+        store.save(
+          session,
+          parseMediaUpload({
+            kind: "pasted",
+            turnId: "u1",
+            mimeType: "image/png",
+            data: png64,
+          }),
+        ),
+        /CAPTURE_UNAVAILABLE/,
+      );
+      assert.equal(rows().length, 0);
+    } finally {
+      sqlite.close();
+    }
+  });
+}

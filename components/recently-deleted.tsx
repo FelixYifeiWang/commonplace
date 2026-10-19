@@ -33,6 +33,9 @@ export function RecentlyDeleted({
             <strong>{collection.name}</strong>
             <small>
               Collection · {daysToRestore(collection.deletedAt)} days left
+              {collection.resumeOnRestore
+                ? " · Restores and resumes syncing"
+                : ""}
             </small>
           </div>
           <button

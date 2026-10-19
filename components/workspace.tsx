@@ -143,6 +143,7 @@ export default function Workspace({
   const [disconnectSession, setDisconnectSession] = useState<Session | null>(
     null,
   );
+  const [allowIncomplete, setAllowIncomplete] = useState(false);
   const [disconnectBusy, setDisconnectBusy] = useState(false);
   const [disconnectError, setDisconnectError] = useState("");
   // Dev mode reveals the item grid and guided map for this workspace visit.
@@ -333,6 +334,7 @@ export default function Workspace({
   async function sessionAction(
     session: Session,
     action: "pause" | "resume" | "revoke",
+    allowIncomplete = false,
   ) {
     try {
       if (demo) {
@@ -361,22 +363,31 @@ export default function Workspace({
           ),
         }));
       } else {
-        await api("/api/sessions", "PATCH", { id: session.id, action });
+        await api("/api/sessions", "PATCH", {
+          id: session.id,
+          action,
+          allowIncomplete,
+        });
         await refresh();
       }
       setToast(
         action === "pause"
           ? "Session paused."
           : action === "resume"
-            ? "Ready for new updates."
+            ? "Resumed. Catching up on missed updates."
             : "Disconnected. Your collection is saved.",
       );
       return true;
     } catch (e) {
       const message =
         e instanceof Error ? e.message : "Could not update session.";
-      if (action === "revoke") setDisconnectError(message);
-      else setToast(message);
+      if (action === "revoke") {
+        setDisconnectError(message);
+        if (message.startsWith("Map or Story is unfinished"))
+          setDisconnectSession((s) =>
+            s ? { ...s, snapshotUnfinished: true } : s,
+          );
+      } else setToast(message);
       return false;
     }
   }
@@ -531,6 +542,11 @@ export default function Workspace({
               ...c,
               deletedAt: new Date().toISOString(),
               frozenAt: c.frozenAt,
+              resumeOnRestore: d.sessions.some(
+                (s) =>
+                  s.collectionId === id &&
+                  !["paused", "revoked", "complete"].includes(s.state),
+              ),
             })),
           ...(d.deletedCollections || []).filter((c) => c.id !== id),
         ],
@@ -661,8 +677,8 @@ export default function Workspace({
                 <ActionHint
                   text={
                     session.state === "paused"
-                      ? "Resume collecting updates."
-                      : "Pause updates. Resume anytime."
+                      ? "Resume and catch up on missed updates."
+                      : "Pause syncing. Resume catches up."
                   }
                 >
                   <button
@@ -684,10 +700,11 @@ export default function Workspace({
                 </ActionHint>
                 <ActionHint text="Stop updates. Keep a frozen copy.">
                   <button
-                    className="icon-button"
+                    className="icon-button session-disconnect"
                     aria-label={`Disconnect ${session.title}`}
                     onClick={() => {
                       setDisconnectError("");
+                      setAllowIncomplete(false);
                       setDisconnectSession(session);
                     }}
                   >
@@ -1089,6 +1106,18 @@ export default function Workspace({
           <p className="disconnect-copy">
             <strong>Cannot be undone.</strong>
           </p>
+          {disconnectSession.snapshotUnfinished && (
+            <label className="disconnect-incomplete">
+              <input
+                type="checkbox"
+                checked={allowIncomplete}
+                onChange={(e) => setAllowIncomplete(e.target.checked)}
+              />
+              <span>
+                Map or Story is unfinished. Freeze the current version.
+              </span>
+            </label>
+          )}
           {disconnectError && (
             <p className="form-error" role="alert">
               {disconnectError}
@@ -1104,14 +1133,18 @@ export default function Workspace({
               Cancel
             </button>
             <button
-              className="button primary"
-              disabled={disconnectBusy}
+              className="button primary disconnect-confirm"
+              disabled={
+                disconnectBusy ||
+                (!!disconnectSession.snapshotUnfinished && !allowIncomplete)
+              }
               onClick={async () => {
                 setDisconnectBusy(true);
                 setDisconnectError("");
                 const success = await sessionAction(
                   disconnectSession,
                   "revoke",
+                  allowIncomplete,
                 );
                 setDisconnectBusy(false);
                 if (success) setDisconnectSession(null);

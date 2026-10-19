@@ -19,6 +19,7 @@ export type SessionState =
   | "error"
   | "revoked";
 export type Collection = {
+  resumeOnRestore?: boolean;
   frozenAt?: string | null;
   deletedAt?: string | null;
   favorite?: boolean;
@@ -28,6 +29,7 @@ export type Collection = {
   createdAt: string;
 };
 export type Session = {
+  snapshotUnfinished?: boolean;
   id: string;
   title: string;
   provider: string;

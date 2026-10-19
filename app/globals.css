@@ -8883,8 +8883,8 @@ a[href].gm-detail.gm-commit b::after {
   font-weight: 600;
 }
 .session-actions .session-delete {
-  color: #c73838;
-  opacity: 0;
+  color: #b73939;
+  opacity: 1;
   transition:
     opacity 140ms,
     background 140ms;
@@ -8915,4 +8915,45 @@ a[href].gm-detail.gm-commit b::after {
   .session-actions .session-delete {
     opacity: 1;
   }
+}
+
+/* Permanent disconnect is a warning; recoverable deletion uses restrained red. */
+.session-actions .session-disconnect {
+  color: #956326;
+}
+.session-actions .session-disconnect:hover {
+  color: #80511c;
+  background: #9563260d;
+}
+.session-actions .session-delete:hover {
+  color: #a52c2c;
+  background: #b739390d;
+}
+.disconnect-confirm:not(:disabled) {
+  background: #80511c;
+}
+.disconnect-incomplete {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 16px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.disconnect-incomplete input {
+  margin-top: 3px;
+  accent-color: #80511c;
+}
+.collection-overview-delete,
+.channel-delete {
+  opacity: 1;
+}
+
+.channel-menu-row .channel-delete {
+  opacity: 1;
+  pointer-events: auto;
+}
+.channel-menu-row > button:first-child {
+  padding-right: 36px;
 }

@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { items } from "@/db/schema";
+import { items, collections } from "@/db/schema";
 import { userRequired, fail, HttpError } from "@/lib/server";
 import preview from "@/lib/runtime-preview";
 import { itemAvailable } from "@/lib/item-retention.mjs";
@@ -15,6 +15,19 @@ export async function GET(
       .select()
       .from(items)
       .where(and(eq(items.id, id), eq(items.ownerId, user.userId)));
+    const [collection] = item
+      ? await getDb()
+          .select()
+          .from(collections)
+          .where(
+            and(
+              eq(collections.id, item.collectionId),
+              eq(collections.ownerId, user.userId),
+            ),
+          )
+      : [];
+    if (!collection || !itemAvailable(collection))
+      throw new HttpError(404, "File not found.");
     if (!item?.fileKey || !itemAvailable(item))
       throw new HttpError(404, "File not found.");
     const response = await preview.file(

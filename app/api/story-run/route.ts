@@ -1,3 +1,4 @@
+import { cleanupFiles } from "@/lib/hosted/cleanup";
 import { env } from "@/lib/runtime-env";
 import { createCollectionTrash } from "@/lib/collection-trash.mjs";
 import { scheduleStoryWork } from "@/lib/runtime-story";
@@ -13,6 +14,7 @@ export async function GET(request: Request) {
   )
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   await createCollectionTrash(env.DB).purge();
+  await cleanupFiles();
   scheduleStoryWork();
   return Response.json({ ok: true });
 }

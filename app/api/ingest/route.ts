@@ -2,7 +2,7 @@ import { storyResponse } from "@/lib/story-response";
 import { isReferenceItem } from "@/lib/source-policy.mjs";
 import { getDb } from "@/db";
 import { sessions, items } from "@/db/schema";
-import { and, eq, isNull, notInArray } from "drizzle-orm";
+import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { agentSession, jsonBody, fail, HttpError, hash } from "@/lib/server";
 import { validateIngest, itemIdentity } from "@/lib/protocol.mjs";
 export async function POST(request: Request) {
@@ -95,10 +95,17 @@ export async function POST(request: Request) {
           ),
         ),
     );
+    const transaction = [
+      db.run(
+        sql`INSERT INTO capture_checks(session_id,owner_id) VALUES(${session.id},${session.ownerId})`,
+      ),
+      ...statements,
+      db.run(sql`DELETE FROM capture_checks WHERE session_id=${session.id}`),
+    ];
     await db.batch(
-      statements as [
-        (typeof statements)[number],
-        ...(typeof statements)[number][],
+      transaction as [
+        (typeof transaction)[number],
+        ...(typeof transaction)[number][],
       ],
     );
     return storyResponse(

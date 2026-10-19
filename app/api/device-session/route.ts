@@ -1,3 +1,4 @@
+import { storyResponse } from "@/lib/story-response";
 import { getDb } from "@/db";
 import { sessions, collections } from "@/db/schema";
 import { and, eq, ne, isNull } from "drizzle-orm";
@@ -36,7 +37,7 @@ export async function PATCH(request: Request) {
       .returning({ id: sessions.id });
     if (!changed.length)
       throw new HttpError(409, "This session is disconnected.");
-    return Response.json({ ok: true, state });
+    return storyResponse({ ok: true, state });
   } catch (e) {
     return fail(e);
   }

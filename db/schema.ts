@@ -25,6 +25,7 @@ export const collections = sqliteTable("collections", {
   createdAt: text("created_at").notNull(),
 });
 export const sessions = sqliteTable("sessions", {
+  activityKey: text("activity_key").notNull().default(""),
   stateBeforeTrash: text("state_before_trash"),
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
@@ -94,6 +95,7 @@ export const turns = sqliteTable(
 );
 
 export const stories = sqliteTable("stories", {
+  publishAfter: integer("publish_after").notNull().default(0),
   visualRefresh: integer("visual_refresh", { mode: "boolean" })
     .notNull()
     .default(false),

@@ -1,8 +1,9 @@
+import { snapshotReadySQL } from "@/lib/disconnect.mjs";
 import { createCollectionTrash } from "@/lib/collection-trash.mjs";
 import { isReferenceItem } from "@/lib/source-policy.mjs";
 import { getDb } from "@/db";
 import { collections, sessions, items, devices } from "@/db/schema";
-import { eq, desc, and, isNull } from "drizzle-orm";
+import { eq, desc, and, isNull, sql } from "drizzle-orm";
 import { userRequired, fail } from "@/lib/server";
 import { createItemTrash } from "@/lib/item-trash.mjs";
 import { env } from "@/lib/runtime-env";
@@ -24,6 +25,7 @@ export async function GET() {
         db
           .select({
             id: sessions.id,
+            snapshotUnfinished: sql<boolean>`NOT (${sql.raw(snapshotReadySQL("sessions.collection_id"))})`,
             title: sessions.title,
             provider: sessions.provider,
             collectionId: sessions.collectionId,

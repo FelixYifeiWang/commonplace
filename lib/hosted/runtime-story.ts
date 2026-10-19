@@ -13,7 +13,16 @@ export async function drainStories() {
   const deadline = Date.now() + 145000;
   while (Date.now() < deadline) {
     const job = await store.claim();
-    if (!job) return;
+    if (!job) {
+      const delay = await store.nextDelay();
+      // Finish a quiet-period update even if Nox closes or the browser leaves.
+      if (delay === null || delay > 120000 || Date.now() + delay >= deadline)
+        return;
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.max(1100, delay + 100)),
+      );
+      continue;
+    }
     try {
       const batch = await prepareSessionBatch(job);
       const session = batch.needsModel

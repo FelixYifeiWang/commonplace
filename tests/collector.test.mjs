@@ -265,3 +265,24 @@ test("a failed rotated upload retains the old subscription path for retry", asyn
   await assert.rejects(syncTranscript(args), { status: 503 });
   assert.equal(args.subscription.file, original);
 });
+
+test("a long import holds intermediate batches and reports completion only at its final snapshot", async (t) => {
+  const args = await fixture(t, 21);
+  await appendFile(
+    args.subscription.file,
+    "\n" +
+      JSON.stringify({ type: "event_msg", payload: { type: "task_complete" } }),
+  );
+  const batches = [];
+  args.request = async (_url, opts) => {
+    batches.push(JSON.parse(opts.body));
+    return ok();
+  };
+  await syncTranscript(args);
+  assert.deepEqual(
+    batches.map((b) => b.syncComplete),
+    [false, false, true],
+  );
+  assert.equal(batches.at(-1).responseState, "complete");
+  assert.match(batches.at(-1).activityId, /^[a-f0-9]{64}$/);
+});

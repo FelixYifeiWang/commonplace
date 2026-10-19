@@ -1,6 +1,9 @@
+import { storyResponse } from "@/lib/story-response";
+import { disconnectCollection } from "@/lib/disconnect.mjs";
+import { env } from "@/lib/runtime-env";
 import { getDb } from "@/db";
 import { sessions, collections } from "@/db/schema";
-import { and, eq, ne, isNull } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import {
   userRequired,
   jsonBody,
@@ -76,17 +79,21 @@ export async function PATCH(request: Request) {
     if (session.state === "revoked")
       throw new HttpError(409, "Connect a new session to restore access.");
     if (body.action === "revoke") {
-      // The database transition atomically stops capture and generation while
-      // preserving the collection, its media and its URL.
-      await db
-        .update(collections)
-        .set({ frozenAt: new Date().toISOString() })
-        .where(
-          and(
-            eq(collections.id, session.collectionId),
-            eq(collections.ownerId, user.userId),
-            isNull(collections.frozenAt),
-          ),
+      const outcome = await disconnectCollection(
+        env.DB,
+        user.userId,
+        session.collectionId,
+        { allowIncomplete: body.allowIncomplete === true },
+      );
+      if (outcome === "unfinished")
+        throw new HttpError(
+          409,
+          "Map or Story is unfinished. Confirm freezing the current version to disconnect.",
+        );
+      if (outcome !== "disconnected")
+        throw new HttpError(
+          409,
+          "This collection is unavailable. Refresh and try again.",
         );
       return Response.json({ ok: true, state: "revoked" });
     }
@@ -103,7 +110,7 @@ export async function PATCH(request: Request) {
       .returning({ id: sessions.id });
     if (!changed.length)
       throw new HttpError(409, "This session is disconnected.");
-    return Response.json({ ok: true, state });
+    return storyResponse({ ok: true, state });
   } catch (e) {
     return fail(e);
   }

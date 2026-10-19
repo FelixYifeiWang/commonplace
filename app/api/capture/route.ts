@@ -1,3 +1,5 @@
+import { captureBoundarySQL } from "@/lib/capture-boundary.mjs";
+import { sql } from "drizzle-orm";
 import { storyResponse } from "@/lib/story-response";
 import { getDb } from "@/db";
 import { sessions, items, turns, devices } from "@/db/schema";
@@ -31,6 +33,22 @@ export async function POST(request: Request) {
           400,
           "Each turn needs an id, role, and text of at most 64,000 characters.",
         );
+    if (
+      body.activityId !== undefined &&
+      (typeof body.activityId !== "string" ||
+        !/^[a-f0-9]{0,64}$/.test(body.activityId))
+    )
+      throw new HttpError(400, "Invalid activity marker.");
+    if (
+      body.responseState !== undefined &&
+      !["busy", "running", "complete", "unknown"].includes(body.responseState)
+    )
+      throw new HttpError(400, "Invalid response state.");
+    if (
+      body.syncComplete !== undefined &&
+      typeof body.syncComplete !== "boolean"
+    )
+      throw new HttpError(400, "Invalid sync state.");
     const db = getDb(),
       now = new Date().toISOString(),
       statements = [];
@@ -119,14 +137,44 @@ export async function POST(request: Request) {
           .set({ lastSeen: now })
           .where(eq(devices.id, session.deviceId)),
       );
+    const boundary = captureBoundarySQL({
+      session,
+      activityId: body.activityId,
+      responseState: body.responseState,
+      syncComplete: body.syncComplete,
+      hasTurns: body.turns.length > 0,
+      now: Date.now(),
+    });
     // Keep individual transactions small enough for D1's statement limits.
     for (let i = 0; i < statements.length; i += 80) {
-      const batch = statements.slice(i, i + 80);
+      const batch = [
+        db.run(
+          sql`INSERT INTO capture_checks(session_id,owner_id) VALUES(${session.id},${session.ownerId})`,
+        ),
+        ...statements.slice(i, i + 80),
+        ...(boundary
+          ? [
+              db.run(
+                sql`UPDATE stories SET publish_after=${boundary.holdUntil},lease_token= CASE WHEN ${boundary.invalidate ? 1 : 0} THEN NULL ELSE lease_token END,lease_until= CASE WHEN ${boundary.invalidate ? 1 : 0} THEN 0 ELSE lease_until END,status= CASE WHEN ${boundary.invalidate ? 1 : 0} AND status='generating' THEN 'pending' ELSE status END WHERE collection_id=${session.collectionId}`,
+              ),
+              db.run(
+                sql`UPDATE sessions SET activity_key=${boundary.activityId} WHERE id=${session.id}`,
+              ),
+            ]
+          : []),
+        db.run(sql`DELETE FROM capture_checks WHERE session_id=${session.id}`),
+      ];
       await db.batch(
         batch as [(typeof batch)[number], ...(typeof batch)[number][]],
       );
     }
-    return storyResponse(
+    // Intermediate import batches and unchanged heartbeats need no new worker.
+    const respond =
+      body.syncComplete !== false &&
+      (body.turns.length > 0 || boundary?.invalidate)
+        ? storyResponse
+        : Response.json;
+    return respond(
       {
         ok: true,
         received: body.turns.length,

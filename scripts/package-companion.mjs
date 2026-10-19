@@ -17,6 +17,7 @@ for (const file of [
   "main.mjs",
   "preload.cjs",
   "collector.mjs",
+  "response-boundary.mjs",
   "target.mjs",
   "activity.mjs",
   "claude.mjs",

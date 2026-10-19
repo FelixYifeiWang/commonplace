@@ -1,3 +1,4 @@
+import { captureUnavailable } from "./capture-transaction.mjs";
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { getDb } from "@/db";
 import { sessions, devices } from "@/db/schema";
@@ -27,6 +28,14 @@ export async function jsonBody(request: Request) {
   }
 }
 export function fail(error: unknown) {
+  if (captureUnavailable(error))
+    return Response.json(
+      {
+        error:
+          "Sync stopped. Keep your cursor unchanged and retry when resumed.",
+      },
+      { status: 409 },
+    );
   if (error instanceof HttpError)
     return Response.json({ error: error.message }, { status: error.status });
   console.error("Newron request failed", error);
