@@ -20,9 +20,22 @@ export async function connectSession({
     const source = await resolve(target);
     report({ state: "connecting", target: source.title, error: "", point });
     const subscription = await subscribe(source);
-    report({ state: "collecting", target: source.title });
+    report({
+      state: "collecting",
+      target: source.title,
+      message: subscription?.restored
+        ? "Collection restored. Catching up…"
+        : "",
+    });
     await capture(source, subscription);
-    report({ state: "following", target: source.title, error: "" });
+    report({
+      state: "following",
+      target: source.title,
+      error: "",
+      message: subscription?.restored
+        ? "Collection restored. Syncing resumed."
+        : "",
+    });
     return { connected: true, source };
   } catch (error) {
     report({ state: "error", error: error.message });

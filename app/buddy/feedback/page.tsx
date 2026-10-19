@@ -8,6 +8,7 @@ export default function DropFeedback() {
     state: SessionState;
     targetTitle: string;
     error: string;
+    feedbackMessage?: string;
     feedbackActive?: boolean;
     feedbackPoint?: { x: number; y: number };
   }>({ state: "connecting", targetTitle: "", error: "" });
@@ -71,8 +72,10 @@ export default function DropFeedback() {
           ) : null}
         </div>
         <strong>{label}</strong>
-        {(error ? value.error : value.targetTitle) && (
-          <span>{error ? value.error : value.targetTitle}</span>
+        {(error ? value.error : value.feedbackMessage || value.targetTitle) && (
+          <span>
+            {error ? value.error : value.feedbackMessage || value.targetTitle}
+          </span>
         )}
         {!success && !error && (
           <div className="drop-progress">

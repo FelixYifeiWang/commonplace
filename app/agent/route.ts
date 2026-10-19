@@ -9,7 +9,7 @@ Use Authorization: Bearer <token> and Content-Type: application/json for both re
 
 1. Connect THIS session only: POST ${origin}/api/subscribe
 {"sessionId":"<stable conversation id>","title":"<short title>","provider":"Codex","mode":"once"}
-Providers: Codex, Claude Code, Cursor, Other. Save the returned subscriptionId. Do not read unrelated conversations or credential files.
+Providers: Codex, Claude Code, Cursor, Other. Save the returned subscriptionId. If restored:true, briefly tell the user "Collection restored." Do not read unrelated conversations or credential files.
 
 2. Digest the history available in this conversation. Send useful references, ideas, quotes, and notes to POST ${origin}/api/ingest:
 {"subscriptionId":"<returned id>","sessionId":"<same stable conversation id>","state":"collecting","items":[{"kind":"idea","title":"<idea title>","body":"<explanation>","externalId":"<stable item id>","sourceText":"<verbatim supporting passage>","sourceRole":"user","sourceTurn":"<turn id>","inferred":false}]}

@@ -17,6 +17,7 @@ type Snapshot = {
   candidateConnected: boolean;
   connecting: boolean;
   targetTitle: string;
+  feedbackMessage?: string;
   feedbackActive?: boolean;
   feedbackPoint?: { x: number; y: number };
   state: SessionState;

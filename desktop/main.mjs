@@ -108,6 +108,7 @@ let win,
   favorites = [],
   expanded = false,
   targetTitle = "",
+  feedbackMessage = "",
   busy = false,
   status = "waiting",
   lastError = "";
@@ -341,6 +342,7 @@ function buddySnapshot() {
     connected: !!connection,
     expanded,
     targetTitle,
+    feedbackMessage,
     feedbackPoint,
     feedbackActive: !!feedbackWindow?.isVisible(),
     subscriptions: subscriptions.map((s) => ({
@@ -516,6 +518,7 @@ async function captureSource(_source, subscription) {
 }
 function showDropFeedback(value) {
   status = value.state;
+  feedbackMessage = value.message || "";
   if (value.error !== undefined) lastError = value.error;
   if (value.target !== undefined) targetTitle = value.target;
   if (!feedbackWindow) return;
@@ -597,7 +600,11 @@ async function subscribeSource(source) {
       done: false,
     });
   await persist();
-  return subscriptions.find((s) => s.id === result.subscriptionId);
+  const subscription = subscriptions.find(
+    (s) => s.id === result.subscriptionId,
+  );
+  subscription.restored = result.restored === true;
+  return subscription;
 }
 const FOLLOW_PROJECT = "--follow-claude-project=";
 const projectArg = (argv) =>
@@ -609,7 +616,14 @@ async function followClaudeProject(folder) {
     showDropFeedback({ state: "connecting", target: source.title, error: "" });
     const subscription = await subscribeSource(source);
     await captureSource(source, subscription);
-    showDropFeedback({ state: "following", target: source.title, error: "" });
+    showDropFeedback({
+      state: "following",
+      target: source.title,
+      error: "",
+      message: subscription.restored
+        ? "Collection restored. Syncing resumed."
+        : "",
+    });
     console.log(`Following Claude Code project ${source.title}.`);
   } catch (error) {
     showDropFeedback({ state: "error", error: error.message });

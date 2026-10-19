@@ -54,3 +54,23 @@ test("unsupported target cannot connect", async () => {
   });
   assert.equal(called, false);
 });
+
+test("restored connection reports recovery before capture and resumes only after success", async () => {
+  const events = [];
+  await connectSession({
+    inspect: async () => ({ bundleId: "com.openai.codex" }),
+    resolve: async () => ({ title: "Session" }),
+    subscribe: async () => ({ restored: true }),
+    capture: async () => events.push({ state: "capture" }),
+    report: (v) => events.push(v),
+  });
+  assert.equal(
+    events.find((v) => v.state === "collecting").message,
+    "Collection restored. Catching up…",
+  );
+  assert.equal(events.at(-1).message, "Collection restored. Syncing resumed.");
+  assert.ok(
+    events.findIndex((v) => v.state === "capture") <
+      events.findIndex((v) => v.state === "following"),
+  );
+});

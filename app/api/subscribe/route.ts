@@ -60,22 +60,29 @@ export async function POST(request: Request) {
         .from(collections)
         .where(eq(collections.id, existing.collectionId));
       if (!collection) throw new HttpError(404, "Collection not found.");
-      // Demo video only: connecting a demo session again brings its collection back from Trash.
-      if (
-        collection.deletedAt &&
-        !(
-          DEMO_SESSIONS[body.sessionId] &&
-          body.mode === "follow" &&
-          (await createCollectionTrash(env.DB).restore(
+      let restored = false;
+      if (collection.deletedAt) {
+        const trash = createCollectionTrash(env.DB);
+        if (DEMO_SESSIONS[body.sessionId]) {
+          // Preserve the presentation rule: follow restores, then showDemo below
+          // reloads the prepared Story/Map. One-time demo imports stay unchanged.
+          restored =
+            body.mode === "follow" &&
+            (await trash.restore(existing.ownerId, collection.id));
+        } else {
+          restored = await trash.restoreForConnection(
             existing.ownerId,
             collection.id,
-          ))
-        )
-      )
-        throw new HttpError(
-          409,
-          "Restore this collection from Trash before reconnecting.",
-        );
+            existing.id,
+            body.mode === "once" ? "once" : "follow",
+          );
+        }
+        if (!restored)
+          throw new HttpError(
+            409,
+            "This collection is unavailable. Connect again to start fresh.",
+          );
+      }
       // Connect resumes a paused session. Disconnected sessions are never reused.
       if (body.mode === "follow") {
         const changed = await db
@@ -95,7 +102,9 @@ export async function POST(request: Request) {
       return storyResponse({
         subscriptionId: existing.id,
         collectionId: existing.collectionId,
-        state: body.mode === "follow" ? "reading" : existing.state,
+        state: body.mode === "follow" || restored ? "reading" : existing.state,
+        restored,
+        ...(restored ? { message: "Collection restored." } : {}),
       });
     }
     const id = crypto.randomUUID(),

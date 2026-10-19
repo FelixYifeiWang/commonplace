@@ -239,17 +239,15 @@ for (const paused of [false, true])
     const run = () =>
       client.batch([
         client.insert(checks).values({ sessionId: "s", ownerId: "u" }),
-        client
-          .insert(turns)
-          .values({
-            id: "x",
-            sessionId: "s",
-            ownerId: "u",
-            externalId: "x",
-            role: "assistant",
-            body: "Test",
-            createdAt: "now",
-          }),
+        client.insert(turns).values({
+          id: "x",
+          sessionId: "s",
+          ownerId: "u",
+          externalId: "x",
+          role: "assistant",
+          body: "Test",
+          createdAt: "now",
+        }),
         client.delete(checks).where(eq(checks.sessionId, "s")),
       ]);
     if (paused) await assert.rejects(run(), /CAPTURE_UNAVAILABLE/);
@@ -261,5 +259,75 @@ for (const paused of [false, true])
     assert.equal(
       sqlite.prepare("SELECT count(*) n FROM capture_checks").get().n,
       0,
+    );
+  });
+
+for (const mode of ["follow", "once"])
+  test(`Connect restores and resumes the same trashed collection (${mode})`, async (t) => {
+    const { db, sql } = fixture(t);
+    const { createCollectionTrash } =
+      await import("../lib/collection-trash.mjs");
+    const trash = createCollectionTrash(db);
+    const original = JSON.stringify({
+      collectionName: "Original project",
+      steps: [{ text: "Keep this story" }],
+      map: { center: { label: "Keep this map" } },
+    });
+    sql
+      .prepare("UPDATE stories SET session_json=? WHERE collection_id='c'")
+      .run(original);
+    sql.exec("UPDATE sessions SET state='paused' WHERE id='s'");
+    await trash.remove("u", "c");
+    assert.equal(await trash.restoreForConnection("u", "c", "s", mode), true);
+    assert.equal(
+      sql.prepare("SELECT deleted_at FROM collections WHERE id='c'").get()
+        .deleted_at,
+      null,
+    );
+    assert.equal(
+      sql.prepare("SELECT state FROM sessions WHERE id='s'").get().state,
+      "reading",
+    );
+    assert.equal(
+      sql.prepare("SELECT mode FROM sessions WHERE id='s'").get().mode,
+      mode,
+    );
+    assert.equal(sql.prepare("SELECT count(*) n FROM collections").get().n, 1);
+    assert.equal(
+      sql
+        .prepare("SELECT session_json FROM stories WHERE collection_id='c'")
+        .get().session_json,
+      original,
+    );
+  });
+for (const scenario of ["expired", "foreign", "frozen"])
+  test(`Connect cannot restore a ${scenario} snapshot`, async (t) => {
+    const { db, sql } = fixture(t);
+    const { createCollectionTrash } =
+      await import("../lib/collection-trash.mjs");
+    const trash = createCollectionTrash(db);
+    if (scenario === "frozen")
+      sql.exec("UPDATE collections SET frozen_at='2026-10-19' WHERE id='c'");
+    await trash.remove("u", "c");
+    if (scenario === "expired")
+      sql
+        .prepare("UPDATE collections SET deleted_at=? WHERE id='c'")
+        .run(new Date(Date.now() - 31 * 86400000).toISOString());
+    assert.equal(
+      await trash.restoreForConnection(
+        scenario === "foreign" ? "other" : "u",
+        "c",
+        "s",
+        "follow",
+      ),
+      false,
+    );
+    assert.ok(
+      sql.prepare("SELECT deleted_at FROM collections WHERE id='c'").get()
+        .deleted_at,
+    );
+    assert.notEqual(
+      sql.prepare("SELECT state FROM sessions WHERE id='s'").get().state,
+      "reading",
     );
   });
