@@ -1,3 +1,5 @@
+import { env } from "@/lib/hosted/runtime-env";
+import { queueUpload } from "@/lib/upload-lease.mjs";
 import {
   handleUploadPresigned,
   type HandleUploadPresignedBody,
@@ -21,6 +23,7 @@ export async function POST(request: Request) {
           !/^users\/[^/]+\/[0-9a-f-]{36}\/[^/]+$/.test(pathname)
         )
           throw new HttpError(403, "File unavailable.");
+        await queueUpload(env.DB, user.userId, pathname);
         return {
           token: await issueSignedToken({
             pathname,

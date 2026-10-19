@@ -151,3 +151,17 @@ test("closing the real task still clears it after helper activity", () => {
     /Open the conversation/,
   );
 });
+
+test("large navigation logs still resolve the current session", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "newron-large-activity-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(
+    join(root, "codex-desktop-test-123-t0-i1.log"),
+    "irrelevant diagnostic output\n".repeat(1300000) + event(a) + "\n",
+  );
+  await writeFile(
+    join(root, "codex-desktop-test-123-t0-i2.log"),
+    event(b, "", at + 1000),
+  );
+  assert.equal(await readOpenConversation(target, root), b);
+});

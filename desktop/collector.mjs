@@ -242,16 +242,21 @@ async function uploadMedia({
       uploaded,
       pendingPasted: [...found.pasted.keys()].some((key) => !sent.has(key)),
     };
+  let pendingArtifacts = false;
   for (const event of found.artifacts.values()) {
-    if (attempts >= MEDIA_PER_SYNC) break;
     let info;
     try {
       info = await stat(event.file);
     } catch {
       continue;
     }
+    if (!info.isFile()) continue;
     const key = `artifact:${ARTIFACT_FRAMING}:${event.url}:${info.size}:${info.mtimeMs}`;
     if (sent.has(key)) continue;
+    if (attempts >= MEDIA_PER_SYNC) {
+      pendingArtifacts = true;
+      continue;
+    }
     attempts++;
     let capture = null;
     try {
@@ -266,9 +271,11 @@ async function uploadMedia({
       title: capture?.title || "",
       context: event.context,
     });
+    if (!sent.has(key)) pendingArtifacts = true;
   }
   return {
     uploaded,
+    pendingArtifacts,
     pendingPasted: [...found.pasted.keys()].some((key) => !sent.has(key)),
   };
 }
@@ -413,7 +420,7 @@ export async function syncTranscript({
     size += length;
   }
   // Acknowledge text before uploading its media. A text-only import can finish
-  // here; media-enabled imports finish only after every pasted image is stored.
+  // here; media-enabled imports finish only after every available picture is acknowledged.
   await sendBatch(true, !media && !historyRemaining);
   // Persist the new path only after the server has acknowledged its contents.
   Object.assign(subscription, source);
@@ -434,7 +441,8 @@ export async function syncTranscript({
     media &&
     subscription.mode === "once" &&
     !historyRemaining &&
-    !mediaResult.pendingPasted
+    !mediaResult.pendingPasted &&
+    !mediaResult.pendingArtifacts
   )
     await sendBatch(true, true);
   // Revisit either kind of transcript until its remaining pictures are stored.
@@ -444,7 +452,10 @@ export async function syncTranscript({
   }
   subscription.responseBoundary = boundary.snapshot();
   subscription.artifacts = [...found.artifacts.values()];
-  subscription.historyRemaining = historyRemaining || mediaResult.pendingPasted;
+  subscription.historyRemaining =
+    historyRemaining ||
+    mediaResult.pendingPasted ||
+    !!mediaResult.pendingArtifacts;
   if (!subscription.folder)
     total = Object.values(historyVersions).reduce((n, v) => n + v.turns, 0);
   const pictures = mediaResult.uploaded;

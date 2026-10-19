@@ -26,6 +26,7 @@ import type {
   WorkspaceData,
 } from "@/lib/types";
 import { MAX_FAVORITES, overlayFavorites } from "@/lib/favorites.mjs";
+import { workspaceRequests } from "@/lib/workspace-requests.mjs";
 import { SAMPLE } from "@/lib/sample";
 import { sessionLabel } from "./buddy";
 import { MediaDetail } from "./media-card";
@@ -80,7 +81,7 @@ const EMPTY: WorkspaceData = {
   devices: [],
   user: null,
 };
-async function api<T = Record<string, unknown>>(
+async function requestApi<T = Record<string, unknown>>(
   path: string,
   method = "GET",
   body?: unknown,
@@ -204,13 +205,29 @@ export default function Workspace({
     ids: string[];
     previous?: WorkspaceData;
   } | null>(null);
+  const requests = useRef(workspaceRequests());
+  async function api<T = Record<string, unknown>>(
+    path: string,
+    method = "GET",
+    body?: unknown,
+  ) {
+    const finish = method === "GET" ? null : requests.current.mutate();
+    try {
+      return await requestApi<T>(path, method, body);
+    } finally {
+      finish?.();
+    }
+  }
   const favoriteRevision = useRef(0);
   const favoritePending = useRef(new Map<string, boolean>());
   const previewBusy = useRef(false);
   const refresh = useCallback(async () => {
+    const ticket = requests.current.read();
+    if (ticket === null) return;
     const revision = favoriteRevision.current;
     try {
-      const result = await api<WorkspaceData>("/api/workspace");
+      const result = await requestApi<WorkspaceData>("/api/workspace");
+      if (!requests.current.current(ticket)) return;
       setSelected((id) =>
         id === "all" || result.collections.some((c) => c.id === id)
           ? id
@@ -234,39 +251,22 @@ export default function Workspace({
       );
       setError("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to load your space.");
+      if (requests.current.current(ticket))
+        setError(e instanceof Error ? e.message : "Unable to load your space.");
     } finally {
-      setReady(true);
+      if (requests.current.current(ticket)) setReady(true);
+      requests.current.complete(ticket);
     }
   }, []);
   useEffect(() => {
     if (demo) return;
-    let cancelled = false;
-    api<WorkspaceData>("/api/workspace")
-      .then((result) => {
-        if (!cancelled) {
-          setData(overlayFavorites(result, favoritePending.current));
-          setSelected((id) =>
-            id === "all" || result.collections.some((c) => c.id === id)
-              ? id
-              : "all",
-          );
-          setError("");
-        }
-      })
-      .catch((e: unknown) => {
-        if (!cancelled)
-          setError(
-            e instanceof Error ? e.message : "Unable to load your space.",
-          );
-      })
-      .finally(() => {
-        if (!cancelled) setReady(true);
-      });
+    const coordinator = requests.current;
+    const timer = setTimeout(() => void refresh(), 0);
     return () => {
-      cancelled = true;
+      clearTimeout(timer);
+      coordinator.invalidate();
     };
-  }, [demo]);
+  }, [demo, refresh]);
   useEffect(() => {
     if (demo) return;
     const id = setInterval(() => {
@@ -296,7 +296,9 @@ export default function Workspace({
       .slice(0, 4);
     if (!pending.length) return;
     previewBusy.current = true;
-    void api("/api/previews", "POST", { ids: pending.map((item) => item.id) })
+    void requestApi("/api/previews", "POST", {
+      ids: pending.map((item) => item.id),
+    })
       .then(() => refresh())
       .catch((e) =>
         setError(e instanceof Error ? e.message : "Preview unavailable."),

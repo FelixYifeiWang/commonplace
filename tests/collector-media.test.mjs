@@ -183,3 +183,65 @@ test("without a capture function, only pasted images are sent", async (t) => {
     ["pasted"],
   );
 });
+
+test("one-time import waits for artifact captures beyond the per-sync budget", async (t) => {
+  const { args, html, calls, media } = await fixture(t);
+  args.subscription.mode = "once";
+  args.subscription.artifacts = Array.from({ length: 10 }, (_, i) => ({
+    file: html,
+    url: `https://claude.ai/artifact/fixture${i}`,
+    turnId: "a1",
+    context: "Preview",
+  }));
+  await syncTranscript(args);
+  assert.equal(args.subscription.historyRemaining, true);
+  assert.ok(!calls.some((c) => c.path === "/api/capture" && c.body.complete));
+  await syncTranscript(args);
+  assert.equal(args.subscription.historyRemaining, false);
+  assert.equal(media().filter((m) => m.kind === "artifact").length, 11);
+  assert.equal(calls.at(-1).body.complete, true);
+});
+test("one-time import retries a transient artifact capture failure", async (t) => {
+  const { args, calls } = await fixture(t);
+  args.subscription.mode = "once";
+  const capture = args.media.captureArtifact;
+  args.media.captureArtifact = async () => null;
+  await syncTranscript(args);
+  assert.equal(args.subscription.historyRemaining, true);
+  assert.ok(!calls.some((c) => c.path === "/api/capture" && c.body.complete));
+  args.media.captureArtifact = capture;
+  await syncTranscript(args);
+  assert.equal(args.subscription.historyRemaining, false);
+  assert.equal(calls.at(-1).body.complete, true);
+});
+
+test("missing artifact files do not block a one-time import", async (t) => {
+  const { args, html, calls } = await fixture(t);
+  args.subscription.mode = "once";
+  await rm(html);
+  await syncTranscript(args);
+  assert.equal(args.subscription.historyRemaining, false);
+  assert.equal(calls.at(-1).body.complete, true);
+});
+test("one-time artifact upload retries preserve successful pasted pictures", async (t) => {
+  const { args, calls, media } = await fixture(t);
+  args.subscription.mode = "once";
+  const request = args.request;
+  let fail = true;
+  args.request = async (url, options) => {
+    if (
+      url.endsWith("/api/capture/media") &&
+      JSON.parse(options.body).kind === "artifact" &&
+      fail
+    )
+      return Response.json({}, { status: 503 });
+    return request(url, options);
+  };
+  await syncTranscript(args);
+  assert.equal(args.subscription.historyRemaining, true);
+  fail = false;
+  await syncTranscript(args);
+  assert.equal(media().filter((m) => m.kind === "pasted").length, 1);
+  assert.equal(media().filter((m) => m.kind === "artifact").length, 1);
+  assert.equal(calls.at(-1).body.complete, true);
+});

@@ -1,4 +1,6 @@
-import { readdir, stat, readFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { createInterface } from "node:readline";
+import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -145,15 +147,19 @@ export async function readOpenConversation(
     throw new Error(
       "This Codex version has no readable navigation record. Nothing was connected.",
     );
-  if (current.reduce((n, file) => n + file.info.size, 0) > 32 * 1024 * 1024)
-    throw new Error(
-      "Navigation history is too large for this preview. Restart Codex and try again.",
-    );
   // Keep only the navigation event. Conversation messages and other log contents are never uploaded.
   const events = [];
   for (const { file } of current) {
-    const raw = await readFile(file, "utf8");
-    events.push(...raw.split("\n").filter(navigationEvent));
+    const input = createReadStream(file, { encoding: "utf8" });
+    const lines = createInterface({ input, crlfDelay: Infinity });
+    try {
+      for await (const line of lines) {
+        if (navigationEvent(line)) events.push(line);
+      }
+    } finally {
+      lines.close();
+      input.destroy();
+    }
   }
   events.sort((a, b) => a.slice(0, 24).localeCompare(b.slice(0, 24)));
   return activeConversation(

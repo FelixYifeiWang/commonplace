@@ -661,3 +661,42 @@ test("restoring an item before its deadline protects it from later expiry cleanu
     0,
   );
 });
+
+test("abandoned presigned uploads expire after a grace period, saved files survive", async (t) => {
+  const { sql, db } = fixture(t);
+  const { queueUpload } = await import("../lib/upload-lease.mjs");
+  const { createBlobCleanup } = await import("../lib/blob-cleanup.mjs");
+  const key = "users/u/11111111-1111-4111-8111-111111111111/picture.png";
+  const saved = key.replace("picture", "saved");
+  let time = 1000;
+  await queueUpload(db, "u", key, time);
+  await queueUpload(db, "u", saved, time);
+  sql
+    .prepare(
+      "INSERT INTO items(id,owner_id,collection_id,identity,kind,title,body,source_text,source_role,created_at,updated_at,file_key) VALUES('saved','u','c','saved','image','Picture','','','user','now','now',?)",
+    )
+    .run(saved);
+  const removed = [];
+  const worker = createBlobCleanup(db, {
+    now: () => time,
+    remove: async (key) => removed.push(key),
+  });
+  assert.equal(await worker.drain(), 0);
+  time += 86400001;
+  assert.equal(await worker.drain(), 1);
+  assert.deepEqual(removed, [key]);
+});
+test("upload leases reject foreign paths and files already being deleted", async (t) => {
+  const { sql, db } = fixture(t);
+  const { queueUpload } = await import("../lib/upload-lease.mjs");
+  const key = "users/u/11111111-1111-4111-8111-111111111111/picture.png";
+  await assert.rejects(queueUpload(db, "other", key), /unavailable/);
+  await queueUpload(db, "u", key, 1000);
+  await queueUpload(db, "u", key, 2000);
+  assert.equal(
+    sql.prepare("SELECT not_before FROM blob_deletions").get().not_before,
+    86402000,
+  );
+  sql.exec("UPDATE blob_deletions SET status='deleting'");
+  await assert.rejects(queueUpload(db, "u", key), /unavailable/);
+});

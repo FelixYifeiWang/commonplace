@@ -1,3 +1,4 @@
+import { queueUpload } from "../upload-lease.mjs";
 import { env } from "./runtime-env";
 import { head, get, put } from "@vercel/blob";
 import { blobRequestPath } from "./blob-path.mjs";
@@ -27,11 +28,7 @@ const bridge = {
   }) {
     const key = `users/${encodeURIComponent(file.ownerId)}/${crypto.randomUUID()}/${encodeURIComponent(file.name)}`;
     // If upload or its later database write fails, cleanup still knows the key.
-    await env.DB.prepare(
-      "INSERT INTO blob_deletions(file_key,owner_id,not_before) VALUES(?,?,?)",
-    )
-      .bind(key, file.ownerId, Date.now() + 86400000)
-      .run();
+    await queueUpload(env.DB, file.ownerId, key);
     await put(key, Buffer.from(file.bytes), {
       access: "private",
       contentType: file.mimeType,
