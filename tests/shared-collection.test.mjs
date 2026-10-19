@@ -121,6 +121,6 @@ test("shared media uses collection-scoped routes while owner media routes stay u
   );
   assert.equal(
     mediaPath(shared, "screenshot"),
-    `/api/shared/session-abc/media/${item.id}/screenshot?v=2`,
+    `/api/shared/session-abc/media/${item.id}/screenshot?v=3`,
   );
 });

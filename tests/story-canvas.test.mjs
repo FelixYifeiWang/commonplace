@@ -51,7 +51,7 @@ const item = (over) => ({
 
 test("a website is a page, cropped from the top", () => {
   assert.deepEqual(pictureFor(item({}), { screenshots: true }), {
-    src: "/api/screenshots/0b7e4c1e-1111-4222-8333-444455556666?v=2",
+    src: "/api/screenshots/0b7e4c1e-1111-4222-8333-444455556666?v=3",
     fit: "page",
   });
   assert.equal(

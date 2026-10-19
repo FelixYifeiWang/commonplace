@@ -17,7 +17,7 @@ function runtime() {
   const context = vm.createContext({
     window: win,
     setTimeout: (fn, delay) => {
-      assert.equal(delay, 500);
+      assert.equal(delay, 125);
       timers.set(++next, fn);
       return next;
     },
