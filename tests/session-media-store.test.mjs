@@ -146,3 +146,29 @@ test("a capture of an artifact the conversation never linked adds the link", asy
     },
   ]);
 });
+
+test("a picture saved after the turns asks the Story to refresh its canvases", async () => {
+  const { sqlite, store, session } = fixture();
+  const before = sqlite
+    .prepare("SELECT revision FROM stories WHERE collection_id='c'")
+    .get();
+  await store.save(
+    session,
+    parseMediaUpload({
+      kind: "artifact",
+      turnId: "a1",
+      mimeType: "image/png",
+      data: png64,
+      url: ARTIFACT,
+      title: "Portfolio Story",
+    }),
+  );
+  const after = sqlite
+    .prepare(
+      "SELECT revision, visual_refresh AS visualRefresh, status FROM stories WHERE collection_id='c'",
+    )
+    .get();
+  assert.equal(after.visualRefresh, 1);
+  assert.ok(after.revision > before.revision);
+  assert.equal(after.status, "pending");
+});

@@ -35,7 +35,14 @@ export async function POST(request: Request) {
       throw new HttpError(400, "Choose a collection.");
     if (!(await store.get(body.collectionId, user.userId)))
       throw new HttpError(404, "Collection not found.");
-    await store.retry(body.collectionId, user.userId);
+    // "rewrite" writes the Story again from the first turn; otherwise retry after a failure.
+    if (body.action === "rewrite") {
+      if (!(await store.rewrite(body.collectionId, user.userId)))
+        throw new HttpError(
+          409,
+          "The Story is being written. Try again in a minute.",
+        );
+    } else await store.retry(body.collectionId, user.userId);
     return storyResponse({ ok: true });
   } catch (error) {
     return fail(error);

@@ -1,4 +1,5 @@
 import { agentSession, fail, HttpError } from "@/lib/server";
+import { storyResponse } from "@/lib/story-response";
 import { env } from "@/lib/runtime-env";
 import preview from "@/lib/runtime-preview";
 import { parseMediaUpload } from "@/lib/session-media.mjs";
@@ -28,7 +29,8 @@ export async function POST(request: Request) {
     const saved = await createSessionMediaStore(env.DB, {
       put: (file: Parameters<typeof preview.store>[0]) => preview.store(file),
     }).save(session, upload);
-    return Response.json(
+    // A new picture can refresh the Story's canvases, so start the story worker.
+    return storyResponse(
       { ok: true, ...saved },
       { headers: { "Cache-Control": "no-store" } },
     );
