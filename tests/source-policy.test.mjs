@@ -34,6 +34,7 @@ test("private inboxes and agent conversations are navigation, including redirect
     "https://claude.ai/design/p/abc",
     "https://claude.ai/design",
     "https://claude.ai/code/abc",
+    "https://claude.ai/images/claude_ogimage.png",
     "https://cursor.com/dashboard",
     "https://example.com/auth/verify",
     "https://example.com/?code=abc&state=xyz",
@@ -44,6 +45,8 @@ test("public agent references and product documentation remain collectible", () 
   for (const url of [
     "https://chatgpt.com/share/abc",
     "https://claude.ai/share/abc",
+    "https://claude.ai/artifact/PkxxssFTMZtnyjsktQMNM4",
+    "https://claude.ai/code/artifact/0b7e4c1e-1111-4222-8333-444455556666",
     "https://cursor.com/docs",
     "https://claude.ai/",
     "https://openai.com/codex/",

@@ -9,7 +9,12 @@ import type {
   SessionStep,
   WordsCanvas,
 } from "@/lib/session-types";
-import { canvasVariant, orderItems, pictureFor } from "@/lib/story-canvas.mjs";
+import {
+  canvasVariant,
+  orderItems,
+  pageUrl,
+  pictureFor,
+} from "@/lib/story-canvas.mjs";
 import { SheetMedia } from "./sheet-media";
 // The Story: up to five steps in the human's voice, each beside one canvas (STORY_CANVAS.md).
 const screenshots = true;
@@ -170,29 +175,43 @@ function Cell({
         ? "sv-dropped"
         : "";
   const fit = still ? "fit" : picture ? picture.fit : "text";
+  // A link's picture opens its page (an artifact opens the artifact); anything else opens in place.
+  const href = pageUrl(item);
+  const face = still ? (
+    <SheetMedia item={item} screenshots={screenshots} />
+  ) : picture ? (
+    <PreviewImage
+      src={picture.src}
+      onError={() => setFailedSources((failed) => [...failed, picture.src])}
+    />
+  ) : (
+    <span className="sv-tile">
+      <b>{item.title}</b>
+      <small>{hostname(item.url)}</small>
+    </span>
+  );
   return (
     <figure className={`sv-cell ${lead ? "sv-lead" : ""} ${state} sv-${fit}`}>
-      <button
-        type="button"
-        onClick={() => onOpen(item)}
-        aria-label={`Open ${entry.label}`}
-      >
-        {still ? (
-          <SheetMedia item={item} screenshots={screenshots} />
-        ) : picture ? (
-          <PreviewImage
-            src={picture.src}
-            onError={() =>
-              setFailedSources((failed) => [...failed, picture.src])
-            }
-          />
-        ) : (
-          <span className="sv-tile">
-            <b>{item.title}</b>
-            <small>{hostname(item.url)}</small>
-          </span>
-        )}
-      </button>
+      {href ? (
+        <a
+          className="sv-open"
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open ${entry.label}`}
+        >
+          {face}
+        </a>
+      ) : (
+        <button
+          type="button"
+          className="sv-open"
+          onClick={() => onOpen(item)}
+          aria-label={`Open ${entry.label}`}
+        >
+          {face}
+        </button>
+      )}
       <figcaption>
         <b>{entry.label}</b>
         {tag && <i className={`sv-tag ${tag[1]}`}>{tag[0]}</i>}

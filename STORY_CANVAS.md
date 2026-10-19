@@ -112,6 +112,19 @@ Cut-outs are made once, when the preview is made, and stored beside the original
 5. **No placeholder tiles.** An item with no picture becomes a text tile that fills its slot: its title in display type, then its domain or source. It is never a grey box.
 6. **Too many items:** the renderer keeps the picked item and the items the transcript mentions most, then shows "+n" in the header count. It does not shrink the slots.
 
+### Artifact pictures
+
+An artifact's picture is the part of it that shows the work, not its title. When Nox renders a published artifact from its local HTML, it measures the page (`visualBoxes` in `desktop/artifact-region.mjs`) and frames one region (`pickRegion`):
+
+- **What counts:** images, canvases, videos and inline SVGs first; then background art; then framed panels (a card or sheet, including ones painted by `::before`). Icons, thin rules, navigation and anything pinned to the screen don't count.
+- **Layout isn't a picture:** a panel or background that fills the screen is a section of the page, so it is skipped.
+- **Groups stay together:** pictures within 48 px of each other are framed as one, like a before and after, as long as they fit one screen.
+- **Earlier wins a tie:** the page leads with what matters, so a picture further down needs more weight to win.
+- **The frame:** 24 px of room, at least 480 px wide, between 4:3 and 16:9, rendered at 2x so it stays sharp on a card.
+- **Kept whole:** a page that fits one screen (one composition), or one with too little visual to frame, keeps its top.
+
+Clicking an artifact's picture opens the artifact in a new tab, as any link's picture opens its page, in the Story and the Map. A Claude page with no capture (a shared chat, a private artifact before Nox renders it) shows a text tile, never Claude's default share card, and Claude's own site images are not saved as references.
+
 ## Human-made material first
 
 A sketch, drawing or photo the human made says more about their intent than any capture of the result. When a step has one, it should almost always be on the canvas.
@@ -327,4 +340,5 @@ Each piece of feedback was turned into a general rule, so it holds for any sessi
 | Detail lines stopped short at mid zoom | Lines end on the always-visible part of their target, measured live | Renderer |
 | The text-only canvas was confusing; one line was too narrow | The canvas shows what happened in the shape that fits the step (flow, change, spec, line, number), readable without the paragraph | Schema; prompt; validator; renderer |
 | A whole answer was discarded for one small slip | Code repairs what it can fix without guessing (a reused picture, extra major nodes, a node repeating the center); only invented items, links or quotes are rejected | Validator |
+| Artifacts showed Claude's logo, then only their title | An artifact's picture frames the part that shows the work; clicking it opens the artifact; Claude's own images are never references | `desktop/artifact-region.mjs`; `lib/source-policy.mjs`; renderer |
 | Quotes failed on capitals and curly quotes | Quotes must have the same words in the same order; capitals and quote-mark style may differ | Validator |

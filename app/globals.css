@@ -6859,8 +6859,9 @@ body.desktop-feedback-page {
   gap: 1.2cqw;
   margin: 0;
 }
-.sv-cell > button {
+.sv-cell > .sv-open {
   display: block;
+  text-decoration: none;
   min-width: 0;
   min-height: 0;
   width: 100%;
@@ -6872,7 +6873,7 @@ body.desktop-feedback-page {
   color: inherit;
   text-align: inherit;
 }
-.sv-cell > button:focus-visible {
+.sv-cell > .sv-open:focus-visible {
   outline: 2px solid var(--sv-ink);
   outline-offset: 3px;
   border-radius: 1.2cqw;
@@ -8129,15 +8130,15 @@ a[href].gm-detail b::after {
   transform: translateY(18px);
 }
 /* A picture on a canvas lifts slightly on hover. */
-.sv-cell > button > * {
+.sv-cell > .sv-open > * {
   transition: transform 0.25s cubic-bezier(0.2, 0.75, 0.25, 1);
 }
-.sv-cell > button:hover > *,
-.sv-cell > button:focus-visible > * {
+.sv-cell > .sv-open:hover > *,
+.sv-cell > .sv-open:focus-visible > * {
   transform: translateY(-1cqw);
 }
 /* The attempt that was dropped in a detour is outlined with a dashed line. */
-.sv-dropped > button {
+.sv-dropped > .sv-open {
   outline: 1.5px dashed var(--sv-grey);
   outline-offset: 0.8cqw;
   border-radius: 1.5cqw;
@@ -8174,7 +8175,7 @@ a[href].gm-detail b::after {
   }
   .sv-rise .sv-step .sv-say,
   .sv-rise .sv-step .sv-canvas,
-  .sv-cell > button > * {
+  .sv-cell > .sv-open > * {
     transition: none;
   }
 }

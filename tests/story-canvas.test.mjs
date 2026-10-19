@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canvasVariant, orderItems, pictureFor } from "../lib/story-canvas.mjs";
+import {
+  canvasVariant,
+  orderItems,
+  pageUrl,
+  pictureFor,
+} from "../lib/story-canvas.mjs";
 
 test("the variant follows the layout and how many pictures it holds", () => {
   assert.equal(canvasVariant("choice", 2), "duo");
@@ -72,4 +77,18 @@ test("an uploaded picture is shown whole, and one the human added blends into th
 test("an item with no picture becomes a text tile, not a grey box", () => {
   assert.equal(pictureFor(item({}), { screenshots: false }), null);
   assert.equal(pictureFor(item({ kind: "note", url: null })), null);
+});
+
+test("an artifact's picture opens the artifact, as any link opens its page", () => {
+  const artifact = item({
+    kind: "link",
+    url: "https://claude.ai/artifact/PkxxssFTMZtnyjsktQMNM4",
+    fileKey: "k",
+  });
+  assert.equal(pageUrl(artifact), artifact.url);
+  assert.equal(pageUrl(item({ kind: "image", url: null, fileKey: "k" })), null);
+  assert.equal(
+    pageUrl(item({ kind: "link", url: "javascript:alert(1)" })),
+    null,
+  );
 });

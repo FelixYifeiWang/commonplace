@@ -3,7 +3,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { PreviewImage } from "./preview-image";
 import type { Item } from "@/lib/types";
-import { pictureFor } from "@/lib/story-canvas.mjs";
+import { pageUrl, pictureFor } from "@/lib/story-canvas.mjs";
 import {
   placeMap,
   radialPath,
@@ -73,6 +73,9 @@ export function SessionMap({
   const [focusedNode, setFocusedNode] = useState(-1);
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const media = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  // A tile showing a link's picture opens that page even when the Map gave no address (an artifact opens itself).
+  const urlOf = (url: string | null, itemId: string | null) =>
+    url || pageUrl(itemId ? media.get(itemId) : undefined);
   const map = useMemo(
     () => visibleSessionMap(doc.map, items),
     [doc.map, items],
@@ -694,7 +697,7 @@ export function SessionMap({
           {nodes.map((n, i) => (
             <Fragment key={`${i}-${n.label}`}>
               <Target
-                url={n.url}
+                url={urlOf(n.url, n.itemId)}
                 focusFirst={guided && focusedKey !== `m${i}`}
                 className={`gm-tile w-${n.weight}`}
                 dataKey={`m${i}`}
@@ -709,7 +712,7 @@ export function SessionMap({
                 />
               </Target>
               <Target
-                url={n.url}
+                url={urlOf(n.url, n.itemId)}
                 focusFirst={guided && focusedKey !== `b${i}`}
                 className="gm-bubble"
                 dataKey={`b${i}`}
@@ -726,7 +729,7 @@ export function SessionMap({
                 return (
                   <Target
                     key={j}
-                    url={d.url}
+                    url={urlOf(d.url, d.itemId)}
                     focusFirst={guided && focusedKey !== `d${i}.${j}`}
                     className={`gm-detail ${picture ? "has-pic" : ""}`}
                     dataKey={`d${i}.${j}`}
