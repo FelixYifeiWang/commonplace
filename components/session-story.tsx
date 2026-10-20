@@ -221,7 +221,12 @@ function CuratedCanvas({
               picture={pictures[wipe.from.itemId]}
               alt=""
             />
-            <Still className="sv-k" picture={pictures[wipe.to.itemId]} alt="" />
+            {/* A drawing (anything but a page) is shown whole on the frame's white. */}
+            <Still
+              className={`sv-k${pictures[wipe.to.itemId].fit === "page" ? "" : " sv-whole"}`}
+              picture={pictures[wipe.to.itemId]}
+              alt=""
+            />
             <i className="sv-handle" aria-hidden="true" />
           </div>
           {wipe.beside && (
@@ -268,7 +273,9 @@ function CuratedCanvas({
           ))}
         </div>
       ) : (
-        <div className={`sv-pics ${items.length > 1 ? "sv-two" : "sv-one"}`}>
+        <div
+          className={`sv-pics ${["sv-one", "sv-two", "sv-three"][items.length - 1]}`}
+        >
           {items.map((entry) => {
             const picture = pictures[entry.itemId];
             const tag = TAGS[entry.role];

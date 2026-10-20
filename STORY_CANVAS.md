@@ -302,7 +302,7 @@ A curated step's canvas follows the same rules as any other, in one pattern: pic
 
 | Layout | What it draws |
 | --- | --- |
-| reference | One or two pictures side by side, captions optional |
+| reference | One or two pictures side by side, or three: the first at full height and the other two stacked beside it. Captions optional |
 | before-after | Two pictures, captioned, with Dropped and Kept pills |
 | wipe | One frame that wipes left to right from the dropped picture to the kept one as the step scrolls by, from the moment the frame's bottom edge comes into view until its top nears the top of the screen. The page never pins. An optional fixed picture sits beside it (35% wide), so what changed reads against what stayed |
 | rules | Each note (a picture of it, or its words in a bubble), an arrow, then the prompt line it became in monospace |

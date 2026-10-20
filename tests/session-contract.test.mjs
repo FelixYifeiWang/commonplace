@@ -732,6 +732,17 @@ test("a curated canvas holds exactly what its layout draws", () => {
   assert.throws(() => normalizeCuratedSession(words), /cannot hold words/);
 });
 
+test("a curated reference canvas shows one to three pictures", () => {
+  const doc = curated();
+  assert.equal(normalizeCuratedSession(doc).steps[0].canvas.items.length, 3);
+  doc.steps[0].canvas.items.push({
+    itemId: "s3-story",
+    role: "reference",
+    label: "",
+  });
+  assert.throws(() => normalizeCuratedSession(doc), /items must hold 1 to 3/);
+});
+
 test("curated links are https, and a commit detail links its commit by hash", () => {
   const plain = curated();
   plain.map.center.url = "http://newron.app/";

@@ -2,110 +2,178 @@
   "curated": true,
   "collectionName": "Newron",
   "pictures": {
-    "s1-sketch": { "src": "/story/newron/s1-sketch.jpg", "fit": "ink", "alt": "The Story sketch: three rows of a numbered title, notes and a picture box, with the notes should only be 5-ish steps max and ONLY record major changes / decisions" },
-    "s1-board": { "src": "/story/newron/s1-board.jpg", "fit": "ink", "alt": "The map sketch: a final output box in the middle, joined by curves to a website, two type samples, an image and two motion frames" },
-    "s2-grid": { "src": "/story/newron/s2-grid.jpg", "fit": "page" },
-    "s2-map": { "src": "/story/newron/s2-map.jpg", "fit": "page" },
-    "s3-bullets": { "src": "/story/newron/s3-bullets.jpg", "fit": "page", "alt": "Step one written as numbered bullet points beside loose sketches" },
-    "s3-story": { "src": "/story/newron/s3-story.jpg", "fit": "page", "alt": "The same step written as one short paragraph beside the soft grey canvas" },
-    "s4-story": { "src": "/story/newron/s4-story.jpg", "fit": "page", "alt": "The Story's first three steps: six sketches, hirotos.com, the ticket from my wireframe" },
-    "s4-replay": { "src": "/story/newron/s4-replay.jpg", "fit": "page" },
-    "s4-weighted": { "src": "/story/newron/s4-weighted.jpg", "fit": "page" },
-    "s5-note": { "src": "/story/newron/s5-note.jpg", "fit": "page", "alt": "My note on the Story sketch: should only be 5-ish steps max. ONLY record major changes / decisions." },
-    "g-sheet-ref": { "src": "/story/newron/g-sheet-ref.jpg", "fit": "ink", "ar": 1.06 },
-    "g-sheet1": { "src": "/story/newron/g-sheet1.jpg", "fit": "page", "ar": 1.6, "focus": "50% 50%" },
-    "g-card": { "src": "/story/newron/g-card.jpg", "fit": "page", "ar": 1.06, "focus": "50% 50%" },
-    "g-board-zoom": { "src": "/story/newron/g-board-zoom.jpg", "fit": "ink", "ar": 1.7 },
-    "g-font": { "src": "/story/newron/g-font.png", "fit": "ink", "ar": 2.1 },
-    "g-balanced": { "src": "/story/newron/g-balanced.jpg", "fit": "page", "ar": 1.29, "focus": "50% 50%" },
-    "g-ref1": { "src": "/story/newron/g-ref1.jpg", "fit": "page", "ar": 1.6, "focus": "50% 0" },
-    "g-ring": { "src": "/story/newron/g-ring.jpg", "fit": "ink", "ar": 1.04 },
-    "g-hero": { "src": "/story/newron/g-hero.jpg", "fit": "page", "ar": 1.37, "focus": "50% 50%" },
-    "g-storypage": { "src": "/story/newron/g-storypage.jpg", "fit": "page", "ar": 1.6, "focus": "50% 0" },
-    "g-firstbuild": { "src": "/story/newron/g-firstbuild.jpg", "fit": "page", "ar": 1.6, "focus": "50% 0" },
-    "g-lab": { "src": "/story/newron/g-lab.jpg", "fit": "page", "ar": 1.6, "focus": "50% 0" },
-    "g-tilesheet": { "src": "/story/newron/g-tilesheet.jpg", "fit": "page", "ar": 1.24, "focus": "50% 50%" },
-    "g-layout": { "src": "/story/newron/g-layout.jpg", "fit": "page", "ar": 1.6, "focus": "50% 50%" },
-    "g-zoomdet": { "src": "/story/newron/g-zoomdet.jpg", "fit": "page", "ar": 1.67, "focus": "0 50%" },
-    "g-edge": { "src": "/story/newron/g-edge.jpg", "fit": "page", "ar": 0.67, "focus": "100% 50%" },
-    "g-grid": { "src": "/story/newron/g-grid.jpg", "fit": "page", "ar": 1.67, "focus": "0 0" },
-    "g-why": { "src": "/story/newron/g-why.jpg", "fit": "page", "ar": 1.9, "focus": "50% 50%" },
-    "g-noimage": { "src": "/story/newron/g-noimage.png", "fit": "page", "ar": 1.6, "focus": "50% 50%" }
+    "s1-sketch": {"src": "/story/newron/s1-sketch.jpg", "fit": "ink", "alt": "The Story sketch: three rows of a numbered title, notes and a picture box, with the notes should only be 5-ish steps max and ONLY record major changes / decisions"},
+    "s1-board": {"src": "/story/newron/s1-board.jpg", "fit": "ink", "alt": "The map sketch: a final output box in the middle, joined by curves to a website, two type samples, an image and two motion frames"},
+    "s1-graphite": {"src": "/story/newron/s1-graphite.jpg", "fit": "page", "alt": "Graphite's homepage: The next generation of code review"},
+    "s2-grid": {"src": "/story/newron/s2-grid.jpg", "fit": "page"},
+    "s2-map": {"src": "/story/newron/s2-map.jpg", "fit": "page"},
+    "s3-bullets": {"src": "/story/newron/s3-bullets.jpg", "fit": "page", "alt": "Step one written as numbered bullet points beside loose sketches"},
+    "s3-story": {"src": "/story/newron/s3-story.jpg", "fit": "page", "alt": "The same step written as one short paragraph beside the soft grey canvas"},
+    "s4-story": {"src": "/story/newron/s4-story.jpg", "fit": "page", "alt": "The Story's first three steps: six sketches, hirotos.com, the ticket from my wireframe"},
+    "s4-replay": {"src": "/story/newron/s4-replay.jpg", "fit": "page"},
+    "s4-branches": {"src": "/story/newron/s4-branches.png", "fit": "object", "alt": "One main line of five Story steps, with side quests branching off it as Map tiles"},
+    "s5-note": {"src": "/story/newron/s5-note.jpg", "fit": "page", "alt": "My note on the Story sketch: should only be 5-ish steps max. ONLY record major changes / decisions."},
+    "g-sheet-ref": {"src": "/story/newron/g-sheet-ref.jpg", "fit": "ink", "ar": 1.06},
+    "g-sheet1": {"src": "/story/newron/g-sheet1.jpg", "fit": "page", "ar": 1.6, "focus": "50% 50%"},
+    "g-card": {"src": "/story/newron/g-card.jpg", "fit": "page", "ar": 1.06, "focus": "50% 50%"},
+    "g-board-zoom": {"src": "/story/newron/g-board-zoom.jpg", "fit": "ink", "ar": 1.7},
+    "g-font": {"src": "/story/newron/g-font.png", "fit": "ink", "ar": 2.1},
+    "g-balanced": {"src": "/story/newron/g-balanced.jpg", "fit": "page", "ar": 1.29, "focus": "50% 50%"},
+    "g-ref1": {"src": "/story/newron/g-ref1.jpg", "fit": "page", "ar": 1.6, "focus": "50% 0"},
+    "g-ring": {"src": "/story/newron/g-ring.jpg", "fit": "ink", "ar": 1.04},
+    "g-hero": {"src": "/story/newron/g-hero.jpg", "fit": "page", "ar": 1.37, "focus": "50% 50%"},
+    "g-storypage": {"src": "/story/newron/g-storypage.jpg", "fit": "page", "ar": 1.6, "focus": "50% 0"},
+    "g-firstbuild": {"src": "/story/newron/g-firstbuild.jpg", "fit": "page", "ar": 1.6, "focus": "50% 0"},
+    "g-lab": {"src": "/story/newron/g-lab.jpg", "fit": "page", "ar": 1.6, "focus": "50% 0"},
+    "g-tilesheet": {"src": "/story/newron/g-tilesheet.jpg", "fit": "page", "ar": 1.24, "focus": "50% 50%"},
+    "g-layout": {"src": "/story/newron/g-layout.jpg", "fit": "page", "ar": 1.6, "focus": "50% 50%"},
+    "g-zoomdet": {"src": "/story/newron/g-zoomdet.jpg", "fit": "page", "ar": 1.67, "focus": "0 50%"},
+    "g-edge": {"src": "/story/newron/g-edge.jpg", "fit": "page", "ar": 0.67, "focus": "100% 50%"},
+    "g-grid": {"src": "/story/newron/g-grid.jpg", "fit": "page", "ar": 1.67, "focus": "0 0"},
+    "g-why": {"src": "/story/newron/g-why.jpg", "fit": "page", "ar": 1.9, "focus": "50% 50%"},
+    "g-noimage": {"src": "/story/newron/g-noimage.png", "fit": "page", "ar": 1.6, "focus": "50% 50%"}
   },
   "steps": [
     {
       "title": "Two sketches to start",
       "date": "Oct 17",
-      "text": "I sketched both views first. The Story: a title, notes and a canvas, five steps max. The map: the output in the middle, everything else around it.",
+      "text": "We sketched both views first. The Story: a title, notes and a canvas, five steps max. The map: the output in the middle, everything else around it.",
       "canvas": {
         "layout": "reference",
         "items": [
-          { "itemId": "s1-sketch", "role": "reference", "label": "" },
-          { "itemId": "s1-board", "role": "reference", "label": "" }
+          {
+            "itemId": "s1-sketch",
+            "role": "reference",
+            "label": "Story sketch"
+          },
+          {
+            "itemId": "s1-graphite",
+            "role": "reference",
+            "label": "Inspired by Graphite"
+          },
+          {
+            "itemId": "s1-board",
+            "role": "reference",
+            "label": "Map sketch"
+          }
         ]
       }
     },
     {
       "title": "Context, not a grid",
       "date": "Oct 17",
-      "text": "Newron opened on a gallery, an Are.na-style grid where every block weighs the same and none says why it's there. I wanted each reference kept with its reason, and the big things bigger, so the grid became a map around the result.",
+      "text": "Newron opened on a gallery, an Are.na-style grid where every block weighs the same and none says why it's there. We wanted each reference kept with its reason, and the big things bigger, so the grid became a map around the result.",
       "canvas": {
         "layout": "wipe",
         "wipe": {
-          "from": { "itemId": "s2-grid", "label": "A grid of equals" },
-          "to": { "itemId": "s2-map", "label": "Each thing in context" },
+          "from": {
+            "itemId": "s2-grid",
+            "label": "A grid of equals"
+          },
+          "to": {
+            "itemId": "s2-map",
+            "label": "Each thing in context"
+          },
           "alt": "The same collection as a grid of equal blocks, wiping into a map where each picture sits around the result with its reason beside it"
         },
-        "said": { "text": "references should have context, and information should not have the same hierarchy", "by": "I said" }
+        "said": {
+          "text": "references should have context, and information should not have the same hierarchy",
+          "by": "We said"
+        }
       }
     },
     {
       "title": "Told like a story",
       "date": "Oct 17",
-      "text": "Bullet points read like an article. I asked for it told like a story, warm and conversational, in the voice of whoever did the work.",
+      "text": "Bullet points read like an article. We asked for it told like a story, warm and conversational, in the voice of whoever did the work.",
       "canvas": {
         "layout": "before-after",
         "items": [
-          { "itemId": "s3-bullets", "role": "attempt", "label": "Bullet points" },
-          { "itemId": "s3-story", "role": "result", "label": "A short story" }
+          {
+            "itemId": "s3-bullets",
+            "role": "attempt",
+            "label": "Bullet points"
+          },
+          {
+            "itemId": "s3-story",
+            "role": "result",
+            "label": "A short story"
+          }
         ],
-        "said": { "text": "the tone should be very conversational and reflects the tone of the user.", "by": "I said" }
+        "said": {
+          "text": "the tone should be very conversational and reflects the tone of the user.",
+          "by": "We said"
+        }
       }
     },
     {
-      "title": "Six strong calls, not a replay",
+      "title": "A main story with side quests",
       "date": "Oct 17",
-      "text": "My first map just replayed the story: the same steps, the same pictures, even the same dates. I cut it to six strong calls, some heavier, each holding what the story doesn't.",
+      "text": "Our first map retold the Story, with the same steps, pictures and even dates. Now the Story is the main line, and the Map keeps the side quests worth coming back for.",
       "canvas": {
         "layout": "wipe",
         "wipe": {
-          "from": { "itemId": "s4-replay", "label": "First map: the Story again" },
-          "to": { "itemId": "s4-weighted", "label": "Six strong calls" },
-          "beside": { "itemId": "s4-story", "label": "The Story" },
-          "alt": "The first map showed the same three steps, with the same pictures and dates, then wipes into the weighted map with a large quote and the ticket"
+          "from": {
+            "itemId": "s4-replay",
+            "label": "First map: the Story again"
+          },
+          "to": {
+            "itemId": "s4-branches",
+            "label": "Main line, side quests"
+          },
+          "beside": {
+            "itemId": "s4-story",
+            "label": "The Story"
+          },
+          "alt": "The first map retold the Story's steps, then wipes into one main line of five steps with side quests branching off it"
         },
-        "said": { "text": "it should not be a replicate of the story.", "by": "I said" }
+        "said": {
+          "text": "it should not be a replicate of the story.",
+          "by": "We said"
+        }
       }
     },
     {
-      "title": "My notes became the rules",
+      "title": "Our notes became the rules",
       "date": "Oct 17",
-      "text": "I asked whether these fixes lived anywhere but this mockup. They didn't, so each of my notes became a rule in the backend's prompt. Every session's Story and Map now follows them.",
+      "text": "For other people's sessions to come out this well, the fixes couldn't live in our mockup. So each of our notes became a rule in the backend's prompt, and every session's Story and Map now follows them.",
       "canvas": {
         "layout": "rules",
         "rules": {
-          "heads": ["I said", "The backend's prompt now says"],
+          "heads": [
+            "We said",
+            "The backend's prompt now says"
+          ],
           "rows": [
-            { "note": { "itemId": "s5-note" }, "rule": "At most five steps, in order. Each step is one major turn …" },
-            { "note": { "text": "why does every node look very balanced?" }, "rule": "The gallery sizes nodes by weight, so not everything can be major." },
-            { "note": { "text": "the entire reading experience should be like story-telling." }, "rule": "text: one paragraph of 15–45 words, written in the first person as the human, in their voice." }
+            {
+              "note": {
+                "itemId": "s5-note"
+              },
+              "rule": "At most five steps, in order. Each step is one major turn …"
+            },
+            {
+              "note": {
+                "text": "why does every node look very balanced?"
+              },
+              "rule": "The gallery sizes nodes by weight, so not everything can be major."
+            },
+            {
+              "note": {
+                "text": "the entire reading experience should be like story-telling."
+              },
+              "rule": "text: one paragraph of 15–45 words, written in the first person as the human, in their voice."
+            }
           ]
         }
       }
     }
   ],
   "map": {
-    "center": { "label": "Newron", "itemId": null, "url": "https://newron.app/" },
+    "center": {
+      "label": "Newron",
+      "itemId": null,
+      "url": "https://newron.app/"
+    },
     "nodes": [
       {
         "label": "UI details",
@@ -114,11 +182,42 @@
         "itemId": "g-sheet-ref",
         "summary": "One soft sheet everywhere; edges fade; details fade in with lines",
         "details": [
-          { "label": "The first soft sheet", "itemId": "g-sheet1", "evidence": { "sourceId": "", "quote": "add the canvas back, and remove the white borders from the images within." } },
-          { "label": "Every tile shares the sheet", "itemId": "g-tilesheet", "evidence": { "sourceId": "", "quote": "its design should be generalized for the nodes in gallery for consistency." } },
-          { "label": "A layout per kind of step", "itemId": "g-layout", "evidence": { "sourceId": "", "quote": "we may need multiple templates or a design.md to make sure the contents that goes on the canvas does not have such empty space." } },
-          { "label": "Details fade in with lines", "itemId": "g-zoomdet", "evidence": { "sourceId": "", "quote": "in the gallery view if you scroll in the nodes on the end of the lines fade in with the lines instead of scaling up" } },
-          { "label": "Edges fade out", "itemId": "g-edge" }
+          {
+            "label": "The first soft sheet",
+            "itemId": "g-sheet1",
+            "evidence": {
+              "sourceId": "",
+              "quote": "add the canvas back, and remove the white borders from the images within."
+            }
+          },
+          {
+            "label": "Every tile shares the sheet",
+            "itemId": "g-tilesheet",
+            "evidence": {
+              "sourceId": "",
+              "quote": "its design should be generalized for the nodes in gallery for consistency."
+            }
+          },
+          {
+            "label": "A layout per kind of step",
+            "itemId": "g-layout",
+            "evidence": {
+              "sourceId": "",
+              "quote": "we may need multiple templates or a design.md to make sure the contents that goes on the canvas does not have such empty space."
+            }
+          },
+          {
+            "label": "Details fade in with lines",
+            "itemId": "g-zoomdet",
+            "evidence": {
+              "sourceId": "",
+              "quote": "in the gallery view if you scroll in the nodes on the end of the lines fade in with the lines instead of scaling up"
+            }
+          },
+          {
+            "label": "Edges fade out",
+            "itemId": "g-edge"
+          }
         ]
       },
       {
@@ -128,9 +227,29 @@
         "itemId": "g-board-zoom",
         "summary": "Output in the middle, curves of one weight, more on zoom",
         "details": [
-          { "label": "Never all one weight", "itemId": "g-balanced", "evidence": { "sourceId": "", "quote": "why does every node look very balanced?" } },
-          { "label": "Fonts set as fonts", "itemId": "g-font", "evidence": { "sourceId": "", "quote": "Why don't we fetch the font itself and put it there?" } },
-          { "label": "Lines out of every center", "evidence": { "sourceId": "", "quote": "make every line that comes out come out of the center of the widgets, all widgets follow this rule" } }
+          {
+            "label": "Never all one weight",
+            "itemId": "g-balanced",
+            "evidence": {
+              "sourceId": "",
+              "quote": "why does every node look very balanced?"
+            }
+          },
+          {
+            "label": "Fonts set as fonts",
+            "itemId": "g-font",
+            "evidence": {
+              "sourceId": "",
+              "quote": "Why don't we fetch the font itself and put it there?"
+            }
+          },
+          {
+            "label": "Lines out of every center",
+            "evidence": {
+              "sourceId": "",
+              "quote": "make every line that comes out come out of the center of the widgets, all widgets follow this rule"
+            }
+          }
         ]
       },
       {
@@ -140,9 +259,30 @@
         "itemId": "g-ref1",
         "summary": "Strictly white, a black pill on top, all ringed round one center",
         "details": [
-          { "label": "A ring of dots", "itemId": "g-ring", "evidence": { "sourceId": "", "quote": "Use these as UI references." } },
-          { "label": "A card that fades out", "itemId": "g-card", "evidence": { "sourceId": "", "quote": "Build a new version based on this" } },
-          { "label": "The start screen, removed", "itemId": "g-hero", "evidence": { "sourceId": "", "quote": "remove the starting screen. I don't need that." } }
+          {
+            "label": "A ring of dots",
+            "itemId": "g-ring",
+            "evidence": {
+              "sourceId": "",
+              "quote": "Use these as UI references."
+            }
+          },
+          {
+            "label": "A card that fades out",
+            "itemId": "g-card",
+            "evidence": {
+              "sourceId": "",
+              "quote": "Build a new version based on this"
+            }
+          },
+          {
+            "label": "The start screen, removed",
+            "itemId": "g-hero",
+            "evidence": {
+              "sourceId": "",
+              "quote": "remove the starting screen. I don't need that."
+            }
+          }
         ]
       },
       {
@@ -152,10 +292,37 @@
         "itemId": "g-storypage",
         "summary": "Up to five steps, each a title, a short paragraph and one canvas",
         "details": [
-          { "label": "Uneven canvases, at first", "itemId": "g-firstbuild", "evidence": { "sourceId": "", "quote": "make sure all of the canvas are of same length and height." } },
-          { "label": "Steps with no picture", "itemId": "g-noimage", "evidence": { "sourceId": "", "quote": "the word template in the story is still very confusing. What is it for?" } },
-          { "label": "Told like a story", "evidence": { "sourceId": "", "quote": "the entire reading experience should be like story-telling." } },
-          { "label": "Formats tried in a lab", "itemId": "g-lab", "evidence": { "sourceId": "", "quote": "If we were to do experiments in the future, make a lab view instead" } }
+          {
+            "label": "Uneven canvases, at first",
+            "itemId": "g-firstbuild",
+            "evidence": {
+              "sourceId": "",
+              "quote": "make sure all of the canvas are of same length and height."
+            }
+          },
+          {
+            "label": "Steps with no picture",
+            "itemId": "g-noimage",
+            "evidence": {
+              "sourceId": "",
+              "quote": "the word template in the story is still very confusing. What is it for?"
+            }
+          },
+          {
+            "label": "Told like a story",
+            "evidence": {
+              "sourceId": "",
+              "quote": "the entire reading experience should be like story-telling."
+            }
+          },
+          {
+            "label": "Formats tried in a lab",
+            "itemId": "g-lab",
+            "evidence": {
+              "sourceId": "",
+              "quote": "If we were to do experiments in the future, make a lab view instead"
+            }
+          }
         ]
       },
       {
@@ -163,15 +330,44 @@
         "kind": "decision",
         "weight": "normal",
         "fixes": [
-          ["Bland results", "My notes as rules"],
-          ["Broken pictures", "Real ones from Nox"],
-          ["Sessions over 25 MB", "Read in batches"]
+          [
+            "Bland results",
+            "My notes as rules"
+          ],
+          [
+            "Broken pictures",
+            "Real ones from Nox"
+          ],
+          [
+            "Sessions over 25 MB",
+            "Read in batches"
+          ]
         ],
         "summary": "One OpenAI call writes the Story and Map for any session",
         "details": [
-          { "label": "My notes as rules", "commit": "7df2bd7", "url": "https://github.com/FelixYifeiWang/commonplace/commit/7df2bd702a45bbd009e2f9f51b6d09a98dc0ec2b", "evidence": { "sourceId": "", "quote": "are the bugs/changes found here generalized as a prompt somewhere in the backend?" } },
-          { "label": "Real ones from Nox", "commit": "6be5069", "url": "https://github.com/FelixYifeiWang/commonplace/commit/6be50698132b1173186fd337d51ebb5c6acf2aea", "evidence": { "sourceId": "", "quote": "when I connect a new session directly at newron, it produce far less impressive results." } },
-          { "label": "Read in batches", "commit": "f333025", "url": "https://github.com/FelixYifeiWang/commonplace/commit/f333025536b209b5790b742cc77a4b275e5990a2" }
+          {
+            "label": "My notes as rules",
+            "commit": "7df2bd7",
+            "url": "https://github.com/FelixYifeiWang/commonplace/commit/7df2bd702a45bbd009e2f9f51b6d09a98dc0ec2b",
+            "evidence": {
+              "sourceId": "",
+              "quote": "are the bugs/changes found here generalized as a prompt somewhere in the backend?"
+            }
+          },
+          {
+            "label": "Real ones from Nox",
+            "commit": "6be5069",
+            "url": "https://github.com/FelixYifeiWang/commonplace/commit/6be50698132b1173186fd337d51ebb5c6acf2aea",
+            "evidence": {
+              "sourceId": "",
+              "quote": "when I connect a new session directly at newron, it produce far less impressive results."
+            }
+          },
+          {
+            "label": "Read in batches",
+            "commit": "f333025",
+            "url": "https://github.com/FelixYifeiWang/commonplace/commit/f333025536b209b5790b742cc77a4b275e5990a2"
+          }
         ]
       },
       {
@@ -181,9 +377,25 @@
         "say": "Context, not a grid.",
         "summary": "Each thing keeps its why and its weight",
         "details": [
-          { "label": "Not a grid of equals", "itemId": "g-grid", "evidence": { "sourceId": "", "quote": "references should have context, and information should not have the same hierarchy" } },
-          { "label": "Every picture says why", "itemId": "g-why" },
-          { "label": "Understood at a glance", "evidence": { "sourceId": "", "quote": "make users understand at no cost, not necessarily strictly one line" } }
+          {
+            "label": "Not a grid of equals",
+            "itemId": "g-grid",
+            "evidence": {
+              "sourceId": "",
+              "quote": "references should have context, and information should not have the same hierarchy"
+            }
+          },
+          {
+            "label": "Every picture says why",
+            "itemId": "g-why"
+          },
+          {
+            "label": "Understood at a glance",
+            "evidence": {
+              "sourceId": "",
+              "quote": "make users understand at no cost, not necessarily strictly one line"
+            }
+          }
         ]
       }
     ]
