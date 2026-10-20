@@ -16,6 +16,7 @@ import {
   orderItems,
   pageUrl,
   pictureFor,
+  wipeProgress,
 } from "@/lib/story-canvas.mjs";
 import { SheetMedia } from "./sheet-media";
 // The Story: up to five steps in the human's voice, each beside one canvas (STORY_CANVAS.md).
@@ -59,27 +60,20 @@ export function SessionStory({
     steps.forEach((step) => observer.observe(step));
     return () => observer.disconnect();
   }, [stepKeys]);
-  // A wipe runs left to right while its whole frame is on screen: from the moment its bottom edge comes into view
-  // until its top nears the top of the screen, eased at both ends. The page scrolls normally and never pins.
+  // A wipe runs left to right over a short stretch of scrolling once its whole frame is on screen
+  // (lib/story-canvas.mjs, wipeProgress). The page scrolls normally and never pins.
   useEffect(() => {
     const frames = root.current?.querySelectorAll<HTMLElement>(".sv-frame");
     if (!frames?.length) return;
     const still = matchMedia("(prefers-reduced-motion: reduce)");
-    const ease = (t: number) => t * t * (3 - 2 * t);
     let queued = 0;
     const scrub = () => {
       queued = 0;
       for (const frame of frames) {
-        const r = frame.getBoundingClientRect(),
-          start = innerHeight - r.height,
-          end = innerHeight * 0.12;
-        const t = Math.max(
-          0,
-          Math.min(1, (start - r.top) / Math.max(160, start - end)),
-        );
+        const p = wipeProgress(frame.getBoundingClientRect(), innerHeight);
         frame.style.setProperty(
           "--p",
-          `${(still.matches ? 50 : ease(t) * 100).toFixed(2)}%`,
+          `${(still.matches ? 50 : p * 100).toFixed(2)}%`,
         );
       }
     };

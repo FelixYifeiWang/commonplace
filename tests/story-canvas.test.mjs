@@ -5,6 +5,7 @@ import {
   orderItems,
   pageUrl,
   pictureFor,
+  wipeProgress,
 } from "../lib/story-canvas.mjs";
 
 test("the variant follows the layout and how many pictures it holds", () => {
@@ -91,4 +92,23 @@ test("an artifact's picture opens the artifact, as any link opens its page", () 
     pageUrl(item({ kind: "link", url: "javascript:alert(1)" })),
     null,
   );
+});
+
+test("a wipe starts once its frame is on screen and is done before the frame reaches the middle", () => {
+  const vh = 900,
+    height = 304;
+  // Not started while the frame is still coming into view.
+  assert.equal(wipeProgress({ top: vh, height }, vh), 0);
+  assert.equal(wipeProgress({ top: vh * 0.96 - height, height }, vh), 0);
+  // Halfway after half its short stretch, and done a fifth of a screen later.
+  assert.equal(
+    wipeProgress({ top: vh * 0.96 - height - vh * 0.09, height }, vh),
+    0.5,
+  );
+  assert.equal(
+    wipeProgress({ top: vh * 0.96 - height - vh * 0.18, height }, vh),
+    1,
+  );
+  // Done well before the frame sits in the middle of the screen.
+  assert.equal(wipeProgress({ top: (vh - height) / 2 + 60, height }, vh), 1);
 });
