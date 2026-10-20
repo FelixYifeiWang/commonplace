@@ -5,7 +5,7 @@ import {
   orderItems,
   pageUrl,
   pictureFor,
-  wipeProgress,
+  wipeKept,
 } from "../lib/story-canvas.mjs";
 
 test("the variant follows the layout and how many pictures it holds", () => {
@@ -94,21 +94,20 @@ test("an artifact's picture opens the artifact, as any link opens its page", () 
   );
 });
 
-test("a wipe starts once its frame is on screen and is done before the frame reaches the middle", () => {
+test("a wipe shows the dropped picture up to the middle of the screen, then the kept one", () => {
   const vh = 900,
     height = 304;
-  // Not started while the frame is still coming into view.
-  assert.equal(wipeProgress({ top: vh, height }, vh), 0);
-  assert.equal(wipeProgress({ top: vh * 0.96 - height, height }, vh), 0);
-  // Halfway after half its short stretch, and done a fifth of a screen later.
-  assert.equal(
-    wipeProgress({ top: vh * 0.96 - height - vh * 0.09, height }, vh),
-    0.5,
-  );
-  assert.equal(
-    wipeProgress({ top: vh * 0.96 - height - vh * 0.18, height }, vh),
-    1,
-  );
-  // Done well before the frame sits in the middle of the screen.
-  assert.equal(wipeProgress({ top: (vh - height) / 2 + 60, height }, vh), 1);
+  const at = (center, kept) =>
+    wipeKept({ top: center * vh - height / 2, height }, vh, kept);
+  // Low on the screen and centered: the dropped picture, so it can be read at a comfortable position.
+  assert.equal(at(0.9, null), false);
+  assert.equal(at(0.5, null), false);
+  // Past the middle: the kept one.
+  assert.equal(at(0.38, false), true);
+  assert.equal(at(0.2, null), true);
+  // Near the middle it keeps whichever it shows, so it never flickers.
+  assert.equal(at(0.45, false), false);
+  assert.equal(at(0.55, true), true);
+  // Scrolling back down past 60% shows the dropped picture again.
+  assert.equal(at(0.62, true), false);
 });

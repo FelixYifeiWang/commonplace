@@ -16,7 +16,7 @@ import {
   orderItems,
   pageUrl,
   pictureFor,
-  wipeProgress,
+  wipeKept,
 } from "@/lib/story-canvas.mjs";
 import { SheetMedia } from "./sheet-media";
 // The Story: up to five steps in the human's voice, each beside one canvas (STORY_CANVAS.md).
@@ -60,32 +60,63 @@ export function SessionStory({
     steps.forEach((step) => observer.observe(step));
     return () => observer.disconnect();
   }, [stepKeys]);
-  // A wipe runs left to right over a short stretch of scrolling once its whole frame is on screen
-  // (lib/story-canvas.mjs, wipeProgress). The page scrolls normally and never pins.
+  // A wipe shows the dropped picture until its frame rises past the middle of the screen, then plays left to
+  // right to the kept one in 0.7 s; scrolling back down plays it back (lib/story-canvas.mjs, wipeKept). The page
+  // scrolls normally and never pins.
   useEffect(() => {
-    const frames = root.current?.querySelectorAll<HTMLElement>(".sv-frame");
-    if (!frames?.length) return;
+    const frames = [
+      ...(root.current?.querySelectorAll<HTMLElement>(".sv-frame") ?? []),
+    ];
+    if (!frames.length) return;
     const still = matchMedia("(prefers-reduced-motion: reduce)");
+    const ease = (t: number) => t * t * (3 - 2 * t);
+    const state = new Map<
+      HTMLElement,
+      { kept: boolean | null; p: number; raf: number }
+    >(frames.map((frame) => [frame, { kept: null, p: 0, raf: 0 }]));
+    const show = (frame: HTMLElement, p: number) =>
+      frame.style.setProperty("--p", `${(p * 100).toFixed(2)}%`);
+    const play = (frame: HTMLElement, to: number) => {
+      const s = state.get(frame)!;
+      cancelAnimationFrame(s.raf);
+      const from = s.p,
+        begin = performance.now(),
+        duration = still.matches ? 0 : 700;
+      const step = (now: number) => {
+        const t = duration ? Math.min(1, (now - begin) / duration) : 1;
+        s.p = from + (to - from) * ease(t);
+        show(frame, s.p);
+        if (t < 1) s.raf = requestAnimationFrame(step);
+      };
+      s.raf = requestAnimationFrame(step);
+    };
     let queued = 0;
-    const scrub = () => {
+    const check = (first = false) => {
       queued = 0;
       for (const frame of frames) {
-        const p = wipeProgress(frame.getBoundingClientRect(), innerHeight);
-        frame.style.setProperty(
-          "--p",
-          `${(still.matches ? 50 : p * 100).toFixed(2)}%`,
+        const s = state.get(frame)!;
+        const kept = wipeKept(
+          frame.getBoundingClientRect(),
+          innerHeight,
+          s.kept,
         );
+        if (kept === s.kept) continue;
+        s.kept = kept;
+        // On load the frame shows its state at once; after that a change plays.
+        if (first) show(frame, (s.p = kept ? 1 : 0));
+        else play(frame, kept ? 1 : 0);
       }
     };
     const queue = () => {
-      if (!queued) queued = requestAnimationFrame(scrub);
+      if (!queued) queued = requestAnimationFrame(() => check());
     };
     // Captured, so a scroll inside any container moves the wipe too.
     window.addEventListener("scroll", queue, { passive: true, capture: true });
     window.addEventListener("resize", queue);
-    scrub();
+    check(true);
     return () => {
       cancelAnimationFrame(queued);
+      for (const s of state.values()) cancelAnimationFrame(s.raf);
       window.removeEventListener("scroll", queue, true);
       window.removeEventListener("resize", queue);
     };

@@ -305,7 +305,7 @@ A curated step's canvas follows the same rules as any other, in one pattern: pic
 | --- | --- |
 | reference | One or two pictures side by side, or three: the first at full height and the other two stacked beside it. Captions optional |
 | before-after | Two pictures, captioned, with Dropped and Kept pills |
-| wipe | One frame that wipes left to right from the dropped picture to the kept one as the step scrolls by: it starts once the whole frame is on screen and is done about a fifth of a screen later, before the frame reaches the middle. The page never pins. An optional fixed picture sits beside it (35% wide), so what changed reads against what stayed |
+| wipe | One frame that shows the dropped picture while it sits anywhere from the bottom of the screen up to the middle, then wipes left to right to the kept one in 0.7 s once it rises past the middle; scrolling back down plays it back. A frame that stops near the middle keeps what it shows. The page never pins. An optional fixed picture sits beside it (35% wide), so what changed reads against what stayed |
 | rules | Each note (a picture of it, or its words in a bubble), an arrow, then the prompt line it became in monospace |
 
 On the Map a curated tile may show problems and their fixes (each problem in grey, the fix under it), or a short principle in large type (26 characters or fewer). A detail may name the commit a fix shipped in and link to it. A curated tile shows up to five details.
