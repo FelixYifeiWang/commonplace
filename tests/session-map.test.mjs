@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  centeredFit,
   placeMap,
   radialPath,
   zoomLevel,
@@ -175,4 +176,33 @@ test("deleted media is removed from map links while named references remain", ()
     original,
     "Undo restores the original map",
   );
+});
+
+test("the center stays in the middle, and the side that reaches farthest sets the zoom", () => {
+  const stage = { width: 1400, height: 802 };
+  const even = centeredFit({ x0: -600, x1: 600, y0: -300, y1: 300 }, stage);
+  const lopsided = centeredFit({ x0: -200, x1: 600, y0: -300, y1: 300 }, stage);
+  // Centering on the core means the near side gets the far side's room too.
+  assert.equal(lopsided, even);
+  assert.equal(even, Math.min(1.1, 1400 / 1280, (802 - 90) / 660));
+  // With the map laid out around the core, every box stays on stage at that zoom.
+  const W = placeMap(widgets(6), 6);
+  const boxes = Object.values(W)
+    .filter((w) => !w.det)
+    .map(box);
+  const bounds = {
+    x0: Math.min(...boxes.map((b) => b.l)),
+    x1: Math.max(...boxes.map((b) => b.r)),
+    y0: Math.min(...boxes.map((b) => b.t)),
+    y1: Math.max(...boxes.map((b) => b.b)),
+  };
+  const fit = centeredFit(bounds, stage);
+  for (const b of boxes) {
+    assert.ok(
+      stage.width / 2 + b.l * fit >= 0 &&
+        stage.width / 2 + b.r * fit <= stage.width,
+    );
+    assert.ok((stage.height - 60) / 2 + b.t * fit >= 0);
+    assert.ok((stage.height - 60) / 2 + b.b * fit <= stage.height);
+  }
 });

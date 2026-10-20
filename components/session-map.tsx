@@ -5,6 +5,7 @@ import { PreviewImage } from "./preview-image";
 import type { Item } from "@/lib/types";
 import { pageUrl, pictureFor } from "@/lib/story-canvas.mjs";
 import {
+  centeredFit,
   placeMap,
   radialPath,
   zoomLevel,
@@ -250,13 +251,13 @@ export function SessionMap({
           y0 = Math.min(y0, b.t + w.oy);
           y1 = Math.max(y1, b.b + w.oy);
         });
-      fit = Math.min(
-        1.1,
-        stage!.clientWidth / (x1 - x0 + 80),
-        (stage!.clientHeight - 90) / (y1 - y0 + 60),
+      // The center node stays in the middle of the stage until the viewer moves the map.
+      fit = centeredFit(
+        { x0, x1, y0, y1 },
+        { width: stage!.clientWidth, height: stage!.clientHeight },
       );
-      cx0 = (x0 + x1) / 2;
-      cy0 = (y0 + y1) / 2;
+      cx0 = 0;
+      cy0 = 0;
     }
     function paths() {
       const lines: { d: string; c: string }[] = [];
@@ -546,6 +547,10 @@ export function SessionMap({
         guidedFrame(guidedFocus.current?.detail, false);
       } else {
         measureFit();
+        if (!touched) {
+          z = fit;
+          px = py = 0;
+        }
         view();
       }
     });

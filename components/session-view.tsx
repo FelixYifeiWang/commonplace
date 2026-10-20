@@ -114,7 +114,8 @@ export function SessionView({
     mode === "gallery"
       ? !!session?.map?.nodes?.length
       : !!session?.steps.length || !!story?.beats.length;
-  // A curated document is shown exactly as its mockup: its own page width, type and the guided Map.
+  // A curated document is shown exactly as its mockup: its own page width, type, and the Map with the
+  // Guided/Free toolbar, opening free.
   const curated = !!session?.curated;
   return (
     <section
@@ -160,7 +161,11 @@ export function SessionView({
       </div>
       {session && mode === "gallery" && session.map?.nodes?.length ? (
         devMode || curated ? (
-          <DevSessionMap doc={session} items={items} />
+          <DevSessionMap
+            doc={session}
+            items={items}
+            initialFree={curated && !devMode}
+          />
         ) : (
           <SessionMap doc={session} items={items} />
         )

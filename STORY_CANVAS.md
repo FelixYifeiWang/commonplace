@@ -277,6 +277,7 @@ The Map is not the Story. It keeps what is worth reusing from the session: the l
   - ↺ resets the layout.
   - Tiles panned past the edge of the map fade out over its last 32px instead of being cut off.
   - The center's name counter-scales, so it stays at least about 10px on screen when zoomed out.
+  - The center sits in the middle of the stage, zoomed so every tile and bubble fits around it, until the viewer drags, pans or zooms; a resize recenters it until then.
 - **Lines:** each line ends on the part of its target that is visible at every zoom (a detail's picture or label), measured live and redrawn when the zoom level changes.
 - **Layout:**
   - Tiles sit at even angles.
@@ -296,7 +297,7 @@ A Story and Map can be written by hand for one collection, for example to show a
 - **Demo sessions (for the demo video, not a product feature):** a coding session listed in `lib/demo-sessions.ts` gets its curated document saved again whenever Nox connects it, in `POST /api/subscribe`: a new collection, a resume, or a reconnect after its collection was deleted. A deleted collection sits in Trash with its session paused; connecting a demo session again restores it from Trash instead of refusing. The main Newron chat is listed, so it always shows the Story mockup.
 - **Pictures:** static files under `public/story/<name>/`, listed in the document's `pictures` with their fit (page, ink or object) and, for Map tiles, their shape and focus. Every picture reference in the document must name one of them.
 
-- **Looks exactly like its mockup:** a curated collection is shown with the Story mockup's measurements, not the app's defaults: a 1160px Story column that starts right under the header, Geist for the Story and Map (DM Sans stays on the header and the Map's toolbar), the darker dot field, no rise-in, and a 1400px Map that fills the window under the header, with the app's faded edges. The Map opens guided, with the Guided/Free toolbar, and its guided camera is the mockup's: the overview is the fitted map, a node is framed with its bubble and details at up to 2.6× the fit, one detail at 2.8×, gliding over 0.6 s; the chosen widget doesn't lift, and everything else, the center too, steps back to the same faintness.
+- **Looks exactly like its mockup:** a curated collection is shown with the Story mockup's measurements, not the app's defaults: a 1160px Story column that starts right under the header, Geist for the Story and Map (DM Sans stays on the header and the Map's toolbar), the darker dot field, no rise-in, and a 1400px Map that fills the window under the header, with the app's faded edges. The Map has the Guided/Free toolbar and opens in Free view; its guided camera is the mockup's: the overview is the fitted map, a node is framed with its bubble and details at up to 2.6× the fit, one detail at 2.8×, gliding over 0.6 s; the chosen widget doesn't lift, and everything else, the center too, steps back to the same faintness.
 
 A curated step's canvas follows the same rules as any other, in one pattern: pictures fill it, a short caption sits under each, and the human's own words sit in one line at the foot ("I said"), in the same place on every canvas.
 
