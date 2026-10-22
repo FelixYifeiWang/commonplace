@@ -345,3 +345,97 @@ test("shortcut migration removes only an owned legacy alias", async (t) => {
   await installAppShortcut(home, "/owned/Commonplace.app");
   assert.equal(await readlink(join(apps, "Newron.app")), "/unrelated/app");
 });
+
+test("setup checks every destination before downloading and removes its probes", async (t) => {
+  const { preflightInstallFolders } = await import("../desktop/install.mjs");
+  const { mkdtemp, readdir, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const home = await mkdtemp(join(tmpdir(), "nox-preflight-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  const root = join(home, "Library/Application Support/Commonplace/test");
+  await preflightInstallFolders({ home, root });
+  for (const path of [
+    root,
+    join(home, "Library/LaunchAgents"),
+    join(home, "Applications"),
+  ])
+    assert.deepEqual(await readdir(path), []);
+});
+
+test("a denied setup destination stops immediately with a specific permission explanation", async () => {
+  const { preflightInstallFolders } = await import("../desktop/install.mjs");
+  let attempts = 0;
+  await assert.rejects(
+    preflightInstallFolders(
+      { home: "/fixture", root: "/fixture/nox" },
+      {
+        mkdir: async () => {
+          attempts++;
+          throw Object.assign(new Error("denied"), { code: "EACCES" });
+        },
+      },
+    ),
+    /access to \/fixture\/nox.*agent.*permission/i,
+  );
+  assert.equal(attempts, 1);
+});
+
+test("download failures distinguish DNS from denied network access without leaking a private URL", async () => {
+  const { download } = await import("../desktop/install.mjs");
+  for (const [code, message] of [
+    ["ENOTFOUND", /resolve.*space.example/],
+    ["EACCES", /network access.*denied/i],
+  ]) {
+    let attempts = 0;
+    await assert.rejects(
+      download(
+        "https://space.example/companion/install.mjs#secret",
+        async () => {
+          attempts++;
+          throw new TypeError("fetch failed", {
+            cause: Object.assign(new Error("secret"), { code }),
+          });
+        },
+      ),
+      (error) => {
+        assert.match(error.message, message);
+        assert.ok(!error.message.includes("secret"));
+        return true;
+      },
+    );
+    assert.equal(attempts, 1);
+  }
+});
+
+test("an unwritable launch destination prevents downloads, runtime installation and pairing", async (t) => {
+  const { mkdtemp, mkdir, writeFile, readdir, rm } =
+    await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const home = await mkdtemp(join(tmpdir(), "nox-blocked-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  await mkdir(join(home, "Library"));
+  await writeFile(join(home, "Library/LaunchAgents"), "existing file");
+  await assert.rejects(
+    install(
+      { link: "https://unreachable.invalid/setup#" + "a".repeat(64) },
+      {
+        home,
+        platform: "darwin",
+        onProgress: () => assert.fail("No downloads should start"),
+        run: async () => assert.fail("No runtime should start"),
+      },
+    ),
+    { code: "EEXIST" },
+  );
+  const roots = await readdir(
+    join(home, "Library/Application Support/Commonplace"),
+  );
+  assert.deepEqual(
+    await readdir(
+      join(home, "Library/Application Support/Commonplace", roots[0]),
+    ),
+    [],
+  );
+});

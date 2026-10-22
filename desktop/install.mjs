@@ -1,6 +1,7 @@
 // Nox's agent installer. No global packages, MCP, or agent settings are modified.
 import {
   mkdir,
+  mkdtemp,
   copyFile,
   symlink,
   readFile,
@@ -102,15 +103,54 @@ export async function verifyRuntime(runtime) {
     ),
   );
 }
-export async function download(url) {
-  const r = await fetch(url, {
-    redirect: "error",
-    cache: "no-store",
-    signal: AbortSignal.timeout(30000),
-  });
-  if (!r.ok)
-    throw new Error("Could not download companion (" + r.status + ").");
-  return Buffer.from(await r.arrayBuffer());
+// Probe only installer-owned destinations, before downloading or pairing.
+export async function preflightInstallFolders(
+  { home, root },
+  io = { mkdir, mkdtemp, rm },
+) {
+  for (const folder of [
+    root,
+    join(home, "Library/LaunchAgents"),
+    join(home, "Applications"),
+  ]) {
+    try {
+      await io.mkdir(folder, { recursive: true, mode: 0o700 });
+      const probe = await io.mkdtemp(join(folder, ".nox-setup-check-"));
+      await io.rm(probe, { recursive: true });
+    } catch (error) {
+      if (["EACCES", "EPERM"].includes(error.code))
+        throw new Error(
+          `Nox needs write access to ${folder}. Setup stopped. Use your agent's normal permission request to approve this folder, then retry.`,
+          { cause: error },
+        );
+      throw error;
+    }
+  }
+}
+export async function download(url, request = fetch) {
+  try {
+    const r = await request(url, {
+      redirect: "error",
+      cache: "no-store",
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!r.ok)
+      throw new Error("Could not download companion (" + r.status + ").");
+    return Buffer.from(await r.arrayBuffer());
+  } catch (error) {
+    const code = error.cause?.code || error.code;
+    if (["ENOTFOUND", "EAI_AGAIN"].includes(code))
+      throw new Error(
+        `Could not resolve ${new URL(url).hostname} from this agent. Check its network access and your connection, then retry.`,
+        { cause: error },
+      );
+    if (["EACCES", "EPERM"].includes(code))
+      throw new Error(
+        "The agent's network access was denied. Setup stopped. Approve its normal network permission request before retrying.",
+        { cause: error },
+      );
+    throw error;
+  }
 }
 // Downloads a release into root/releases/<release>, checking every file against the manifest.
 // A file that changed while downloading means a newer release was published: start over once.
@@ -345,7 +385,7 @@ export async function install(
     ),
     data = join(root, "data"),
     lock = join(root, "install.lock");
-  await mkdir(root, { recursive: true, mode: 0o700 });
+  await preflightInstallFolders({ home, root });
   try {
     await mkdir(lock, { mode: 0o700 });
   } catch (e) {

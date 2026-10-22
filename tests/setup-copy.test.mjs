@@ -13,3 +13,15 @@ test("connection instructions explicitly target the chosen conversation", () => 
   assert.match(text, /Session connected/);
   assert.doesNotMatch(text, /—/);
 });
+
+test("setup checks the execution environment and requests scoped access before installing", () => {
+  const text = setupInstructions("https://space.example");
+  assert.match(text, /Confirm the terminal runs on the user's Mac/);
+  assert.match(text, /normal permission request/);
+  assert.match(text, /Library\/LaunchAgents/);
+  assert.match(text, /Do not retry a denied operation/);
+  assert.match(text, /cannot resolve.*network access/i);
+  assert.ok(
+    text.indexOf("Confirm the terminal") < text.indexOf("Download https://"),
+  );
+});

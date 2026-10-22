@@ -156,8 +156,8 @@ export function SetupDialog({
           <p className="setup-description">
             {mode === "setup"
               ? status === "waiting"
-                ? "Paste the prompt into your coding agent. Wait here while it installs and opens Nox."
-                : "Copy this prompt into Codex, Claude Code, or Cursor. Your agent will install and open Nox."
+                ? "Paste into a coding agent on your Mac. Approve setup if asked, then wait for Nox ready."
+                : "Paste into Codex, Claude Code or Cursor on your Mac. Your agent will install and open Nox."
               : "Paste this prompt into the conversation you want to save. Anyone with the collection link can view it."}
           </p>
           {status === "waiting" && (
