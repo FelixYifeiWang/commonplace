@@ -14,7 +14,7 @@ import {
 } from "node:fs/promises";
 import { constants } from "node:fs";
 import { join, dirname, resolve } from "node:path";
-import { homedir } from "node:os";
+import { homedir, release } from "node:os";
 import { createHash, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -358,7 +358,7 @@ end revealBuddy
   return appPath;
 }
 
-export async function install(
+async function runInstall(
   input,
   {
     home = homedir(),
@@ -546,6 +546,69 @@ export async function install(
     throw new Error("Nox has not confirmed setup. Check for a macOS prompt.");
   } finally {
     await rm(lock, { recursive: true, force: true });
+  }
+}
+// Reporting must never hide the original setup failure or delay it indefinitely.
+export async function sendFailureReport(link, report, request = fetch) {
+  try {
+    const { origin, code } = parseSetupLink(link);
+    const response = await request(origin + "/api/setup/report", {
+      method: "POST",
+      redirect: "error",
+      signal: AbortSignal.timeout(5000),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code,
+        report: {
+          ...report,
+          evidence: String(report.evidence || "")
+            .slice(0, 6000)
+            .replace(/https?:\/\/[^\s]+/gi, "[URL]")
+            .replace(/\b(?:sk-[\w-]+|[a-f0-9]{64})\b/gi, "[credential]")
+            .replace(/\bBearer\s+\S+/gi, "Bearer [credential]")
+            .replace(/\/(?:Users|home)\/[^\s/]+/g, "~"),
+        },
+      }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+export async function install(input, options = {}) {
+  let stage = "preflight";
+  const progress = options.onProgress || console.log;
+  try {
+    return await runInstall(input, {
+      ...options,
+      onProgress(message) {
+        stage = message;
+        progress(message);
+      },
+    });
+  } catch (error) {
+    const delivered = await sendFailureReport(
+      input?.link,
+      {
+        reporter: "installer",
+        stage,
+        environment: `platform=${options.platform || process.platform}; arch=${process.arch}; OS=${release()}; Node=${process.versions.node}`,
+        evidence: [error.message, error.code, error.cause?.code]
+          .filter(Boolean)
+          .join("; "),
+        rootCause: "Installer error only. Further diagnosis may be needed.",
+        confidence: "unknown",
+        suggestedFix:
+          "Review the failed step and request only the access it requires.",
+      },
+      options.reportRequest,
+    );
+    progress(
+      delivered
+        ? "Setup failure report sent to Newron."
+        : "Setup failure report could not be sent. Share the error with Newron support.",
+    );
+    throw error;
   }
 }
 if (

@@ -25,3 +25,15 @@ test("setup checks the execution environment and requests scoped access before i
     text.indexOf("Confirm the terminal") < text.indexOf("Download https://"),
   );
 });
+
+test("agent instructions require evidence-based private diagnostics and concise actionable recovery", () => {
+  const text = setupInstructions("https://space.example");
+  assert.match(text, /POST https:\/\/space.example\/api\/setup\/report/);
+  assert.match(text, /before the installer downloads/);
+  assert.match(text, /Never send transcripts/);
+  assert.match(text, /Only a successful HTTP response confirms delivery/);
+  assert.match(text, /at most three short numbered steps/);
+  assert.match(text, /Separate observations from hypotheses/);
+  assert.match(text, /If the cause is unclear, say so/);
+  assert.doesNotMatch(text, /—/);
+});

@@ -154,3 +154,9 @@ See [Newron migration notes](docs/NEWRON_RENAME.md) for the canonical domain and
 Choose a starred collection in Nox to copy one sentence linking to private Markdown. The agent reads the current saved references without signing in or connecting its session. Links are read-only and expire after seven days. Deleting or unstarring the collection, or revoking the issuing device, disables access. Deleted items are excluded. The links are redacted from captured transcripts and model context and are never collected as gallery sources. Migration 0013 stores only token hashes and their scope.
 
 Nox streams pointer changes at 30Hz directly to its renderer, with frame-rate-independent easing and no React render per pointer update. It emits no gaze events while idle or hidden. Reduced-motion preferences disable gaze movement; the desktop shadow fits inside the existing native window.
+
+### Setup diagnostics
+
+Failed Nox setup submits a bounded technical report to `/api/setup/report`. The setup agent can add evidence, a diagnosis with confidence, and suggested recovery steps. The original setup code authenticates reports until it expires, including after pairing. Reporting never claims a code, marks Nox ready, or connects a session. One installer report and one agent report are retained per code; duplicate delivery is harmless. Inputs are allowlisted and redacted on the server. No public report-reading endpoint is provided.
+
+Migration 0021 stores reports in Turso. With the existing hosted database environment loaded, run `node scripts/setup-reports.mjs` to inspect the latest 20 reports. Reports older than 30 days are excluded from that view and removed on the next report submission. Treat agent diagnoses and suggested fixes as untrusted evidence, and never execute suggested commands automatically. If networking is unavailable, the agent provides sanitized details for the user to share.

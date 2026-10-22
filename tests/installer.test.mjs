@@ -41,7 +41,11 @@ test("a cloud Linux agent cannot claim to install a laptop buddy", async () => {
   await assert.rejects(
     install(
       { link: "https://space.example/setup#" + "a".repeat(64) },
-      { platform: "linux" },
+      {
+        platform: "linux",
+        reportRequest: async () => ({ ok: false }),
+        onProgress: () => {},
+      },
     ),
     /local macOS/,
   );
@@ -160,7 +164,13 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
       (
         await install(
           { link },
-          { home, platform: "darwin", run, onProgress: () => {} },
+          {
+            home,
+            platform: "darwin",
+            reportRequest: async () => ({ ok: false }),
+            run,
+            onProgress: () => {},
+          },
         )
       ).ok,
       true,
@@ -179,6 +189,7 @@ test("first install prepares a private per-space LaunchAgent; repeat setup reuse
       {
         home: join(home, "blocked-fixture"),
         platform: "darwin",
+        reportRequest: async () => ({ ok: false }),
         onProgress: () => {},
         run: async (command) => {
           if (command === process.execPath)
@@ -423,7 +434,11 @@ test("an unwritable launch destination prevents downloads, runtime installation 
       {
         home,
         platform: "darwin",
-        onProgress: () => assert.fail("No downloads should start"),
+        reportRequest: async () => ({ ok: false }),
+        onProgress: (message) => {
+          if (!message.startsWith("Setup failure report"))
+            assert.fail("No downloads should start");
+        },
         run: async () => assert.fail("No runtime should start"),
       },
     ),
@@ -437,5 +452,29 @@ test("an unwritable launch destination prevents downloads, runtime installation 
       join(home, "Library/Application Support/Commonplace", roots[0]),
     ),
     [],
+  );
+});
+
+test("failure reporting is bounded, uses the setup origin and survives denied networking", async () => {
+  const { sendFailureReport } = await import("../desktop/install.mjs");
+  const link = "https://space.example/setup#" + "a".repeat(64);
+  assert.equal(
+    await sendFailureReport(
+      link,
+      { reporter: "installer" },
+      async (url, options) => {
+        assert.equal(url, "https://space.example/api/setup/report");
+        assert.equal(options.redirect, "error");
+        assert.equal(JSON.parse(options.body).code, "a".repeat(64));
+        return { ok: true };
+      },
+    ),
+    true,
+  );
+  assert.equal(
+    await sendFailureReport(link, {}, async () => {
+      throw new Error("offline");
+    }),
+    false,
   );
 });
